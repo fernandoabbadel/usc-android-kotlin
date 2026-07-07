@@ -1,0 +1,39 @@
+package com.example.usc1.core.session
+
+import com.example.usc1.core.roles.UserRole
+import com.example.usc1.core.tenant.TenantContext
+
+data class UserSession(
+    val user: SessionUser? = null,
+    val tenant: TenantContext? = null,
+) {
+    val isAuthenticated: Boolean = user != null
+}
+
+data class SessionUser(
+    val id: String,
+    val name: String,
+    val email: String,
+    val avatarUrl: String? = null,
+    val role: UserRole = UserRole.Visitante,
+    val status: UserStatus = UserStatus.Ativo,
+)
+
+enum class UserStatus(val remoteValue: String) {
+    Ativo("ativo"),
+    Inadimplente("inadimplente"),
+    Banned("banned"),
+    Pendente("pendente"),
+    Paused("paused"),
+    Bloqueado("bloqueado");
+
+    val isBlocked: Boolean
+        get() = this == Banned || this == Bloqueado
+
+    companion object {
+        fun fromRemote(value: String?): UserStatus {
+            val normalized = value?.trim()?.lowercase().orEmpty()
+            return entries.firstOrNull { it.remoteValue == normalized } ?: Ativo
+        }
+    }
+}
