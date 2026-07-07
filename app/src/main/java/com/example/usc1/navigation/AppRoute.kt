@@ -8,4 +8,7 @@ object AppRoute {
     const val BannedUser = "banned_user"
     const val AccountSecurity = "account_security"
     const val Dashboard = "dashboard"
+    const val Profile = "profile"
+    const val Settings = "settings"
+    const val MembershipCard = "membership-card"
 }

@@ -31,13 +31,42 @@
 - `RouteGuard` nativo redireciona conforme `AuthStatus`.
 - Navigation Compose integrado ao fluxo de autenticação.
 - Nenhuma URL, anon key, service role ou segredo foi adicionado.
+- Commit local: `5b2d5d6 Add native auth session and route guard flow`.
+
+## Fase 4 - Home, Perfil, Configurações e Carteirinha
+
+- Home/Dashboard real criado com dados mockados, saudação, tenant, plano, pedidos, atalhos, eventos e módulos principais.
+- `HomeViewModel` e `HomeUiState` adicionados.
+- Componentes reutilizáveis adicionados:
+  - `AppSectionHeader`
+  - `InfoChip`
+  - `QuickActionCard`
+  - `DashboardSummaryCard`
+  - `HomeEventCard`
+  - `HomeModuleCard`
+- Tela de perfil criada com avatar mockado, dados pessoais, curso, turma, tenant, role, status, plano ativo e atalhos.
+- Tela de configurações criada com seções para conta, pedidos, operação, suporte, termos, LGPD e sair da conta.
+- Carteirinha digital nativa criada com dados mockados, status, validade, identificador e QR visual mockado.
+- Navigation Compose atualizado para substituir placeholders por telas reais de Home, Perfil, Configurações e Carteirinha.
+- Placeholders mantidos apenas para módulos de fases futuras.
+- Previews criados:
+  - `HomeScreenPreview`
+  - `HomeScreenLoadingPreview`
+  - `HomeScreenErrorPreview`
+  - `ProfileScreenPreview`
+  - `SettingsScreenPreview`
+  - `MembershipCardScreenPreview`
+  - `MembershipCardPreview`
+- Validação executada:
+  - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
+  - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
+- Commit local: `Add home profile settings and membership card screens`.
 
 ## Próximas fases
 
-1. Fase 4: Home/Dashboard real + Perfil + Configurações + Carteirinha.
-2. Fase 5: Eventos + Ingressos + QR visual + Pedidos.
-3. Fase 6: Loja + Carrinho + Checkout visual + Pedidos de loja.
-4. Fase 7: Planos + Treinos + Parceiros + Comunidade.
-5. Fase 8: Ligas + Diretório + Comissões + Tenant.
-6. Fase 9: Mini-vendor + Modo vendas + Scanner/check-in.
-7. Fase 10: Supabase real.
+1. Fase 5: Eventos + Ingressos + QR visual + Pedidos.
+2. Fase 6: Loja + Carrinho + Checkout visual + Pedidos de loja.
+3. Fase 7: Planos + Treinos + Parceiros + Comunidade.
+4. Fase 8: Ligas + Diretório + Comissões + Tenant.
+5. Fase 9: Mini-vendor + Modo vendas + Scanner/check-in.
+6. Fase 10: Supabase real.
