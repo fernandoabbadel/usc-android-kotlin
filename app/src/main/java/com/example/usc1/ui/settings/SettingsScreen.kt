@@ -100,7 +100,7 @@ fun SettingsScreen(
                         SettingsItemUiModel(
                             title = "Carteirinha",
                             description = "Identidade digital",
-                            action = SettingsAction.Tickets,
+                            action = SettingsAction.Membership,
                         ),
                     )
                 },

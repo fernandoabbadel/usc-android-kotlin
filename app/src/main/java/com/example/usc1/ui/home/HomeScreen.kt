@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -85,7 +87,7 @@ private fun HomeLoadedContent(
         kind = QuickActionKind.Store,
         title = "Modo vendas",
         subtitle = "Menu do evento",
-        route = "store",
+        route = AppRoute.Store,
     )
     val profileAction = state.actionOrFallback(
         kind = QuickActionKind.Profile,
@@ -111,8 +113,22 @@ private fun HomeLoadedContent(
         kind = QuickActionKind.Training,
         title = "Treinos",
         subtitle = "Agenda e presença",
-        route = "training",
+        route = AppRoute.Training,
     )
+    val plansModule = state.mainModules.firstOrNull { it.route == AppRoute.Plans }
+        ?: HomeModuleUiModel(
+            title = "Planos",
+            description = "Plano ativo, adesões e benefícios.",
+            route = AppRoute.Plans,
+            kind = QuickActionKind.Profile,
+        )
+    val partnersModule = state.mainModules.firstOrNull { it.route == AppRoute.Partners }
+        ?: HomeModuleUiModel(
+            title = "Parceiros",
+            description = "Empresas, cupons e descontos.",
+            route = AppRoute.Partners,
+            kind = QuickActionKind.Community,
+        )
 
     Box(
         modifier = Modifier
@@ -160,11 +176,31 @@ private fun HomeLoadedContent(
                 onClick = { onQuickActionClick(storeAction) },
             )
 
+            PremiumDashboardCard(
+                title = "Loja",
+                eyebrow = "Drop oficial",
+                body = "Produtos, carrinho e pedidos da atlética.",
+                icon = Icons.Outlined.Storefront,
+                accent = HomeBrandAccent,
+                backgroundImageRes = R.drawable.logo_usc_wide,
+                onClick = { onQuickActionClick(storeAction) },
+            )
+
             MembershipHomeCard(
                 membershipCode = state.membershipCode,
                 planName = state.planName,
                 tenantName = state.tenantName,
                 onClick = { onQuickActionClick(membershipAction) },
+            )
+
+            PremiumDashboardCard(
+                title = plansModule.title,
+                eyebrow = state.planName,
+                body = plansModule.description,
+                icon = Icons.Outlined.CreditCard,
+                accent = HomeGold,
+                backgroundImageRes = R.drawable.carteirinha_bg,
+                onClick = { onModuleClick(plansModule) },
             )
 
             PremiumDashboardCard(
@@ -193,6 +229,16 @@ private fun HomeLoadedContent(
                 icon = Icons.Outlined.FitnessCenter,
                 accent = HomeAmber,
                 onClick = { onQuickActionClick(trainingAction) },
+            )
+
+            PremiumDashboardCard(
+                title = partnersModule.title,
+                eyebrow = "Benefícios ativos",
+                body = partnersModule.description,
+                icon = Icons.Outlined.Groups,
+                accent = HomeBrand,
+                backgroundImageRes = R.drawable.logo_aaakn,
+                onClick = { onModuleClick(partnersModule) },
             )
 
             RadarAlbumCard(

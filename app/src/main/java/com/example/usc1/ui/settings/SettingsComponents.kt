@@ -42,6 +42,7 @@ fun SettingsItem(
         SettingsAction.Plans,
         SettingsAction.Invites,
         -> PremiumAmber
+        SettingsAction.Membership -> com.example.usc1.core.ui.PremiumBrand
         else -> com.example.usc1.core.ui.PremiumBrand
     }
     PremiumMenuRow(
@@ -56,6 +57,7 @@ fun SettingsItem(
 
 private fun iconFor(action: SettingsAction): ImageVector = when (action) {
     SettingsAction.Profile -> Icons.Outlined.Person
+    SettingsAction.Membership -> Icons.Outlined.CreditCard
     SettingsAction.Security -> Icons.Outlined.Security
     SettingsAction.Orders,
     SettingsAction.Plans,

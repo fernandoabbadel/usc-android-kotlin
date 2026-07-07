@@ -29,8 +29,9 @@ data class ProfileShortcutUiModel(
 )
 
 private val defaultProfileShortcuts = listOf(
-    ProfileShortcutUiModel("Pedidos", "Loja, eventos e planos", "orders"),
-    ProfileShortcutUiModel("Ingressos", "QR Codes e histórico", "events"),
+    ProfileShortcutUiModel("Pedidos da Loja", "Produtos, retirada e status", AppRoute.StoreOrders),
+    ProfileShortcutUiModel("Pedidos Planos", "Adesões e histórico", AppRoute.PlanOrders),
+    ProfileShortcutUiModel("Ingressos", "QR Codes e histórico", AppRoute.EventTickets),
     ProfileShortcutUiModel("Carteirinha", "Status e validação", AppRoute.MembershipCard),
     ProfileShortcutUiModel("Segurança", "Sessão e recuperação", AppRoute.AccountSecurity),
     ProfileShortcutUiModel("Configurações", "Preferências e suporte", AppRoute.Settings),

@@ -22,10 +22,11 @@ data class SettingsItemUiModel(
 
 enum class SettingsAction(val route: String?) {
     Profile(AppRoute.Profile),
+    Membership(AppRoute.MembershipCard),
     Security(AppRoute.AccountSecurity),
-    Orders("orders"),
-    Tickets("events"),
-    Plans("plans"),
+    Orders(AppRoute.StoreOrders),
+    Tickets(AppRoute.EventTickets),
+    Plans(AppRoute.PlanOrders),
     MiniVendor("mini-vendor"),
     SalesMode("scanner"),
     Invites("auth"),
@@ -47,9 +48,9 @@ private val defaultSettingsSections = listOf(
     SettingsSectionUiModel(
         title = "Pedidos e benefícios",
         items = listOf(
-            SettingsItemUiModel("Pedidos", "Loja, planos e eventos em um histórico único.", SettingsAction.Orders),
+            SettingsItemUiModel("Pedidos da Loja", "Produtos, carrinho e retirada no evento.", SettingsAction.Orders),
             SettingsItemUiModel("Ingressos", "Tickets ativos, QR Codes e transferências futuras.", SettingsAction.Tickets),
-            SettingsItemUiModel("Planos", "Plano ativo, adesões e benefícios.", SettingsAction.Plans),
+            SettingsItemUiModel("Pedidos Planos", "Plano ativo, adesões e benefícios.", SettingsAction.Plans),
         ),
     ),
     SettingsSectionUiModel(
