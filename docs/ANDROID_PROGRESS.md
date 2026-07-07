@@ -62,6 +62,36 @@
   - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
 - Commit local: `Add home profile settings and membership card screens`.
 
+## Fase 4.1 - Correção de paridade visual com o web app
+
+- Implementação de novas funcionalidades pausada para corrigir a direção visual da Home Android.
+- `web-reference` passou a ser a fonte visual obrigatória para a Home/Dashboard nativa.
+- Home refeita para se aproximar da dashboard mobile web:
+  - fundo preto premium;
+  - identidade neon verde/dourada;
+  - header com “Fala, Fernando!” e “Pronto para dominar?”;
+  - avatar circular no topo direito;
+  - cards verticais grandes com gradiente, imagem e bordas arredondadas grandes;
+  - card “Modo vendas / Menu do evento”;
+  - card “Carteirinha” com imagem de fundo e visual premium;
+  - card “Caça aos Calouros” com visual de radar neon;
+  - bottom navigation flutuante com Início, Eventos, Scanner central, Carteira e Menu.
+- Componentes visuais criados:
+  - `PremiumDashboardCard`
+  - `FloatingBottomNavigation`
+  - `ScannerCenterButton`
+  - `NeonStatusChip`
+  - `DashboardHeader`
+  - `MembershipHomeCard`
+  - `SalesModeCard`
+  - `RadarAlbumCard`
+  - `DashboardSectionTitle`
+- Assets públicos da referência web copiados para `app/src/main/res/drawable-nodpi` para uso nativo em Compose.
+- Regra de direção registrada: “Não invente tela. Replique a tela web em Compose.”
+- Validação executada:
+  - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
+  - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
+
 ## Fase 5 - Eventos, Ingressos, QR e Pedidos
 
 - Modelos de domínio criados:

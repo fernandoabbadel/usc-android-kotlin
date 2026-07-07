@@ -66,7 +66,7 @@ data class HomeModuleUiModel(
 
 private val defaultQuickActions = listOf(
     QuickActionUiModel("Carteirinha", "Status e QR", AppRoute.MembershipCard, QuickActionKind.MembershipCard),
-    QuickActionUiModel("Eventos", "Ingressos e festas", "events", QuickActionKind.Events),
+    QuickActionUiModel("Eventos", "Ingressos e festas", AppRoute.Events, QuickActionKind.Events),
     QuickActionUiModel("Loja", "Produtos da atlética", "store", QuickActionKind.Store),
     QuickActionUiModel("Treinos", "Agenda e presença", "training", QuickActionKind.Training),
     QuickActionUiModel("Comunidade", "Feed da turma", "community", QuickActionKind.Community),
