@@ -1,0 +1,284 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  Save,
+  Image as ImageIcon,
+  CreditCard,
+  Calendar,
+  Loader2,
+  CheckCircle2,
+} from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
+import { useToast } from "../../../context/ToastContext";
+import { useTenantTheme } from "@/context/TenantThemeContext";
+import {
+  fetchCarteirinhaConfig,
+  resolveCarteirinhaBackgroundUrl,
+  saveCarteirinhaConfig,
+  uploadCarteirinhaBackground,
+  type CarteirinhaConfig,
+} from "../../../lib/carteirinhaService";
+import {
+  fetchTurmasConfig,
+  getDefaultTurmas,
+  type TurmaConfig,
+} from "../../../lib/turmasService";
+import { withTenantSlug } from "@/lib/tenantRouting";
+
+const DEFAULT_CONFIG: CarteirinhaConfig = {
+  validade: "DEZ/2026",
+  backgrounds: {},
+  backgroundAssets: {},
+  backgroundOpacity: 60,
+};
+
+export default function AdminCarteirinhaPage() {
+  const { addToast } = useToast();
+  const { tenantId: activeTenantId, tenantSlug } = useTenantTheme();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingTurma, setUploadingTurma] = useState<string | null>(null);
+  const [config, setConfig] = useState<CarteirinhaConfig>(DEFAULT_CONFIG);
+  const [turmas, setTurmas] = useState<TurmaConfig[]>(() => getDefaultTurmas());
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadConfig = async () => {
+      try {
+        const [loadedConfig, loadedTurmas] = await Promise.all([
+          fetchCarteirinhaConfig({ tenantId: activeTenantId || undefined }),
+          fetchTurmasConfig({ tenantId: activeTenantId || undefined }),
+        ]);
+        if (!mounted) return;
+        setConfig(loadedConfig);
+        setTurmas(loadedTurmas);
+      } catch (error: unknown) {
+        console.error("Erro ao carregar config:", error);
+        if (!mounted) return;
+        setTurmas(getDefaultTurmas());
+        addToast("Erro ao carregar configurações.", "error");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    void loadConfig();
+    return () => {
+      mounted = false;
+    };
+  }, [activeTenantId, addToast]);
+
+  const handleImageUpload = async (turma: string, file: File) => {
+    setUploadingTurma(turma);
+    try {
+      const assetRef = await uploadCarteirinhaBackground(turma, file, {
+        tenantId: activeTenantId || undefined,
+      });
+      const url = resolveCarteirinhaBackgroundUrl(assetRef);
+      if (!url) {
+        throw new Error("Upload concluído, mas não foi possível resolver a imagem.");
+      }
+
+      setConfig((prev) => ({
+        ...prev,
+        backgrounds: {
+          ...prev.backgrounds,
+          [turma]: url,
+        },
+        backgroundAssets: {
+          ...prev.backgroundAssets,
+          [turma]: assetRef,
+        },
+      }));
+
+      addToast(`Fundo da ${turma} personalizado!`, "success");
+    } catch (error: unknown) {
+      console.error("Erro no upload:", error);
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Erro ao enviar imagem.";
+      addToast(message, "error");
+    } finally {
+      setUploadingTurma(null);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveCarteirinhaConfig(config, { tenantId: activeTenantId || undefined });
+      addToast("Configurações salvas!", "success");
+    } catch (error: unknown) {
+      console.error("Erro ao salvar:", error);
+      addToast("Erro ao salvar.", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center text-emerald-500">
+        <Loader2 className="animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-white pb-20 font-sans selection:bg-emerald-500">
+      <header className="p-6 sticky top-0 z-30 bg-[#050505]/90 backdrop-blur-md border-b border-zinc-800 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Link
+            href={tenantSlug ? withTenantSlug(tenantSlug, "/admin") : "/admin"}
+            className="bg-zinc-900 p-3 rounded-full hover:bg-zinc-800 border border-zinc-800"
+          >
+            <ArrowLeft size={20} className="text-zinc-400" />
+          </Link>
+          <div>
+            <h1 className="text-xl font-black uppercase flex items-center gap-2">
+              <CreditCard className="text-emerald-500" /> CMS Carteirinha
+            </h1>
+          </div>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl text-xs font-bold uppercase flex items-center gap-2 shadow-lg transition disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} Salvar
+          Alteracoes
+        </button>
+      </header>
+
+      <main className="p-6 max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+          <h3 className="text-sm font-bold text-white uppercase mb-4 flex items-center gap-2">
+            <Calendar size={16} className="text-emerald-500" /> Validade do Documento
+          </h3>
+          <div className="space-y-5">
+            <div>
+              <label className="text-[10px] font-bold text-zinc-500 uppercase mb-2 block">
+                Texto de Validade (Verso do Cartao)
+              </label>
+              <input
+                type="text"
+                className="w-full bg-black border border-zinc-700 rounded-xl p-4 text-white font-mono text-lg outline-none focus:border-emerald-500 transition"
+                value={config.validade}
+                onChange={(event) =>
+                  setConfig({
+                    ...config,
+                    validade: event.target.value.slice(0, 24),
+                  })
+                }
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-zinc-500 uppercase mb-2 block">
+                Intensidade do Fundo
+              </label>
+              <div className="rounded-2xl border border-zinc-800 bg-black/50 p-4">
+                <div className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase text-zinc-400">
+                  <span>Visibilidade da imagem da turma</span>
+                  <span>{config.backgroundOpacity}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={config.backgroundOpacity}
+                  onChange={(event) =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      backgroundOpacity: Number(event.target.value),
+                    }))
+                  }
+                  className="w-full accent-emerald-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+          <div className="flex justify-between items-start mb-6">
+            <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2">
+              <ImageIcon size={16} className="text-emerald-500" /> Personalizar Fundos
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {turmas.map((turma) => (
+              <div
+                key={turma.id}
+                className="bg-black/40 p-3 rounded-2xl border border-zinc-800 group relative"
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-black text-white bg-zinc-800 px-2 py-1 rounded">
+                    {turma.nome}
+                  </span>
+                  {config.backgrounds[turma.id] ? (
+                    <CheckCircle2 size={14} className="text-emerald-500" />
+                  ) : (
+                    <span className="text-[8px] text-zinc-600 uppercase font-bold">
+                      Padrao
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative h-32 w-full rounded-xl overflow-hidden bg-zinc-900 border border-zinc-700 mb-3">
+                  {config.backgrounds[turma.id] ? (
+                    <Image
+                      src={config.backgrounds[turma.id]}
+                      alt={`Background ${turma.nome}`}
+                      fill
+                      className="object-cover"
+                      
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-zinc-700 text-[10px] font-bold uppercase text-center p-2 opacity-50">
+                      Usando
+                      <br />
+                      Logo Padrao
+                    </div>
+                  )}
+
+                  {uploadingTurma === turma.id && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm z-10">
+                      <Loader2 className="animate-spin text-emerald-500" />
+                    </div>
+                  )}
+                </div>
+
+                <label
+                  className={`block w-full text-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold uppercase py-2 rounded-lg cursor-pointer transition ${
+                    uploadingTurma ? "pointer-events-none opacity-50" : ""
+                  }`}
+                >
+                  Substituir Fundo
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(event) => {
+                      const selectedFile = event.target.files?.[0];
+                      if (!selectedFile) return;
+                      void handleImageUpload(turma.id, selectedFile);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

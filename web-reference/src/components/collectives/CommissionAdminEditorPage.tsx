@@ -1,0 +1,807 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  ExternalLink,
+  ImagePlus,
+  Loader2,
+  Plus,
+  Save,
+  Search,
+  ShieldCheck,
+  Trash2,
+  Users,
+} from "lucide-react";
+
+import { useAuth } from "@/context/AuthContext";
+import { useTenantTheme } from "@/context/TenantThemeContext";
+import { useToast } from "@/context/ToastContext";
+import { ImageResizeHelpLink } from "@/components/ImageResizeHelpLink";
+import {
+  fetchLeagueById,
+  fetchLeagueUsers,
+  isLeagueCategory,
+  saveLeagueConfig,
+  type LeagueMemberRecord,
+  type LeagueRecord,
+  type LeagueUserRecord,
+} from "@/lib/leaguesService";
+import {
+  DEFAULT_LEAGUE_ROLE,
+  LEAGUE_ROLE_OPTIONS,
+  canManageLeagueRole,
+  resolveLeagueRoleLabel,
+  sortLeagueMembersByRole,
+} from "@/lib/leagueRoles";
+import { resolveLeagueLogoSrc } from "@/lib/leagueMedia";
+import { isPlatformMaster } from "@/lib/roles";
+import { withTenantSlug } from "@/lib/tenantRouting";
+import { uploadImage, VERSIONED_PUBLIC_ASSET_CACHE_CONTROL } from "@/lib/upload";
+
+const getCommissionImage = (record?: LeagueRecord | null) =>
+  record?.foto?.trim() || resolveLeagueLogoSrc(record, "/placeholder_liga.png");
+
+const normalizeMember = (member: LeagueMemberRecord): LeagueMemberRecord => ({
+  ...member,
+  cargo: resolveLeagueRoleLabel(member.cargo || DEFAULT_LEAGUE_ROLE),
+});
+
+const COMMISSION_IMAGE_HELP =
+  "Use uma imagem horizontal, de preferência 1600x900 px ou maior. Compacte no Squoosh para deixar o arquivo final em até 200 KB antes de enviar.";
+
+const MEMBER_LETTER_FILTERS = ["A-F", "G-L", "M-R", "S-Z", "TODOS"] as const;
+
+type MemberLetterFilter = (typeof MEMBER_LETTER_FILTERS)[number];
+
+type EditableCommissionField =
+  | "nome"
+  | "sigla"
+  | "descricao"
+  | "visaoGeral"
+  | "bizu"
+  | "foto"
+  | "visivel"
+  | "ativa";
+
+const normalizeComparableText = (value: string): string =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+
+const normalizeTurmaCode = (value: unknown): string =>
+  typeof value === "string" ? value.trim().toUpperCase() : "";
+
+const resolveMemberLetterFilter = (name: string): Exclude<MemberLetterFilter, "TODOS"> => {
+  const firstLetter = normalizeComparableText(name).charAt(0);
+  if (firstLetter >= "A" && firstLetter <= "F") return "A-F";
+  if (firstLetter >= "G" && firstLetter <= "L") return "G-L";
+  if (firstLetter >= "M" && firstLetter <= "R") return "M-R";
+  return "S-Z";
+};
+
+export function CommissionAdminEditorPage({ leagueId }: { leagueId: string }) {
+  const { user } = useAuth();
+  const { tenantId, tenantSlug } = useTenantTheme();
+  const { addToast } = useToast();
+  const cleanLeagueId = typeof leagueId === "string" ? leagueId.trim() : "";
+  const cleanTenantSlug = typeof tenantSlug === "string" ? tenantSlug.trim() : "";
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [commission, setCommission] = useState<LeagueRecord | null>(null);
+  const [users, setUsers] = useState<LeagueUserRecord[]>([]);
+  const [members, setMembers] = useState<LeagueMemberRecord[]>([]);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [memberLetterFilter, setMemberLetterFilter] = useState<MemberLetterFilter>("A-F");
+
+  const tenantPath = useCallback(
+    (path: string) => (cleanTenantSlug ? withTenantSlug(cleanTenantSlug, path) : path),
+    [cleanTenantSlug]
+  );
+
+  const loadData = useCallback(async () => {
+    if (!cleanLeagueId) {
+      setCommission(null);
+      setMembers([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const [nextCommission, nextUsers] = await Promise.all([
+        fetchLeagueById(cleanLeagueId, {
+          forceRefresh: true,
+          tenantId: tenantId || undefined,
+        }),
+        fetchLeagueUsers({
+          maxResults: 220,
+          forceRefresh: true,
+          tenantId: tenantId || undefined,
+        }),
+      ]);
+
+      const isCommission = Boolean(
+        nextCommission &&
+          (isLeagueCategory(nextCommission, "comissao") || nextCommission.turmaId)
+      );
+      setCommission(isCommission ? nextCommission : null);
+      setMembers(
+        isCommission
+          ? sortLeagueMembersByRole(nextCommission?.membros || []).map(normalizeMember)
+          : []
+      );
+      setUsers(nextUsers);
+    } catch (error: unknown) {
+      console.error(error);
+      setCommission(null);
+      setMembers([]);
+      setUsers([]);
+      addToast("Erro ao carregar a comissão.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast, cleanLeagueId, tenantId]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  const availableMembersBase = useMemo(() => {
+    const selectedIds = new Set(members.map((member) => member.id.trim()));
+    const commissionTurma = normalizeTurmaCode(commission?.turmaId);
+
+    return users
+      .filter((entry) => !selectedIds.has(entry.id.trim()))
+      .filter((entry) => {
+        if (!commissionTurma) return true;
+        return normalizeTurmaCode(entry.turma) === commissionTurma;
+      });
+  }, [commission?.turmaId, members, users]);
+
+  const availableMemberCounts = useMemo(() => {
+    const counts: Record<MemberLetterFilter, number> = {
+      "A-F": 0,
+      "G-L": 0,
+      "M-R": 0,
+      "S-Z": 0,
+      TODOS: 0,
+    };
+
+    availableMembersBase.forEach((entry) => {
+      const group = resolveMemberLetterFilter(entry.nome || "Aluno");
+      counts[group] += 1;
+      counts.TODOS += 1;
+    });
+
+    return counts;
+  }, [availableMembersBase]);
+
+  const availableMembers = useMemo(() => {
+    const search = normalizeComparableText(memberSearch);
+
+    return availableMembersBase
+      .filter((entry) => {
+        if (memberLetterFilter === "TODOS") return true;
+        return resolveMemberLetterFilter(entry.nome || "Aluno") === memberLetterFilter;
+      })
+      .filter((entry) => {
+        if (!search) return true;
+        const nome = normalizeComparableText(entry.nome || "");
+        const turma = normalizeComparableText(entry.turma || "");
+        const id = normalizeComparableText(entry.id);
+        return (
+          nome.includes(search) ||
+          turma.includes(search) ||
+          id.includes(search)
+        );
+      })
+      .sort((left, right) =>
+        (left.nome || left.id).localeCompare(right.nome || right.id, "pt-BR")
+      )
+      .slice(0, memberLetterFilter === "TODOS" ? 48 : 18);
+  }, [availableMembersBase, memberLetterFilter, memberSearch]);
+
+  const canManageCommission = useMemo(() => {
+    if (!user?.uid || !commission) return false;
+    if (isPlatformMaster(user)) return true;
+    if ((commission.managerUserIds || []).includes(user.uid)) return true;
+    return members.some(
+      (member) => member.id.trim() === user.uid.trim() && canManageLeagueRole(member.cargo)
+    );
+  }, [commission, members, user]);
+
+  const updateCommissionField = (field: EditableCommissionField, value: string | boolean) => {
+    setCommission((current) =>
+      current
+        ? {
+            ...current,
+            [field]: value,
+          }
+        : current
+    );
+  };
+
+  const addMember = (entry: LeagueUserRecord) => {
+    setMembers((current) => {
+      if (current.some((member) => member.id === entry.id)) return current;
+      return [
+        ...current,
+        {
+          id: entry.id,
+          nome: entry.nome || "Aluno",
+          cargo: "Diretoria",
+          foto: entry.foto || "",
+          linkPerfil: `/perfil/${entry.id}`,
+        },
+      ];
+    });
+    setMemberSearch("");
+  };
+
+  const updateMemberRole = (memberId: string, role: string) => {
+    setMembers((current) =>
+      current.map((member) =>
+        member.id === memberId
+          ? { ...member, cargo: resolveLeagueRoleLabel(role) }
+          : member
+      )
+    );
+  };
+
+  const removeMember = (memberId: string) => {
+    setMembers((current) => current.filter((member) => member.id !== memberId));
+  };
+
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file || !commission || uploadingImage) {
+      input.value = "";
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      const fileNameBase = commission.turmaId || commission.sigla || commission.id;
+      const { url, error } = await uploadImage(
+        file,
+        `comissoes/${tenantId || "global"}/${commission.id}`,
+        {
+          scopeKey: `admin:comissoes:${commission.id}:imagem`,
+          maxBytes: 3 * 1024 * 1024,
+          maxWidth: 2400,
+          maxHeight: 1800,
+          maxPixels: 4_320_000,
+          compressionMaxWidth: 1600,
+          compressionMaxHeight: 1200,
+          compressionMaxBytes: 200 * 1024,
+          fileName: `${fileNameBase}-capa`,
+          upsert: true,
+          versionStrategy: "file-metadata",
+          cacheControl: VERSIONED_PUBLIC_ASSET_CACHE_CONTROL,
+        }
+      );
+
+      if (error || !url) {
+        addToast(`Imagem inválida: ${error || "falha no upload."}`, "error");
+        return;
+      }
+
+      updateCommissionField("foto", url);
+      addToast("Imagem da comissão enviada e vinculada.", "success");
+    } catch (error: unknown) {
+      console.error(error);
+      addToast("Erro ao enviar a imagem da comissão.", "error");
+    } finally {
+      setUploadingImage(false);
+      input.value = "";
+    }
+  };
+
+  const handleSave = async () => {
+    if (!commission || saving || !canManageCommission) return;
+    if (!commission.nome.trim()) {
+      addToast("Informe o nome da comissão.", "error");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const normalizedMembers = sortLeagueMembersByRole(members.map(normalizeMember));
+      const presidentName =
+        normalizedMembers.find((member) => member.cargo === "Presidente")?.nome || "";
+
+      await saveLeagueConfig({
+        id: commission.id,
+        actorUserId: user?.uid,
+        tenantId: tenantId || undefined,
+        data: {
+          nome: commission.nome,
+          sigla: commission.sigla,
+          presidente: presidentName,
+          descricao: commission.descricao,
+          visaoGeral: commission.visaoGeral || "",
+          bizu: commission.bizu,
+          foto: commission.foto,
+          visivel: commission.visivel !== false,
+          ativa: commission.ativa !== false,
+          membros: normalizedMembers,
+          membrosIds: normalizedMembers.map((member) => member.id),
+          membersCount: normalizedMembers.length,
+          memberRequests: commission.memberRequests || [],
+          eventos: commission.eventos || [],
+          perguntas: commission.perguntas || [],
+          links: commission.links || [],
+          paymentConfig: commission.paymentConfig || null,
+          likes: commission.likes || 0,
+          status: commission.status || "approved",
+          category: "comissao",
+          turmaId: commission.turmaId || undefined,
+          managerUserIds: commission.managerUserIds || [],
+          sidebarLabel: commission.sidebarLabel,
+          customCss: "",
+        },
+      });
+
+      setMembers(normalizedMembers);
+      setCommission((current) =>
+        current
+          ? {
+              ...current,
+              presidente: presidentName,
+              membros: normalizedMembers,
+              membrosIds: normalizedMembers.map((member) => member.id),
+              membersCount: normalizedMembers.length,
+            }
+          : current
+      );
+      addToast("Comissão salva com sucesso.", "success");
+    } catch (error: unknown) {
+      console.error(error);
+      addToast("Erro ao salvar a diretoria da comissão.", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#050505] text-white">
+        <div className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/80 px-5 py-4">
+          <Loader2 className="animate-spin text-brand" size={18} />
+          <span className="text-sm font-bold uppercase tracking-[0.2em] text-zinc-400">
+            Carregando comissão
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!commission) {
+    return (
+      <div className="min-h-screen bg-[#050505] px-6 py-10 text-white">
+        <div className="mx-auto max-w-3xl rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-8 text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500">
+            Comissão não encontrada
+          </p>
+          <h1 className="mt-4 text-3xl font-black uppercase tracking-tight text-white">
+            Não achei essa página nesta tenant
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-zinc-400">
+            Volte para a lista de comissões e abra a diretoria pelo card publicado.
+          </p>
+          <Link
+            href={tenantPath("/admin/comissoes")}
+            className="mt-6 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand-soft px-5 py-3 text-xs font-black uppercase text-brand-accent hover:opacity-90"
+          >
+            <ArrowLeft size={14} />
+            Voltar
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canManageCommission) {
+    return (
+      <div className="min-h-screen bg-[#050505] px-6 py-10 text-white">
+        <div className="mx-auto max-w-3xl rounded-[2rem] border border-zinc-800 bg-zinc-950/80 p-8 text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500">
+            Acesso restrito
+          </p>
+          <h1 className="mt-4 text-3xl font-black uppercase tracking-tight text-white">
+            Esta edição é da diretoria da comissão
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-zinc-400">
+            Podem acessar Presidente, Vice-Presidente, Secretaria, Tesouraria, Diretoria e o master da plataforma.
+          </p>
+          <Link
+            href={tenantPath(`/comissoes/${commission.id}`)}
+            className="mt-6 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand-soft px-5 py-3 text-xs font-black uppercase text-brand-accent hover:opacity-90"
+          >
+            <ArrowLeft size={14} />
+            Voltar para a comissão
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const imageSrc = getCommissionImage(commission);
+
+  return (
+    <div className="min-h-screen bg-[#050505] pb-24 text-white">
+      <header className="sticky top-0 z-20 border-b border-zinc-800 bg-[#050505]/92 px-6 py-5 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href={tenantPath("/admin/comissoes")}
+              className="rounded-full border border-zinc-800 bg-zinc-900 p-2 hover:bg-zinc-800"
+              title="Voltar para comissões"
+            >
+              <ArrowLeft size={18} className="text-zinc-300" />
+            </Link>
+            <div className="min-w-0">
+              <h1 className="truncate text-xl font-black uppercase tracking-tight">
+                Editar comissão
+              </h1>
+              <p className="truncate text-[11px] font-bold text-zinc-500">
+                {commission.turmaId || commission.sigla} - {commission.nome}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={tenantPath(`/comissoes/${commission.id}`)}
+              className="inline-flex items-center gap-2 rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-xs font-black uppercase text-zinc-200 transition hover:border-brand/30 hover:text-brand-accent"
+            >
+              <ExternalLink size={14} />
+              Página pública
+            </Link>
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={saving}
+              className="brand-button-solid"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              Salvar
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl space-y-6 px-6 py-6">
+        <section className="rounded-[2rem] border border-zinc-800 bg-zinc-950/90 p-5">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[1.5rem] border border-white/10 bg-black/40">
+                <Image
+                  src={imageSrc}
+                  alt={commission.nome}
+                  fill
+                  sizes="80px"
+                  className="object-cover"
+                  unoptimized={imageSrc.startsWith("http")}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-brand-accent">
+                  {commission.turmaId || "Comissão"}
+                </p>
+                <h2 className="mt-2 truncate text-2xl font-black text-white">
+                  {commission.nome}
+                </h2>
+                <p className="mt-2 text-sm text-zinc-400">
+                  {members.length} {members.length === 1 ? "responsável selecionado" : "responsáveis selecionados"}.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[1.4rem] border border-white/10 bg-black/30 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">
+                  Diretoria
+                </p>
+                <p className="mt-2 text-2xl font-black text-white">{members.length}</p>
+              </div>
+              <div className="rounded-[1.4rem] border border-brand/30 bg-brand-soft p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-brand-accent">
+                  Presidente
+                </p>
+                <p className="mt-2 truncate text-sm font-black text-white">
+                  {members.find((member) => member.cargo === "Presidente")?.nome || "Não definido"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+          <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/90 p-5">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-brand-accent">
+                Dados públicos
+              </p>
+              <h3 className="mt-1 text-lg font-black text-white">Informações da comissão</h3>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Nome</label>
+                <input
+                  value={commission.nome}
+                  onChange={(event) => updateCommissionField("nome", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-sm outline-none focus:border-brand/40"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Sigla</label>
+                <input
+                  value={commission.sigla || ""}
+                  onChange={(event) => updateCommissionField("sigla", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-sm outline-none focus:border-brand/40"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Descrição</label>
+                <textarea
+                  rows={3}
+                  value={commission.descricao || ""}
+                  onChange={(event) => updateCommissionField("descricao", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-sm outline-none focus:border-brand/40"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Visão geral</label>
+                <textarea
+                  rows={5}
+                  value={commission.visaoGeral || ""}
+                  onChange={(event) => updateCommissionField("visaoGeral", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-sm outline-none focus:border-brand/40"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Bizu</label>
+                <input
+                  value={commission.bizu || ""}
+                  onChange={(event) => updateCommissionField("bizu", event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-sm outline-none focus:border-brand/40"
+                />
+              </div>
+              <div className="flex items-end gap-4">
+                <label className="inline-flex items-center gap-2 rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-sm font-bold text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={commission.visivel !== false}
+                    onChange={(event) => updateCommissionField("visivel", event.target.checked)}
+                  />
+                  Publicado
+                </label>
+                <label className="inline-flex items-center gap-2 rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-sm font-bold text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={commission.ativa !== false}
+                    onChange={(event) => updateCommissionField("ativa", event.target.checked)}
+                  />
+                  Ativo
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/90 p-5">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-brand-accent">
+                Imagem
+              </p>
+              <h3 className="mt-1 text-lg font-black text-white">Capa da comissão</h3>
+              <p className="mt-2 text-xs leading-5 text-zinc-500">{COMMISSION_IMAGE_HELP}</p>
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-white/10 bg-black/40">
+              <div className="relative aspect-[16/9] w-full">
+                <Image
+                  src={imageSrc}
+                  alt={commission.nome}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 520px"
+                  className="object-cover"
+                  unoptimized={imageSrc.startsWith("http")}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Imagem (URL)</label>
+                <ImageResizeHelpLink label="Abrir Squoosh para reduzir a imagem" />
+              </div>
+              <input
+                value={commission.foto || ""}
+                onChange={(event) => updateCommissionField("foto", event.target.value)}
+                placeholder="https://..."
+                className="mt-2 w-full rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-sm outline-none focus:border-brand/40"
+              />
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-brand/30 bg-brand-soft px-4 py-3 text-xs font-black uppercase text-brand-accent transition hover:opacity-90">
+                {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+                {uploadingImage ? "Enviando..." : "Adicionar imagem"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  disabled={uploadingImage}
+                  onChange={(event) => void handleImageUpload(event)}
+                />
+              </label>
+              <span className="text-[11px] leading-5 text-zinc-500">
+                PNG, JPG ou WEBP. O upload tenta compactar para até 200 KB.
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/90 p-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl border border-brand/30 bg-brand-soft p-3 text-brand-accent">
+                <Search size={18} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-brand-accent">
+                  Adicionar responsáveis
+                </p>
+                <h3 className="mt-1 text-lg font-black text-white">Alunos disponíveis</h3>
+              </div>
+            </div>
+
+            <input
+              value={memberSearch}
+              onChange={(event) => setMemberSearch(event.target.value)}
+              placeholder="Pesquisar por nome, turma ou ID"
+              className="mt-5 w-full rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-sm outline-none focus:border-brand/40"
+            />
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {MEMBER_LETTER_FILTERS.map((filter) => {
+                const active = memberLetterFilter === filter;
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setMemberLetterFilter(filter)}
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition ${
+                      active
+                        ? "border-brand/40 bg-brand-soft text-brand-accent"
+                        : "border-zinc-800 bg-black/30 text-zinc-400 hover:border-zinc-700 hover:text-white"
+                    }`}
+                  >
+                    {filter}
+                    <span className="rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] text-zinc-300">
+                      {availableMemberCounts[filter]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="mt-3 text-[11px] font-semibold text-zinc-500">
+              Mostrando apenas alunos da turma {commission.turmaId || "da comissão"}.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              {availableMembers.length > 0 ? (
+                availableMembers.map((entry) => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() => addMember(entry)}
+                    className="flex w-full items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 text-left transition hover:border-brand/30"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-bold text-white">
+                        {entry.nome || "Aluno"}
+                      </span>
+                      <span className="mt-1 block text-[11px] text-zinc-500">
+                        {entry.turma || "Sem turma"}
+                      </span>
+                    </span>
+                    <Plus size={14} className="shrink-0 text-brand-accent" />
+                  </button>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/70 p-6 text-center text-xs text-zinc-500">
+                  Nenhum aluno disponível nesta divisão.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/90 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-3 text-cyan-200">
+                  <ShieldCheck size={18} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">
+                    Responsáveis selecionados
+                  </p>
+                  <h3 className="mt-1 text-lg font-black text-white">Cargos da comissão</h3>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-black/30 px-3 py-2 text-[11px] font-bold text-zinc-300">
+                <Users size={14} />
+                {members.length}
+              </span>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {members.length > 0 ? (
+                members.map((member) => (
+                  <div
+                    key={member.id}
+                    className="rounded-2xl border border-zinc-800 bg-black/30 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-white">{member.nome}</p>
+                        <p className="mt-1 break-all text-[11px] text-zinc-500">{member.id}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeMember(member.id)}
+                        className="rounded-full border border-zinc-800 bg-zinc-950 p-2 text-zinc-400 transition hover:border-red-500/30 hover:text-red-300"
+                        title="Remover responsável"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    <select
+                      value={resolveLeagueRoleLabel(member.cargo)}
+                      onChange={(event) => updateMemberRole(member.id, event.target.value)}
+                      className="mt-3 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-bold uppercase text-brand-accent outline-none focus:border-brand/40"
+                    >
+                      {LEAGUE_ROLE_OPTIONS.filter((role) => role !== "Membro").map((role) => (
+                        <option key={role} value={role} className="bg-zinc-950 text-white">
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/70 p-6 text-center text-xs text-zinc-500">
+                  Nenhum responsável definido ainda para esta comissão.
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="brand-button-solid"
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            Salvar comissão
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,775 @@
+import { httpsCallable } from "@/lib/supa/functions";
+import { isMasterOnlyAdminPath } from "@/lib/roles";
+
+import { clearAdminUsersCache } from "./adminUsersService";
+import { functions } from "./backend";
+import { getBackendErrorCode } from "./backendErrors";
+import { resolveStoredTenantScopeId } from "./activeTenantSnapshot";
+import { getSupabaseClient } from "./supabase";
+import { buildTenantScopedRowId } from "./tenantScopedCatalog";
+
+type CacheEntry<T> = {
+  cachedAt: number;
+  value: T;
+};
+
+const READ_CACHE_TTL_MS = 30_000;
+
+const MAX_ACTIVITY_LOG_RESULTS = 260;
+const MAX_PERMISSION_USER_RESULTS = 500;
+
+const FETCH_PERMISSION_MATRIX_CALLABLE = "permissionsAdminGetMatrix";
+const FETCH_PERMISSION_USERS_CALLABLE = "permissionsAdminListUsers";
+const SAVE_PERMISSION_MATRIX_CALLABLE = "permissionsAdminSaveMatrix";
+const UPDATE_USER_ROLE_CALLABLE = "permissionsAdminUpdateUserRole";
+
+const activityLogsCache = new Map<string, CacheEntry<AdminActivityLogRecord[]>>();
+const permissionUsersCache = new Map<string, CacheEntry<PermissionUserRecord[]>>();
+const permissionMatrixCache = new Map<string, CacheEntry<PermissionMatrix | null>>();
+const effectivePermissionMatrixCache = new Map<string, CacheEntry<PermissionMatrix | null>>();
+
+const asObject = (value: unknown): Record<string, unknown> | null => {
+  if (typeof value !== "object" || value === null) return null;
+  return value as Record<string, unknown>;
+};
+
+const asString = (value: unknown, fallback = ""): string =>
+  typeof value === "string" ? value : fallback;
+
+const asStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === "string");
+};
+
+const boundedLimit = (requested: number, maxAllowed: number): number => {
+  if (!Number.isFinite(requested)) return maxAllowed;
+  if (requested < 1) return 1;
+  if (requested > maxAllowed) return maxAllowed;
+  return Math.floor(requested);
+};
+
+const getMapCacheValue = <T>(
+  cache: Map<string, CacheEntry<T>>,
+  key: string
+): T | null => {
+  const cached = cache.get(key);
+  if (!cached) return null;
+  if (Date.now() - cached.cachedAt > READ_CACHE_TTL_MS) {
+    cache.delete(key);
+    return null;
+  }
+  return cached.value;
+};
+
+const setMapCacheValue = <T>(
+  cache: Map<string, CacheEntry<T>>,
+  key: string,
+  value: T
+): void => {
+  cache.set(key, { cachedAt: Date.now(), value });
+};
+
+const shouldFallbackToClientWrites = (error: unknown): boolean => {
+  const code = getBackendErrorCode(error)?.toLowerCase();
+  if (!code) return true;
+
+  return (
+    code.includes("functions/not-found") ||
+    code.includes("functions/unavailable") ||
+    code.includes("functions/internal") ||
+    code.includes("functions/deadline-exceeded") ||
+    code.includes("functions/cancelled") ||
+    code.includes("functions/unknown")
+  );
+};
+
+const shouldUseCallable = (): boolean => {
+  return process.env.NEXT_PUBLIC_FORCE_CALLABLES === "true";
+};
+
+const throwSupabaseError = (error: { message: string; code?: string | null; name?: string | null }): never => {
+  throw Object.assign(new Error(error.message), {
+    code: error.code ?? `db/${error.name ?? "query-failed"}`,
+    cause: error,
+  });
+};
+
+const extractMissingSchemaColumn = (error: unknown): string | null => {
+  if (!error || typeof error !== "object") return null;
+  const raw = error as { message?: unknown; details?: unknown };
+  const text = [asString(raw.message), asString(raw.details)]
+    .filter((entry) => entry.length > 0)
+    .join(" | ");
+  if (!text) return null;
+
+  const patterns = [
+    /column\s+[a-z0-9_]+\.(\w+)\s+does not exist/i,
+    /column\s+(\w+)\s+does not exist/i,
+    /could not find the ['"]?(\w+)['"]? column/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return null;
+};
+
+const toMillis = (value: unknown): number => {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  const obj = asObject(value);
+  const toDate = obj?.toDate;
+  if (typeof toDate === "function") {
+    const result = toDate.call(value) as Date;
+    if (result instanceof Date) return result.getTime();
+  }
+
+  return 0;
+};
+
+const resolveAdminSecurityTenantId = (tenantId?: string | null): string =>
+  resolveStoredTenantScopeId(asString(tenantId).trim());
+
+const resolvePermissionsDocId = (tenantId?: string | null): string =>
+  buildTenantScopedRowId(resolveAdminSecurityTenantId(tenantId), "permissions") || "permissions";
+
+const sanitizePermissionMatrix = (
+  matrix: PermissionMatrix
+): PermissionMatrix => {
+  const sanitized: PermissionMatrix = {};
+
+  Object.entries(matrix).forEach(([path, roles]) => {
+    const cleanPath = path.trim();
+    if (!cleanPath.startsWith("/")) return;
+    if (isMasterOnlyAdminPath(cleanPath)) {
+      sanitized[cleanPath] = ["master"];
+      return;
+    }
+    const cleanRoles = asStringArray(roles).map((role) => role.trim()).filter(Boolean);
+    sanitized[cleanPath] = Array.from(new Set(cleanRoles));
+  });
+
+  return sanitized;
+};
+
+const normalizePermissionMatrix = (raw: unknown): PermissionMatrix | null => {
+  const obj = asObject(raw);
+  if (!obj) return null;
+
+  const matrix: PermissionMatrix = {};
+  Object.entries(obj).forEach(([path, roles]) => {
+    if (!path.startsWith("/")) return;
+    const cleanRoles = asStringArray(roles).map((role) => role.trim()).filter(Boolean);
+    matrix[path] = Array.from(new Set(cleanRoles));
+  });
+
+  return matrix;
+};
+
+const extractPermissionMatrix = (raw: unknown): PermissionMatrix | null => {
+  const direct = normalizePermissionMatrix(raw);
+  if (direct && Object.keys(direct).length > 0) {
+    return direct;
+  }
+
+  const obj = asObject(raw);
+  if (!obj) return null;
+
+  const directFromKey = normalizePermissionMatrix(obj.permissionMatrix);
+  if (directFromKey && Object.keys(directFromKey).length > 0) {
+    return directFromKey;
+  }
+
+  const nestedData = asObject(obj.data);
+  if (!nestedData) return null;
+
+  const fromNestedKey = normalizePermissionMatrix(nestedData.permissionMatrix);
+  if (fromNestedKey && Object.keys(fromNestedKey).length > 0) {
+    return fromNestedKey;
+  }
+
+  const nestedDirect = normalizePermissionMatrix(nestedData);
+  if (nestedDirect && Object.keys(nestedDirect).length > 0) {
+    return nestedDirect;
+  }
+
+  return null;
+};
+
+const normalizePermissionUserRecord = (
+  raw: unknown,
+  fallbackId = ""
+): PermissionUserRecord | null => {
+  const obj = asObject(raw);
+  if (!obj) return null;
+
+  const id = asString(obj.id, asString(obj.uid, fallbackId)).trim();
+  if (!id) return null;
+
+  const nome = asString(obj.nome, "Sem nome").trim() || "Sem nome";
+  const email = asString(obj.email).trim();
+  const foto = asString(obj.foto).trim();
+  const role = asString(obj.role).trim();
+
+  return {
+    id,
+    nome,
+    email,
+    ...(foto ? { foto } : {}),
+    ...(role ? { role } : {}),
+  };
+};
+
+const upsertSettingsPermissionsWithFallback = async (
+  matrix: PermissionMatrix,
+  tenantId?: string | null
+): Promise<void> => {
+  const supabase = getSupabaseClient();
+  const scopedTenantId = resolveAdminSecurityTenantId(tenantId);
+  const mutablePayload: Record<string, unknown> = {
+    id: resolvePermissionsDocId(scopedTenantId),
+    ...(scopedTenantId ? { tenant_id: scopedTenantId } : {}),
+    data: { permissionMatrix: matrix },
+    updatedAt: new Date().toISOString(),
+  };
+
+  while (Object.keys(mutablePayload).length > 1) {
+    const { error } = await supabase
+      .from("settings")
+      .upsert(mutablePayload, { onConflict: "id" });
+    if (!error) return;
+
+    const missingColumn = asString(extractMissingSchemaColumn(error));
+    if (!missingColumn) throwSupabaseError(error);
+
+    const removableKey = Object.keys(mutablePayload).find(
+      (key) => key.toLowerCase() === missingColumn.toLowerCase()
+    );
+    if (typeof removableKey !== "string" || removableKey === "id") {
+      throwSupabaseError(error);
+    }
+    delete mutablePayload[String(removableKey)];
+  }
+};
+
+async function callWithFallback<TReq, TRes>(
+  callableName: string,
+  payload: TReq,
+  fallbackFn: () => Promise<TRes>
+): Promise<TRes> {
+  if (!shouldUseCallable()) {
+    return fallbackFn();
+  }
+
+  try {
+    const callable = httpsCallable<TReq, TRes>(functions, callableName);
+    const response = await callable(payload);
+    return response.data;
+  } catch (error: unknown) {
+    if (shouldFallbackToClientWrites(error)) {
+      return fallbackFn();
+    }
+    throw error;
+  }
+}
+
+export interface AdminActivityLogRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  resource: string;
+  details: string;
+  timestamp: unknown;
+}
+
+export interface AdminActivityLogsPageResult {
+  logs: AdminActivityLogRecord[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface PermissionUserRecord {
+  id: string;
+  nome: string;
+  email: string;
+  foto?: string;
+  role?: string;
+}
+
+export type PermissionMatrix = Record<string, string[]>;
+
+const normalizeActivityLogRow = (
+  id: string,
+  raw: unknown
+): AdminActivityLogRecord | null => {
+  const data = asObject(raw);
+  if (!data) return null;
+
+  return {
+    id,
+    userId: asString(data.userId),
+    userName: asString(data.userName, "Sistema"),
+    action: asString(data.action, "UNKNOWN"),
+    resource: asString(data.resource, "Sistema"),
+    details: asString(data.details),
+    timestamp: data.timestamp,
+  };
+};
+
+const parseOffsetCursor = (cursorId?: string | null): number => {
+  const parsed = Number(cursorId ?? "");
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : 0;
+};
+
+const nextOffsetCursor = (offset: number, pageSize: number, hasMore: boolean): string | null =>
+  hasMore ? String(offset + pageSize) : null;
+
+export async function fetchAdminActivityLogsPage(options?: {
+  pageSize?: number;
+  cursorId?: string | null;
+  forceRefresh?: boolean;
+  tenantId?: string | null;
+}): Promise<AdminActivityLogsPageResult> {
+  const pageSize = boundedLimit(options?.pageSize ?? 20, MAX_ACTIVITY_LOG_RESULTS);
+  const offset = parseOffsetCursor(options?.cursorId);
+  const scopedTenantId = resolveAdminSecurityTenantId(options?.tenantId);
+  const supabase = getSupabaseClient();
+
+  const runQuery = async (withOrder: boolean) => {
+    let query = supabase
+      .from("activity_logs")
+      .select("id,userId,userName,action,resource,details,timestamp")
+      .range(offset, offset + pageSize);
+
+    if (scopedTenantId) {
+      query = query.eq("tenant_id", scopedTenantId);
+    }
+
+    if (withOrder) {
+      query = query.order("timestamp", { ascending: false });
+    }
+    return query;
+  };
+
+  let rows: AdminActivityLogRecord[] = [];
+  try {
+    const { data, error } = await runQuery(true);
+    if (error) throw error;
+    rows = (data ?? [])
+      .map((row) => normalizeActivityLogRow(asString((row as Record<string, unknown>).id), row))
+      .filter((row): row is AdminActivityLogRecord => row !== null);
+  } catch (error: unknown) {
+    if (!asString(extractMissingSchemaColumn(error))) {
+      throwSupabaseError(error as { message: string; code?: string | null; name?: string | null });
+    }
+
+    const { data, error: fallbackError } = await runQuery(false);
+    if (fallbackError) throwSupabaseError(fallbackError);
+    rows = (data ?? [])
+      .map((row) => normalizeActivityLogRow(asString((row as Record<string, unknown>).id), row))
+      .filter((row): row is AdminActivityLogRecord => row !== null)
+      .sort((left, right) => toMillis(right.timestamp) - toMillis(left.timestamp));
+  }
+
+  const hasMore = rows.length > pageSize;
+  return {
+    logs: rows.slice(0, pageSize),
+    hasMore,
+    nextCursor: nextOffsetCursor(offset, pageSize, hasMore),
+  };
+}
+
+export async function fetchAdminActivityLogs(options?: {
+  maxResults?: number;
+  forceRefresh?: boolean;
+  tenantId?: string | null;
+}): Promise<AdminActivityLogRecord[]> {
+  const maxResults = boundedLimit(
+    options?.maxResults ?? 120,
+    MAX_ACTIVITY_LOG_RESULTS
+  );
+  const forceRefresh = options?.forceRefresh ?? false;
+  const scopedTenantId = resolveAdminSecurityTenantId(options?.tenantId);
+  const cacheKey = `${scopedTenantId || "global"}:${maxResults}`;
+
+  if (!forceRefresh) {
+    const cached = getMapCacheValue(activityLogsCache, cacheKey);
+    if (cached) return cached;
+  }
+
+  const supabase = getSupabaseClient();
+  let rowsResult: AdminActivityLogRecord[] = [];
+
+  let primaryQuery = supabase
+    .from("activity_logs")
+    .select("id,userId,userName,action,resource,details,timestamp")
+    .order("timestamp", { ascending: false })
+    .limit(maxResults);
+  if (scopedTenantId) {
+    primaryQuery = primaryQuery.eq("tenant_id", scopedTenantId);
+  }
+  const primary = await primaryQuery;
+
+  if (!primary.error) {
+    rowsResult = (primary.data ?? [])
+      .map((row: unknown) => normalizeActivityLogRow(asString((row as Record<string, unknown>).id), row))
+      .filter((row): row is AdminActivityLogRecord => row !== null);
+  } else if (asString(extractMissingSchemaColumn(primary.error))) {
+    let fallback = supabase
+      .from("activity_logs")
+      .select("id,userId,userName,action,resource,details,timestamp");
+    if (scopedTenantId) {
+      fallback = fallback.eq("tenant_id", scopedTenantId);
+    }
+    const fallbackResult = await fallback.limit(maxResults);
+    if (fallbackResult.error) throwSupabaseError(fallbackResult.error);
+    rowsResult = (fallbackResult.data ?? [])
+      .map((row) => normalizeActivityLogRow(asString((row as Record<string, unknown>).id), row))
+      .filter((row): row is AdminActivityLogRecord => row !== null)
+      .sort((left, right) => toMillis(right.timestamp) - toMillis(left.timestamp));
+  } else {
+    throwSupabaseError(primary.error);
+  }
+
+  setMapCacheValue(activityLogsCache, cacheKey, rowsResult);
+  return rowsResult;
+}
+
+export async function fetchPermissionUsers(options?: {
+  maxResults?: number;
+  forceRefresh?: boolean;
+  tenantId?: string | null;
+}): Promise<PermissionUserRecord[]> {
+  const maxResults = boundedLimit(
+    options?.maxResults ?? 320,
+    MAX_PERMISSION_USER_RESULTS
+  );
+  const forceRefresh = options?.forceRefresh ?? false;
+  const scopedTenantId = resolveAdminSecurityTenantId(options?.tenantId);
+  const cacheKey = `${scopedTenantId || "global"}:${maxResults}`;
+
+  if (!forceRefresh) {
+    const cached = getMapCacheValue(permissionUsersCache, cacheKey);
+    if (cached) return cached;
+  }
+
+  const response = await callWithFallback<
+    { maxResults: number; tenantId?: string },
+    { users: PermissionUserRecord[] }
+  >(
+    FETCH_PERMISSION_USERS_CALLABLE,
+    { maxResults, tenantId: scopedTenantId || undefined },
+    async () => {
+      const supabase = getSupabaseClient();
+      let query = supabase
+        .from("users")
+        .select("uid,nome,email,foto,role")
+        .limit(maxResults);
+      if (scopedTenantId) {
+        query = query.eq("tenant_id", scopedTenantId);
+      }
+      const { data, error } = await query;
+      if (error) throwSupabaseError(error);
+      return {
+        users: (data ?? [])
+          .map((row) => normalizePermissionUserRecord(row))
+          .filter((row): row is PermissionUserRecord => row !== null),
+      };
+    }
+  );
+
+  const users = (Array.isArray(response.users) ? response.users : [])
+    .map((row) => normalizePermissionUserRecord(row))
+    .filter((row): row is PermissionUserRecord => row !== null)
+    .sort((left, right) => left.nome.localeCompare(right.nome, "pt-BR"));
+
+  setMapCacheValue(permissionUsersCache, cacheKey, users);
+  return users;
+}
+
+export async function fetchPermissionMatrix(options?: {
+  forceRefresh?: boolean;
+  tenantId?: string | null;
+}): Promise<PermissionMatrix | null> {
+  const forceRefresh = options?.forceRefresh ?? false;
+  const scopedTenantId = resolveAdminSecurityTenantId(options?.tenantId);
+  const cacheKey = scopedTenantId || "global";
+
+  if (
+    !forceRefresh &&
+    permissionMatrixCache.get(cacheKey) &&
+    Date.now() - (permissionMatrixCache.get(cacheKey)?.cachedAt ?? 0) <= READ_CACHE_TTL_MS
+  ) {
+    return permissionMatrixCache.get(cacheKey)?.value ?? null;
+  }
+
+  const response = await callWithFallback<
+    { forceRefresh?: boolean; tenantId?: string },
+    { matrix: unknown | null }
+  >(
+    FETCH_PERMISSION_MATRIX_CALLABLE,
+    { forceRefresh, tenantId: scopedTenantId || undefined },
+    async () => {
+      const supabase = getSupabaseClient();
+      const permissionsId = resolvePermissionsDocId(scopedTenantId);
+      const baseResult = await supabase
+        .from("settings")
+        .select("id,data")
+        .eq("id", permissionsId)
+        .maybeSingle();
+
+      if (!baseResult.error) {
+        return { matrix: baseResult.data ? extractPermissionMatrix(baseResult.data) : null };
+      }
+
+      const missingBaseColumn = asString(extractMissingSchemaColumn(baseResult.error));
+      if (missingBaseColumn && missingBaseColumn.toLowerCase() === "data") {
+        const legacyResult = await supabase
+          .from("settings")
+          .select("id,permissionMatrix")
+          .eq("id", permissionsId)
+          .maybeSingle();
+        if (legacyResult.error) throwSupabaseError(legacyResult.error);
+        return { matrix: legacyResult.data ? extractPermissionMatrix(legacyResult.data) : null };
+      }
+
+      throwSupabaseError(baseResult.error);
+      return { matrix: null };
+    }
+  );
+
+  const normalized = extractPermissionMatrix(response.matrix);
+  const sanitized = normalized ? sanitizePermissionMatrix(normalized) : null;
+  permissionMatrixCache.set(cacheKey, { cachedAt: Date.now(), value: sanitized });
+  return sanitized;
+}
+
+export async function fetchEffectivePermissionMatrix(options?: {
+  forceRefresh?: boolean;
+  tenantId?: string | null;
+}): Promise<PermissionMatrix | null> {
+  const forceRefresh = options?.forceRefresh ?? false;
+  const scopedTenantId = resolveAdminSecurityTenantId(options?.tenantId);
+  const cacheKey = scopedTenantId || "global";
+
+  if (
+    !forceRefresh &&
+    effectivePermissionMatrixCache.get(cacheKey) &&
+    Date.now() - (effectivePermissionMatrixCache.get(cacheKey)?.cachedAt ?? 0) <= READ_CACHE_TTL_MS
+  ) {
+    return effectivePermissionMatrixCache.get(cacheKey)?.value ?? null;
+  }
+
+  const globalMatrix = await fetchPermissionMatrix({ forceRefresh, tenantId: undefined });
+  if (globalMatrix && Object.keys(globalMatrix).length > 0) {
+    effectivePermissionMatrixCache.set(cacheKey, {
+      cachedAt: Date.now(),
+      value: globalMatrix,
+    });
+    return globalMatrix;
+  }
+
+  if (!scopedTenantId) {
+    effectivePermissionMatrixCache.set(cacheKey, {
+      cachedAt: Date.now(),
+      value: globalMatrix,
+    });
+    return globalMatrix;
+  }
+
+  const tenantMatrix = await fetchPermissionMatrix({
+    forceRefresh,
+    tenantId: scopedTenantId,
+  });
+  effectivePermissionMatrixCache.set(cacheKey, {
+    cachedAt: Date.now(),
+    value: tenantMatrix,
+  });
+  return tenantMatrix;
+}
+
+export async function savePermissionMatrix(
+  matrix: PermissionMatrix,
+  options?: { tenantId?: string | null }
+): Promise<void> {
+  const sanitized = sanitizePermissionMatrix(matrix);
+  const scopedTenantId = resolveAdminSecurityTenantId(options?.tenantId);
+  const cacheKey = scopedTenantId || "global";
+
+  await callWithFallback<{ matrix: PermissionMatrix; tenantId?: string }, { ok: boolean }>(
+    SAVE_PERMISSION_MATRIX_CALLABLE,
+    { matrix: sanitized, tenantId: scopedTenantId || undefined },
+    async () => {
+      await upsertSettingsPermissionsWithFallback(sanitized, scopedTenantId);
+      return { ok: true };
+    }
+  );
+
+  permissionMatrixCache.set(cacheKey, { cachedAt: Date.now(), value: sanitized });
+  if (scopedTenantId) {
+    effectivePermissionMatrixCache.delete(scopedTenantId);
+  } else {
+    effectivePermissionMatrixCache.clear();
+  }
+}
+
+export async function updatePermissionUserRole(payload: {
+  targetUserId: string;
+  role: string;
+  tenantId?: string | null;
+}): Promise<void> {
+  const targetUserId = payload.targetUserId.trim();
+  const tenantId = payload.tenantId?.trim() || "";
+  const requestedRole = payload.role.trim().toLowerCase();
+  const role = requestedRole;
+  if (!targetUserId || !role) return;
+
+  const requestPayload = { targetUserId, role, tenantId: tenantId || undefined };
+  let directSynced = false;
+
+  const toFallbackTenantRole = (value: string): string => {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "admin_geral") return "admin_tenant";
+    if (normalized === "admin_tenant") return "admin_geral";
+    if (normalized === "master_tenant") return "master";
+    if (normalized === "master") return "master_tenant";
+    if (
+      normalized === "visitante" ||
+      normalized === "user" ||
+      normalized === "mini_vendor" ||
+      normalized === "vendas" ||
+      normalized === "treinador" ||
+      normalized === "empresa" ||
+      normalized === "admin_treino" ||
+      normalized === "admin_gestor"
+    ) {
+      return normalized;
+    }
+    return "user";
+  };
+
+  const requiresAdminLegalAcceptance = (value: string): boolean => {
+    const normalized = value.trim().toLowerCase();
+    return !["", "guest", "visitante", "user"].includes(normalized);
+  };
+
+  const syncDirectRole = async (): Promise<void> => {
+    const supabase = getSupabaseClient();
+    const nowIso = new Date().toISOString();
+    let finalTenantRole = role;
+
+    const buildUserPatch = (nextRole: string): Record<string, unknown> => {
+      const patch: Record<string, unknown> = {
+        role: nextRole,
+        tenant_role: nextRole,
+        tenant_status: "approved",
+        updatedAt: nowIso,
+      };
+      if (requiresAdminLegalAcceptance(nextRole)) {
+        patch.legal_admin_required_at = nowIso;
+        patch.legal_admin_required_reason = `role:${nextRole}`;
+        patch.legal_admin_accepted_at = null;
+      }
+      if (tenantId) {
+        patch.tenant_id = tenantId;
+      }
+      return patch;
+    };
+
+    let updateResult = await supabase
+      .from("users")
+      .update(buildUserPatch(role))
+      .eq("uid", targetUserId);
+
+    if (updateResult.error) {
+      const fallbackTenantRole = toFallbackTenantRole(role);
+      const lowerError = [
+        updateResult.error.message,
+        updateResult.error.details,
+        updateResult.error.hint,
+      ]
+        .map((entry) => asString(entry).toLowerCase())
+        .join(" ");
+      const canRetryWithFallback =
+        fallbackTenantRole !== role &&
+        (lowerError.includes("tenant_role") ||
+          lowerError.includes("role") ||
+          lowerError.includes("check constraint"));
+
+      if (canRetryWithFallback) {
+        finalTenantRole = fallbackTenantRole;
+        updateResult = await supabase
+          .from("users")
+          .update(buildUserPatch(fallbackTenantRole))
+          .eq("uid", targetUserId);
+      }
+    }
+
+    if (updateResult.error) throwSupabaseError(updateResult.error);
+
+    let resolvedTenantId = tenantId;
+    if (!resolvedTenantId) {
+      const { data: userRow, error: userFetchError } = await supabase
+        .from("users")
+        .select("tenant_id")
+        .eq("uid", targetUserId)
+        .maybeSingle();
+      if (userFetchError) throwSupabaseError(userFetchError);
+      resolvedTenantId = asString(asObject(userRow)?.tenant_id).trim();
+    }
+
+    if (resolvedTenantId) {
+      const { error: membershipSyncError } = await supabase
+        .from("tenant_memberships")
+        .update({
+          role: finalTenantRole,
+          status: "approved",
+          updated_at: nowIso,
+        })
+        .eq("tenant_id", resolvedTenantId)
+        .eq("user_id", targetUserId);
+
+      if (membershipSyncError) {
+        console.warn(
+          "Não foi possível sincronizar tenant_memberships; cargo salvo em users.",
+          membershipSyncError
+        );
+      }
+    }
+
+    directSynced = true;
+  };
+
+  await callWithFallback<typeof requestPayload, { ok: boolean }>(
+    UPDATE_USER_ROLE_CALLABLE,
+    requestPayload,
+    async () => {
+      await syncDirectRole();
+      return { ok: true };
+    }
+  );
+
+  if (!directSynced) {
+    try {
+      await syncDirectRole();
+    } catch (error) {
+      console.warn("Não foi possível sincronizar o cargo diretamente após a função remota.", error);
+    }
+  }
+
+  permissionUsersCache.clear();
+  clearAdminUsersCache();
+}
+
+export function clearAdminSecurityCaches(): void {
+  activityLogsCache.clear();
+  permissionUsersCache.clear();
+  permissionMatrixCache.clear();
+  effectivePermissionMatrixCache.clear();
+}

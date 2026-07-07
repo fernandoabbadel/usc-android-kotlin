@@ -1,0 +1,580 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Copy, KeyRound, Rocket, ShieldCheck } from "lucide-react";
+
+import {
+  createTenantInvite,
+  fetchTenantInviteActivationRanking,
+  fetchTenantInviteGenerationRanking,
+  fetchTenantInvites,
+  fetchTenantJoinRequests,
+  fetchTenantOnboardingRequests,
+  updateTenantProfile,
+  type TenantInvite,
+  type TenantInviteActivationRankingEntry,
+  type TenantInviteGenerationRankingEntry,
+  type TenantJoinRequest,
+  type TenantOnboardingRequest,
+} from "@/lib/tenantService";
+import {
+  LaunchPageShell,
+  LaunchQuickLinks,
+  LaunchTenantSelectorCard,
+  extractErrorMessage,
+  formatLaunchDate,
+  getLaunchAudienceLabel,
+  getLaunchBasePath,
+  normalizeIntegerInput,
+  useLaunchWorkspace,
+  type LaunchScope,
+} from "./LaunchShared";
+import { withTenantSlug } from "@/lib/tenantRouting";
+
+interface LaunchDashboardPageProps {
+  scope: LaunchScope;
+}
+
+export function LaunchDashboardPage({ scope }: LaunchDashboardPageProps) {
+  const workspace = useLaunchWorkspace(scope);
+  const {
+    addToast,
+    authLoading,
+    canAccess,
+    isPlatformMasterUser,
+    loading: workspaceLoading,
+    refreshing: workspaceRefreshing,
+    refreshWorkspace,
+    selectedTenant,
+    selectedTenantId,
+    tenantSlug,
+  } = workspace;
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageRefreshing, setPageRefreshing] = useState(false);
+  const [savingSignupMode, setSavingSignupMode] = useState(false);
+  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [publicSignupEnabled, setPublicSignupEnabled] = useState(false);
+  const [origin, setOrigin] = useState("");
+  const [inviteUses, setInviteUses] = useState(25);
+  const [inviteHours, setInviteHours] = useState(72);
+  const [inviteRequiresApproval, setInviteRequiresApproval] = useState(true);
+  const [invites, setInvites] = useState<TenantInvite[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<TenantJoinRequest[]>([]);
+  const [generationRanking, setGenerationRanking] = useState<
+    TenantInviteGenerationRankingEntry[]
+  >([]);
+  const [activationRanking, setActivationRanking] = useState<
+    TenantInviteActivationRankingEntry[]
+  >([]);
+  const [onboardingRequests, setOnboardingRequests] = useState<TenantOnboardingRequest[]>([]);
+
+  const isMasterScope = scope === "master" && isPlatformMasterUser;
+  const launchBasePath = getLaunchBasePath(scope, tenantSlug);
+
+  const latestInviteLink = useMemo(() => {
+    const latestInvite = invites[0];
+    if (!latestInvite || !origin.trim()) return "";
+    const inviteTenantSlug = (selectedTenant?.slug || tenantSlug).trim();
+    const invitePath = inviteTenantSlug
+      ? withTenantSlug(inviteTenantSlug, "/cadastro")
+      : "/cadastro";
+    return `${origin}${invitePath}?invite=${encodeURIComponent(latestInvite.token)}`;
+  }, [invites, origin, selectedTenant?.slug, tenantSlug]);
+
+  const activeInvitesCount = useMemo(
+    () => invites.filter((invite) => invite.isActive).length,
+    [invites]
+  );
+
+  const approvedActivationCount = useMemo(
+    () =>
+      activationRanking.reduce((total, entry) => total + Math.max(0, entry.approvedCount), 0),
+    [activationRanking]
+  );
+
+  const loadDashboardData = useCallback(
+    async (tenantId: string, mode: "initial" | "refresh"): Promise<void> => {
+      if (mode === "initial") setPageLoading(true);
+      if (mode === "refresh") setPageRefreshing(true);
+
+      const cleanTenantId = tenantId.trim();
+      if (!cleanTenantId) {
+        setInvites([]);
+        setPendingRequests([]);
+        setGenerationRanking([]);
+        setActivationRanking([]);
+        setOnboardingRequests([]);
+        if (mode === "initial") setPageLoading(false);
+        if (mode === "refresh") setPageRefreshing(false);
+        return;
+      }
+
+      try {
+        const [
+          invitesRows,
+          requestsRows,
+          generationRows,
+          activationRows,
+          onboardingRows,
+        ] = await Promise.all([
+          fetchTenantInvites(cleanTenantId, { limit: 30 }),
+          fetchTenantJoinRequests(cleanTenantId, { status: "pending", limit: 80 }),
+          fetchTenantInviteGenerationRanking(cleanTenantId, { limit: 8 }),
+          fetchTenantInviteActivationRanking(cleanTenantId, { limit: 8 }),
+          isMasterScope
+            ? fetchTenantOnboardingRequests({ status: "pending", limit: 40 })
+            : Promise.resolve([]),
+        ]);
+
+        setInvites(invitesRows);
+        setPendingRequests(requestsRows);
+        setGenerationRanking(generationRows);
+        setActivationRanking(activationRows);
+        setOnboardingRequests(onboardingRows);
+      } catch (error: unknown) {
+        addToast(
+          `Erro ao carregar resumo do lançamento: ${extractErrorMessage(error)}`,
+          "error"
+        );
+      } finally {
+        if (mode === "initial") setPageLoading(false);
+        if (mode === "refresh") setPageRefreshing(false);
+      }
+    },
+    [addToast, isMasterScope]
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setOrigin(window.location.origin);
+  }, []);
+
+  useEffect(() => {
+    setPublicSignupEnabled(Boolean(selectedTenant?.allowPublicSignup));
+  }, [selectedTenant?.allowPublicSignup, selectedTenant?.id]);
+
+  useEffect(() => {
+    if (workspaceLoading) return;
+    if (!selectedTenantId) {
+      setPageLoading(false);
+      setInvites([]);
+      setPendingRequests([]);
+      setGenerationRanking([]);
+      setActivationRanking([]);
+      setOnboardingRequests([]);
+      return;
+    }
+    void loadDashboardData(selectedTenantId, "initial");
+  }, [loadDashboardData, selectedTenantId, workspaceLoading]);
+
+  const handleRefresh = async () => {
+    const tenantId = await refreshWorkspace();
+    await loadDashboardData(tenantId || selectedTenantId, "refresh");
+  };
+
+  const handleCreateInvite = async () => {
+    if (!selectedTenant) {
+      addToast("Selecione uma atlética para gerar convite.", "error");
+      return;
+    }
+
+    try {
+      setCreatingInvite(true);
+      await createTenantInvite({
+        tenantId: selectedTenant.id,
+        roleToAssign: "user",
+        maxUses: normalizeIntegerInput(inviteUses, 1, 500, 25),
+        expiresInHours: normalizeIntegerInput(inviteHours, 1, 24 * 30, 72),
+        requiresApproval: inviteRequiresApproval,
+      });
+      await loadDashboardData(selectedTenant.id, "refresh");
+      addToast("Convite user criado com sucesso.", "success");
+    } catch (error: unknown) {
+      addToast(`Erro ao criar convite: ${extractErrorMessage(error)}`, "error");
+    } finally {
+      setCreatingInvite(false);
+    }
+  };
+
+  const handleCopyInvite = async () => {
+    if (!latestInviteLink.trim()) return;
+    try {
+      await navigator.clipboard.writeText(latestInviteLink);
+      addToast("Link copiado para a área de transferência.", "success");
+    } catch {
+      addToast("Não foi possível copiar automaticamente.", "error");
+    }
+  };
+
+  const handleToggleSignupMode = async () => {
+    if (!selectedTenant) {
+      addToast("Selecione uma atlética para alterar a estratégia de entrada.", "error");
+      return;
+    }
+    try {
+      setSavingSignupMode(true);
+      const nextValue = !publicSignupEnabled;
+      await updateTenantProfile({
+        tenantId: selectedTenant.id,
+        allowPublicSignup: nextValue,
+      });
+      setPublicSignupEnabled(nextValue);
+      await refreshWorkspace();
+      addToast(
+        nextValue
+          ? "Cadastro sem convite liberado para esta atlética."
+          : "Entrada por convite ativada para esta atlética.",
+        "success"
+      );
+    } catch (error: unknown) {
+      addToast(
+        `Erro ao atualizar estratégia de entrada: ${extractErrorMessage(error)}`,
+        "error"
+      );
+    } finally {
+      setSavingSignupMode(false);
+    }
+  };
+
+  if (authLoading || workspaceLoading || pageLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#050505] text-sm font-black uppercase text-white">
+        Carregando módulo de lançamento...
+      </div>
+    );
+  }
+
+  if (!canAccess) return null;
+
+  const statusValue = publicSignupEnabled ? "Cadastro público liberado" : "Somente por convite";
+  const statusHelper = publicSignupEnabled
+    ? "Qualquer usuário pode pedir entrada sem convite. A aprovação do admin continua valendo."
+    : "Novos usuários só entram no fluxo da atlética quando recebem um convite.";
+
+  return (
+    <LaunchPageShell
+      scope={scope}
+      tenantSlug={tenantSlug}
+      title={isMasterScope ? "Lancamento Master" : "Projeto de Lancamento"}
+      subtitle={
+        isMasterScope
+          ? "painel global do dono do app, separado do admin da atlética"
+          : "convites e aprovações da atlética no painel admin"
+      }
+      refreshing={workspaceRefreshing || pageRefreshing}
+      onRefresh={() => void handleRefresh()}
+    >
+      <LaunchQuickLinks
+        items={[
+          {
+            href: `${launchBasePath}/pendentes`,
+            label: "Pendentes",
+            helper: "solicitacoes aguardando decisao",
+            count: pendingRequests.length + (isMasterScope ? onboardingRequests.length : 0),
+            accentClassName: "border-amber-500/30 bg-amber-500/10 text-amber-200",
+          },
+          {
+            href: `${launchBasePath}/convites`,
+            label: "Links Gerados",
+            helper: "ranking de quem mais criou convites",
+            count: generationRanking.length,
+            accentClassName: "border-cyan-500/30 bg-cyan-500/10 text-cyan-200",
+          },
+          {
+            href: `${launchBasePath}/ativacoes`,
+            label: "Cadastros Convertidos",
+            helper: "ranking dos convites que viraram cadastro",
+            count: activationRanking.length,
+            accentClassName: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+          },
+        ]}
+      />
+
+      <LaunchTenantSelectorCard
+        workspace={workspace}
+        selectable={scope === "master" && workspace.tenants.length > 1}
+        helperText={`Dados carregados para o ${getLaunchAudienceLabel(scope)} e filtrados pela atlética ativa.`}
+        statusTitle="Modo de entrada"
+        statusValue={statusValue}
+        statusHelper={statusHelper}
+        statusAction={
+          <button
+            type="button"
+            onClick={() => void handleToggleSignupMode()}
+            disabled={savingSignupMode || !selectedTenant}
+            className={`w-full rounded-2xl border px-3 py-3 text-left transition ${
+              publicSignupEnabled
+                ? "border-emerald-500/30 bg-emerald-500/10"
+                : "border-amber-500/30 bg-amber-500/10"
+            } ${savingSignupMode || !selectedTenant ? "cursor-not-allowed opacity-60" : "hover:brightness-110"}`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
+                  Cadastro sem convite
+                </p>
+                <p
+                  className={`mt-1 text-xs font-black uppercase ${
+                    publicSignupEnabled ? "text-emerald-200" : "text-amber-200"
+                  }`}
+                >
+                  {publicSignupEnabled ? "Ligado" : "Desligado"}
+                </p>
+              </div>
+
+              <span
+                className={`relative inline-flex h-7 w-12 items-center rounded-full border transition ${
+                  publicSignupEnabled
+                    ? "border-emerald-400/50 bg-emerald-500/30"
+                    : "border-amber-400/40 bg-black/30"
+                }`}
+              >
+                <span
+                  className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition ${
+                    publicSignupEnabled ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </span>
+            </div>
+
+            <div className="mt-3 inline-flex items-center gap-2 text-[11px] font-bold text-zinc-300">
+              <ShieldCheck size={14} />
+              {savingSignupMode
+                ? "Salvando estratégia..."
+                : publicSignupEnabled
+                  ? "Clique para voltar ao modo por convite."
+                  : "Clique para liberar cadastro sem convite."}
+            </div>
+          </button>
+        }
+      />
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <div>
+            <h2 className="text-sm font-black uppercase text-cyan-400">Gerar Link de Convite</h2>
+            <p className="mt-1 text-[11px] font-bold uppercase text-zinc-500">
+              A role final agora é sempre user. Ninguém gera link para outras roles.
+            </p>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase text-zinc-400">Role final</label>
+              <div className="mt-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-black uppercase text-emerald-200">
+                user
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase text-zinc-400">Max usos</label>
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={inviteUses}
+                onChange={(event) => setInviteUses(Number(event.target.value))}
+                className="mt-1 w-full rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold uppercase text-zinc-400">Expira em horas</label>
+              <input
+                type="number"
+                min={1}
+                max={24 * 30}
+                value={inviteHours}
+                onChange={(event) => setInviteHours(Number(event.target.value))}
+                className="mt-1 w-full rounded-xl border border-zinc-700 bg-black px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+
+          <label className="mt-4 inline-flex items-center gap-2 text-xs font-black uppercase text-zinc-300">
+            <input
+              type="checkbox"
+              checked={inviteRequiresApproval}
+              onChange={(event) => setInviteRequiresApproval(event.target.checked)}
+              className="accent-emerald-500"
+            />
+            Exige aprovação manual
+          </label>
+
+          <button
+            onClick={() => void handleCreateInvite()}
+            disabled={creatingInvite || !selectedTenant}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-xs font-black uppercase hover:bg-cyan-500 disabled:opacity-60"
+          >
+            <KeyRound size={14} />
+            {creatingInvite ? "Gerando..." : "Gerar Convite User"}
+          </button>
+
+          {latestInviteLink && (
+            <div className="mt-4 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4">
+              <p className="text-[11px] font-black uppercase text-cyan-200">
+                Ultimo link criado
+              </p>
+              <code className="mt-2 block break-all text-[11px] text-cyan-50">
+                {latestInviteLink}
+              </code>
+              <button
+                onClick={() => void handleCopyInvite()}
+                className="mt-3 inline-flex items-center gap-2 rounded-lg border border-cyan-400/40 px-3 py-1.5 text-[11px] font-black uppercase text-cyan-100"
+              >
+                <Copy size={12} />
+                Copiar Link
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-4">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+              Resumo Rapido
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                  Solicitacoes
+                </p>
+                <p className="mt-2 text-3xl font-black text-amber-200">{pendingRequests.length}</p>
+              </div>
+              <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                  Convites ativos
+                </p>
+                <p className="mt-2 text-3xl font-black text-cyan-200">{activeInvitesCount}</p>
+              </div>
+              <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                  Cadastros por convite
+                </p>
+                <p className="mt-2 text-3xl font-black text-emerald-200">
+                  {approvedActivationCount}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                  {isMasterScope ? "Onboarding master" : "Criadores no ranking"}
+                </p>
+                <p className="mt-2 text-3xl font-black text-fuchsia-200">
+                  {isMasterScope ? onboardingRequests.length : generationRanking.length}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+            <p className="text-xs font-black uppercase tracking-widest text-white">
+              Ultimos convites
+            </p>
+            <div className="mt-3 space-y-2">
+              {invites.slice(0, 3).map((invite) => (
+                <div
+                  key={invite.id}
+                  className="rounded-xl border border-zinc-800 bg-black/40 px-3 py-2"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs font-black uppercase text-cyan-200">
+                      {invite.token}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
+                        invite.isActive
+                          ? "bg-emerald-500/10 text-emerald-200"
+                          : "bg-zinc-800 text-zinc-400"
+                      }`}
+                    >
+                      {invite.isActive ? "ativo" : "encerrado"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-zinc-500">
+                    {invite.usesCount}/{invite.maxUses} usos • expira em{" "}
+                    {formatLaunchDate(invite.expiresAt)}
+                  </p>
+                </div>
+              ))}
+              {invites.length === 0 && (
+                <p className="text-sm text-zinc-400">Nenhum convite criado para esta atlética.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-2">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-black uppercase text-amber-300">Solicitacoes pendentes</h2>
+              <p className="mt-1 text-[11px] font-medium text-zinc-500">
+                Últimas entradas aguardando decisão na atlética.
+              </p>
+            </div>
+            <Link
+              href={`${launchBasePath}/pendentes`}
+              className="text-[11px] font-black uppercase text-amber-200 hover:text-white"
+            >
+              abrir página
+            </Link>
+          </div>
+          <div className="mt-4 space-y-3">
+            {pendingRequests.slice(0, 4).map((request) => (
+              <div key={request.id} className="rounded-xl border border-zinc-800 bg-black/40 p-3">
+                <p className="text-sm font-black text-white">
+                  {request.requesterName || request.requesterEmail || "Usuário sem nome"}
+                </p>
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  {request.requesterEmail || "Sem email"} • {request.requesterTurma || "Sem turma"}
+                </p>
+              </div>
+            ))}
+            {pendingRequests.length === 0 && (
+              <p className="text-sm text-zinc-400">Nenhuma solicitação pendente para esta atlética.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-black uppercase text-cyan-300">Ranking de convites</h2>
+              <p className="mt-1 text-[11px] font-medium text-zinc-500">
+                Quem mais gerou links na atlética.
+              </p>
+            </div>
+            <Link
+              href={`${launchBasePath}/convites`}
+              className="text-[11px] font-black uppercase text-cyan-200 hover:text-white"
+            >
+              abrir página
+            </Link>
+          </div>
+          <div className="mt-4 space-y-3">
+            {generationRanking.slice(0, 4).map((entry, index) => (
+              <div key={entry.inviterUserId} className="rounded-xl border border-zinc-800 bg-black/40 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-white">
+                      #{index + 1} {entry.inviterName || entry.inviterEmail || entry.inviterUserId}
+                    </p>
+                    <p className="mt-1 text-[11px] text-zinc-500">
+                      {entry.totalInvites} links • {entry.totalUses} usos
+                    </p>
+                  </div>
+                  <Rocket size={16} className="text-cyan-400" />
+                </div>
+              </div>
+            ))}
+            {generationRanking.length === 0 && (
+              <p className="text-sm text-zinc-400">Ainda não existem links suficientes para ranking.</p>
+            )}
+          </div>
+        </div>
+      </section>
+    </LaunchPageShell>
+  );
+}

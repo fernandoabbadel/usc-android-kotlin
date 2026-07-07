@@ -1,0 +1,488 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  canManageLeagueRole,
+  DEFAULT_LEAGUE_ROLE,
+  resolveLeagueRoleLabel,
+} from "@/lib/leagueRoles";
+import { buildTenantScopedRowId } from "@/lib/tenantScopedCatalog";
+
+export const runtime = "nodejs";
+
+const MANAGER_TENANT_ROLES = new Set([
+  "master",
+  "master_tenant",
+  "admin_geral",
+  "admin_gestor",
+  "admin_tenant",
+]);
+
+const asObject = (value: unknown): Record<string, unknown> | null =>
+  typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
+
+const asString = (value: unknown, fallback = ""): string =>
+  typeof value === "string" ? value : fallback;
+
+const getLeagueDataField = (value: unknown): Record<string, unknown> =>
+  asObject(asObject(value)?.data) ?? {};
+
+type LeagueOwnerCategory = "liga" | "comissao" | "diretorio";
+type CollectiveAreaConfigKey = "comissoes" | "diretorio";
+
+const normalizeUserIds = (value: unknown): string[] =>
+  Array.from(
+    new Set(
+      (Array.isArray(value) ? value : [])
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    )
+  );
+
+const normalizeOwnerCategory = (
+  value: unknown,
+  fallback: LeagueOwnerCategory = "liga"
+): LeagueOwnerCategory => {
+  const raw = asString(value)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (raw.includes("comissao") || raw.includes("comiss")) return "comissao";
+  if (raw.includes("diretorio") || raw.includes("directory")) return "diretorio";
+  if (raw.includes("league") || raw.includes("liga")) return "liga";
+  return fallback;
+};
+
+const collectiveAreaForCategory = (
+  category: LeagueOwnerCategory
+): CollectiveAreaConfigKey | "" => {
+  if (category === "comissao") return "comissoes";
+  if (category === "diretorio") return "diretorio";
+  return "";
+};
+
+const fetchCollectiveAreaManagerUserIds = async (payload: {
+  area: CollectiveAreaConfigKey;
+  tenantId: string;
+}): Promise<string[]> => {
+  const docId =
+    buildTenantScopedRowId(payload.tenantId, `${payload.area}_ui`) ||
+    `${payload.area}_ui`;
+
+  const { data, error } = await supabaseAdmin
+    .from("app_config")
+    .select("data")
+    .eq("id", docId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return normalizeUserIds(getLeagueDataField(data).managerUserIds);
+};
+
+const hasConfiguredManagerAccess = async (payload: {
+  userId: string;
+  tenantId: string;
+  leagueData: Record<string, unknown>;
+}): Promise<boolean> => {
+  const directManagerIds = normalizeUserIds(payload.leagueData.managerUserIds);
+  if (directManagerIds.includes(payload.userId)) return true;
+
+  const category = normalizeOwnerCategory(payload.leagueData.category);
+  const area = collectiveAreaForCategory(category);
+  if (!area) return false;
+
+  const areaManagerIds = await fetchCollectiveAreaManagerUserIds({
+    area,
+    tenantId: payload.tenantId,
+  });
+  return areaManagerIds.includes(payload.userId);
+};
+
+const mergeLeagueCompatData = (
+  currentData: Record<string, unknown>,
+  patch: Record<string, unknown>
+): Record<string, unknown> => ({
+  ...currentData,
+  ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)),
+});
+
+const extractMissingSchemaColumn = (error: unknown): string | null => {
+  if (!error || typeof error !== "object") return null;
+  const raw = error as { message?: unknown; details?: unknown };
+  const text = [asString(raw.message), asString(raw.details)]
+    .filter((entry) => entry.length > 0)
+    .join(" | ");
+  if (!text) return null;
+
+  const patterns = [
+    /column\s+[a-z0-9_]+\.(\w+)\s+does not exist/i,
+    /column\s+(\w+)\s+does not exist/i,
+    /could not find the ['"]?(\w+)['"]? column/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return null;
+};
+
+const removeMissingColumnFromPayload = (
+  payload: Record<string, unknown>,
+  missingColumn: string
+): Record<string, unknown> | null => {
+  const normalizedMissing = missingColumn.trim().toLowerCase();
+  if (!normalizedMissing) return null;
+
+  const nextEntries = Object.entries(payload).filter(
+    ([key]) => key.toLowerCase() !== normalizedMissing
+  );
+  if (nextEntries.length === Object.keys(payload).length) return null;
+  return Object.fromEntries(nextEntries);
+};
+
+type AuthScope = {
+  userId: string;
+  userRole: string;
+  tenantRole: string;
+  tenantStatus: string;
+  userTenantId: string;
+  isPlatformMaster: boolean;
+  canManageTenant: boolean;
+};
+
+const getAuthScope = async (request: NextRequest): Promise<AuthScope> => {
+  const authHeader = request.headers.get("authorization") || "";
+  const accessToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!accessToken) {
+    throw new Error("Não autenticado.");
+  }
+
+  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
+  if (authError || !authData.user) {
+    throw new Error("Sessão inválida.");
+  }
+
+  const { data: userRow, error: userError } = await supabaseAdmin
+    .from("users")
+    .select("uid,role,tenant_id,tenant_role,tenant_status")
+    .eq("uid", authData.user.id)
+    .maybeSingle();
+
+  if (userError) {
+    throw new Error(userError.message || "Falha ao carregar perfil.");
+  }
+
+  const raw = asObject(userRow);
+  const userId = asString(raw?.uid).trim();
+  const userRole = asString(raw?.role).trim().toLowerCase();
+  const tenantRole = asString(raw?.tenant_role).trim().toLowerCase();
+  const tenantStatus = asString(raw?.tenant_status).trim().toLowerCase();
+  const userTenantId = asString(raw?.tenant_id).trim();
+  const isPlatformMaster = userRole === "master";
+  const canManageTenant = isPlatformMaster || MANAGER_TENANT_ROLES.has(tenantRole);
+
+  if (!userId) {
+    throw new Error("Perfil do usuário inválido.");
+  }
+
+  return {
+    userId,
+    userRole,
+    tenantRole,
+    tenantStatus,
+    userTenantId,
+    isPlatformMaster,
+    canManageTenant,
+  };
+};
+
+const normalizeMembers = (value: unknown): Array<{ userId: string; cargo: string }> => {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set<string>();
+  const normalized: Array<{ userId: string; cargo: string }> = [];
+
+  for (const entry of value) {
+    const raw = asObject(entry);
+    const userId = asString(raw?.id).trim();
+    if (!userId || seen.has(userId)) continue;
+    seen.add(userId);
+
+    normalized.push({
+      userId,
+      cargo:
+        resolveLeagueRoleLabel(asString(raw?.cargo, DEFAULT_LEAGUE_ROLE)).slice(0, 80) ||
+        DEFAULT_LEAGUE_ROLE,
+    });
+  }
+
+  return normalized;
+};
+
+export async function POST(request: NextRequest) {
+  try {
+    const scope = await getAuthScope(request);
+    const body = asObject(await request.json());
+    const leagueId = asString(body?.leagueId).trim();
+    const requestedTenantId = asString(body?.tenantId).trim();
+    const nextMembers = normalizeMembers(body?.members);
+
+    if (!leagueId) {
+      return NextResponse.json({ error: "Liga inválida." }, { status: 400 });
+    }
+
+    if (!scope.isPlatformMaster) {
+      if (scope.tenantStatus !== "approved" || !scope.userTenantId) {
+        return NextResponse.json({ error: "Sem permissão para gerenciar esta liga." }, { status: 403 });
+      }
+      if (requestedTenantId && requestedTenantId !== scope.userTenantId) {
+        return NextResponse.json({ error: "Tenant informado não corresponde ao seu perfil." }, { status: 403 });
+      }
+    }
+
+    const { data: leagueRow, error: leagueError } = await supabaseAdmin
+      .from("ligas_config")
+      .select("id,tenant_id,data")
+      .eq("id", leagueId)
+      .maybeSingle();
+
+    if (leagueError) {
+      return NextResponse.json({ error: leagueError.message }, { status: 400 });
+    }
+
+    const rawLeague = asObject(leagueRow);
+    if (!rawLeague) {
+      return NextResponse.json({ error: "Liga não encontrada." }, { status: 404 });
+    }
+
+    const leagueTenantId = asString(rawLeague.tenant_id).trim();
+    const currentLeagueData = getLeagueDataField(rawLeague);
+    const effectiveTenantId = requestedTenantId || leagueTenantId || scope.userTenantId;
+
+    if (!effectiveTenantId) {
+      return NextResponse.json(
+        { error: "Não foi possível determinar o tenant da liga." },
+        { status: 400 }
+      );
+    }
+
+    if (!scope.isPlatformMaster && scope.userTenantId !== effectiveTenantId) {
+      return NextResponse.json({ error: "Liga fora do seu tenant." }, { status: 403 });
+    }
+
+    if (leagueTenantId && leagueTenantId !== effectiveTenantId) {
+      return NextResponse.json(
+        { error: "O tenant informado não confere com a liga selecionada." },
+        { status: 403 }
+      );
+    }
+
+    const hasPageManagerAccess =
+      !scope.isPlatformMaster && !scope.canManageTenant
+        ? await hasConfiguredManagerAccess({
+            userId: scope.userId,
+            tenantId: effectiveTenantId,
+            leagueData: currentLeagueData,
+          })
+        : false;
+
+    if (!scope.isPlatformMaster && !scope.canManageTenant && !hasPageManagerAccess) {
+      let membershipQuery = supabaseAdmin
+        .from("ligas_membros")
+        .select("cargo")
+        .eq("ligaId", leagueId)
+        .eq("userId", scope.userId)
+        .limit(1);
+      if (effectiveTenantId) {
+        membershipQuery = membershipQuery.eq("tenant_id", effectiveTenantId);
+      }
+
+      const { data: membershipRow, error: membershipError } = await membershipQuery.maybeSingle();
+      if (membershipError) {
+        return NextResponse.json({ error: membershipError.message }, { status: 400 });
+      }
+
+      const membershipRole = resolveLeagueRoleLabel(asString(asObject(membershipRow)?.cargo));
+      if (!canManageLeagueRole(membershipRole)) {
+        return NextResponse.json({ error: "Sem permissão para gerenciar esta liga." }, { status: 403 });
+      }
+    }
+
+    const { data: existingRows, error: existingError } = await supabaseAdmin
+      .from("ligas_membros")
+      .select("id,userId,cargo,tenant_id")
+      .eq("ligaId", leagueId);
+
+    if (existingError) {
+      return NextResponse.json({ error: existingError.message }, { status: 400 });
+    }
+
+    const existingByUserId = new Map(
+      (Array.isArray(existingRows) ? existingRows : [])
+        .map((row) => {
+          const raw = asObject(row);
+          const userId = asString(raw?.userId).trim();
+          return userId ? [userId, raw ?? {}] : null;
+        })
+        .filter(
+          (entry): entry is [string, Record<string, unknown>] =>
+            Array.isArray(entry) && entry.length === 2
+        )
+    );
+
+    const nextMemberIds = nextMembers.map((member) => member.userId);
+    const membersToInsert = nextMembers.filter((member) => !existingByUserId.has(member.userId));
+    const membersToUpdate = nextMembers.filter((member) => {
+      const current = existingByUserId.get(member.userId);
+      const currentCargo = asString(current?.cargo, "Membro").trim().slice(0, 80) || "Membro";
+      return Boolean(current) && currentCargo !== member.cargo;
+    });
+    const removedMemberIds = Array.from(existingByUserId.keys()).filter(
+      (memberId) => !nextMemberIds.includes(memberId)
+    );
+
+    if (membersToInsert.length > 0) {
+      const insertIds = membersToInsert.map((member) => member.userId);
+      const { data: usersData, error: usersError } = await supabaseAdmin
+        .from("users")
+        .select("uid,tenant_id,tenant_status")
+        .in("uid", insertIds);
+
+      if (usersError) {
+        return NextResponse.json({ error: usersError.message }, { status: 400 });
+      }
+
+      const usersById = new Map(
+        (Array.isArray(usersData) ? usersData : [])
+          .map((row) => {
+            const raw = asObject(row);
+            const userId = asString(raw?.uid).trim();
+            return userId ? [userId, raw ?? {}] : null;
+          })
+          .filter(
+            (entry): entry is [string, Record<string, unknown>] =>
+              Array.isArray(entry) && entry.length === 2
+          )
+      );
+
+      const invalidMembers = membersToInsert
+        .map((member) => {
+          const user = usersById.get(member.userId);
+          const userTenantId = asString(user?.tenant_id).trim();
+          const userTenantStatus = asString(user?.tenant_status).trim().toLowerCase();
+          if (!user || userTenantId !== effectiveTenantId || userTenantStatus !== "approved") {
+            return member.userId;
+          }
+          return "";
+        })
+        .filter((value) => value.length > 0);
+
+      if (invalidMembers.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Alguns membros selecionados não pertencem ao tenant ativo ou ainda não foram aprovados.",
+            invalidUserIds: invalidMembers,
+          },
+          { status: 400 }
+        );
+      }
+
+      const nowIso = new Date().toISOString();
+      const { error: insertError } = await supabaseAdmin.from("ligas_membros").insert(
+        membersToInsert.map((member) => ({
+          ligaId: leagueId,
+          userId: member.userId,
+          cargo: member.cargo,
+          tenant_id: effectiveTenantId,
+          joinedAt: nowIso,
+        }))
+      );
+
+      if (insertError) {
+        return NextResponse.json({ error: insertError.message }, { status: 400 });
+      }
+    }
+
+    for (const member of membersToUpdate) {
+      const { error: updateError } = await supabaseAdmin
+        .from("ligas_membros")
+        .update({
+          cargo: member.cargo,
+          tenant_id: effectiveTenantId,
+        })
+        .eq("ligaId", leagueId)
+        .eq("userId", member.userId);
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 400 });
+      }
+    }
+
+    if (removedMemberIds.length > 0) {
+      const { error: deleteError } = await supabaseAdmin
+        .from("ligas_membros")
+        .delete()
+        .eq("ligaId", leagueId)
+        .in("userId", removedMemberIds);
+
+      if (deleteError) {
+        return NextResponse.json({ error: deleteError.message }, { status: 400 });
+      }
+    }
+
+    const timestamp = new Date().toISOString();
+    let leaguePatch: Record<string, unknown> = {
+      membersCount: nextMembers.length,
+      membrosIds: nextMemberIds,
+      updatedAt: timestamp,
+      data: mergeLeagueCompatData(currentLeagueData, {
+        membersCount: nextMembers.length,
+        membrosIds: nextMemberIds,
+        updatedAt: timestamp,
+      }),
+    };
+    if (!leagueTenantId) {
+      leaguePatch.tenant_id = effectiveTenantId;
+    }
+
+    while (Object.keys(leaguePatch).length > 0) {
+      const { error: leagueUpdateError } = await supabaseAdmin
+        .from("ligas_config")
+        .update(leaguePatch)
+        .eq("id", leagueId);
+
+      if (!leagueUpdateError) {
+        return NextResponse.json({
+          ok: true,
+          inserted: membersToInsert.length,
+          updated: membersToUpdate.length,
+          deleted: removedMemberIds.length,
+          membersCount: nextMembers.length,
+        });
+      }
+
+      const missingColumn = extractMissingSchemaColumn(leagueUpdateError);
+      if (!missingColumn) {
+        return NextResponse.json({ error: leagueUpdateError.message }, { status: 400 });
+      }
+
+      const nextPayload = removeMissingColumnFromPayload(leaguePatch, missingColumn);
+      if (!nextPayload) {
+        return NextResponse.json({ error: leagueUpdateError.message }, { status: 400 });
+      }
+      leaguePatch = nextPayload;
+    }
+    return NextResponse.json({ error: "Falha ao atualizar resumo da liga." }, { status: 400 });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "Erro inesperado ao sincronizar membros da liga.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

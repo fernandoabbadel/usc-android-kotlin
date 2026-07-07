@@ -1,0 +1,156 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowLeft, Trophy } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+import { fetchBoardroundTubasRanking, type BoardroundTubasRankingRecord } from "../../../lib/boardroundGameService";
+import { useAuth } from "../../../context/AuthContext";
+import { useTenantTheme } from "@/context/TenantThemeContext";
+import {
+  fetchBoardroundAppConfig,
+  getDefaultBoardroundAppConfig,
+  getBoardroundDisplayName,
+} from "../../../lib/boardroundConfigService";
+import { resolveEffectiveAccessRole } from "@/lib/roles";
+import { withTenantSlug } from "@/lib/tenantRouting";
+
+const PAGE_SIZE = 20;
+const SHARKROUND_ALLOWED_ROLES = new Set(["master", "admin_geral", "admin_gestor"]);
+
+export default function BoardroundRankingPage() {
+  const { user, loading: authLoading } = useAuth();
+  const { tenantId, tenantSlug } = useTenantTheme();
+  const router = useRouter();
+  const baseHref = tenantSlug ? withTenantSlug(tenantSlug, "/boardround") : "/boardround";
+  const emBreveHref = tenantSlug ? withTenantSlug(tenantSlug, "/em-breve") : "/em-breve";
+  const userRole = resolveEffectiveAccessRole(user);
+  const canAccessBoardround = SHARKROUND_ALLOWED_ROLES.has(userRole);
+
+  const [rows, setRows] = useState<BoardroundTubasRankingRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [displayName, setDisplayName] = useState(
+    getBoardroundDisplayName(getDefaultBoardroundAppConfig())
+  );
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (canAccessBoardround) return;
+    router.replace(emBreveHref);
+  }, [authLoading, canAccessBoardround, emBreveHref, router]);
+
+  useEffect(() => {
+    if (authLoading || !canAccessBoardround) return;
+
+    let mounted = true;
+    const load = async () => {
+      try {
+        const ranking = await fetchBoardroundTubasRanking({
+          maxResults: 80,
+          forceRefresh: false,
+          tenantId: tenantId || undefined,
+        });
+        if (!mounted) return;
+        setRows(ranking);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, [authLoading, canAccessBoardround, tenantId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadConfig = async () => {
+      try {
+        const config = await fetchBoardroundAppConfig({
+          forceRefresh: false,
+          tenantId: tenantId || undefined,
+        });
+        if (mounted) {
+          setDisplayName(getBoardroundDisplayName(config));
+        }
+      } catch {
+        if (mounted) {
+          setDisplayName(getBoardroundDisplayName(getDefaultBoardroundAppConfig()));
+        }
+      }
+    };
+
+    void loadConfig();
+    return () => {
+      mounted = false;
+    };
+  }, [tenantId]);
+
+  const paged = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return rows.slice(start, start + PAGE_SIZE);
+  }, [rows, page]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+
+  if (authLoading || !canAccessBoardround) {
+    return (
+      <div className="min-h-screen bg-[#050505] text-white font-sans flex items-center justify-center">
+        <p className="text-xs text-zinc-500 uppercase font-bold">Carregando...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-white font-sans pb-20">
+      <header className="sticky top-0 z-20 bg-[#050505]/90 backdrop-blur-md border-b border-zinc-800 px-6 py-5">
+        <div className="flex items-center gap-3">
+          <Link href={baseHref} className="p-2 rounded-full border border-zinc-800 bg-zinc-900 hover:bg-zinc-800">
+            <ArrowLeft size={18} className="text-zinc-300" />
+          </Link>
+          <div>
+            <h1 className="text-xl font-black uppercase tracking-tight">Ranking {displayName}</h1>
+            <p className="text-[11px] text-zinc-500 font-bold">Ranking de moedas - limite de leitura: 80 jogadores</p>
+          </div>
+        </div>
+      </header>
+
+      <main className="px-6 py-6 max-w-4xl mx-auto space-y-3">
+        {loading ? (
+          <div className="text-xs text-zinc-500 uppercase font-bold">Carregando...</div>
+        ) : paged.length === 0 ? (
+          <div className="text-sm text-zinc-500 border border-zinc-800 rounded-xl p-5">Sem ranking ainda.</div>
+        ) : (
+          paged.map((row, idx) => (
+            <article key={row.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-center gap-3">
+              <div className="w-7 text-center text-xs font-black text-zinc-500">{(page - 1) * PAGE_SIZE + idx + 1}</div>
+              <div className="relative w-10 h-10 rounded-full overflow-hidden border border-zinc-700 bg-black">
+                <Image src={row.foto || "https://github.com/shadcn.png"} alt={row.nome} fill className="object-cover"  />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold truncate">{row.nome}</p>
+              </div>
+              <div className="text-right text-yellow-400 font-black text-sm inline-flex items-center gap-1">
+                <Trophy size={14} /> {row.tubas}
+              </div>
+            </article>
+          ))
+        )}
+
+        {rows.length > PAGE_SIZE && (
+          <div className="pt-2 flex items-center justify-between text-xs text-zinc-500 font-bold uppercase">
+            <span>Pagina {page} de {totalPages}</span>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1} className="px-3 py-1 rounded border border-zinc-700 disabled:opacity-40">Anterior</button>
+              <button onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page >= totalPages} className="px-3 py-1 rounded border border-zinc-700 disabled:opacity-40">Próxima</button>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

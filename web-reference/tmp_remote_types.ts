@@ -1,0 +1,4041 @@
+﻿export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
+  public: {
+    Tables: {
+      achievements_config: {
+        Row: {
+          active: boolean
+          cat: string
+          desc: string
+          iconName: string
+          id: string
+          repeatable: boolean
+          statKey: string
+          target: number
+          tenant_id: string | null
+          titulo: string
+          updatedAt: string
+          xp: number
+        }
+        Insert: {
+          active?: boolean
+          cat?: string
+          desc?: string
+          iconName?: string
+          id: string
+          repeatable?: boolean
+          statKey: string
+          target?: number
+          tenant_id?: string | null
+          titulo: string
+          updatedAt?: string
+          xp?: number
+        }
+        Update: {
+          active?: boolean
+          cat?: string
+          desc?: string
+          iconName?: string
+          id?: string
+          repeatable?: boolean
+          statKey?: string
+          target?: number
+          tenant_id?: string | null
+          titulo?: string
+          updatedAt?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "achievements_config_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      achievements_logs: {
+        Row: {
+          achievementId: string | null
+          achievementTitle: string
+          data: Json
+          id: string
+          tenant_id: string | null
+          timestamp: string
+          userId: string | null
+          userName: string
+          xp: number
+        }
+        Insert: {
+          achievementId?: string | null
+          achievementTitle?: string
+          data?: Json
+          id?: string
+          tenant_id?: string | null
+          timestamp?: string
+          userId?: string | null
+          userName?: string
+          xp?: number
+        }
+        Update: {
+          achievementId?: string | null
+          achievementTitle?: string
+          data?: Json
+          id?: string
+          tenant_id?: string | null
+          timestamp?: string
+          userId?: string | null
+          userName?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "achievements_logs_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_logs: {
+        Row: {
+          action: string
+          createdAt: string
+          data: Json
+          details: string
+          id: string
+          resource: string
+          tenant_id: string | null
+          timestamp: string
+          updatedAt: string
+          userId: string | null
+          userName: string
+        }
+        Insert: {
+          action?: string
+          createdAt?: string
+          data?: Json
+          details?: string
+          id?: string
+          resource?: string
+          tenant_id?: string | null
+          timestamp?: string
+          updatedAt?: string
+          userId?: string | null
+          userName?: string
+        }
+        Update: {
+          action?: string
+          createdAt?: string
+          data?: Json
+          details?: string
+          id?: string
+          resource?: string
+          tenant_id?: string | null
+          timestamp?: string
+          updatedAt?: string
+          userId?: string | null
+          userName?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      album_captures: {
+        Row: {
+          collectorUserId: string
+          dataColada: string
+          id: string
+          nome: string | null
+          targetUserId: string
+          tenant_id: string | null
+          turma: string | null
+        }
+        Insert: {
+          collectorUserId: string
+          dataColada?: string
+          id?: string
+          nome?: string | null
+          targetUserId: string
+          tenant_id?: string | null
+          turma?: string | null
+        }
+        Update: {
+          collectorUserId?: string
+          dataColada?: string
+          id?: string
+          nome?: string | null
+          targetUserId?: string
+          tenant_id?: string | null
+          turma?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "album_captures_collector_fk"
+            columns: ["collectorUserId"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "album_captures_target_fk"
+            columns: ["targetUserId"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "album_captures_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      album_config: {
+        Row: {
+          capa: string | null
+          id: string
+          subtitulo: string | null
+          tenant_id: string | null
+          titulo: string | null
+          updatedAt: string
+        }
+        Insert: {
+          capa?: string | null
+          id: string
+          subtitulo?: string | null
+          tenant_id?: string | null
+          titulo?: string | null
+          updatedAt?: string
+        }
+        Update: {
+          capa?: string | null
+          id?: string
+          subtitulo?: string | null
+          tenant_id?: string | null
+          titulo?: string | null
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "album_config_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      album_rankings: {
+        Row: {
+          foto: string
+          id: string
+          nome: string
+          scansT8: number
+          tenant_id: string | null
+          totalColetado: number
+          turma: string
+          ultimoScan: string | null
+          updatedAt: string
+          userId: string
+        }
+        Insert: {
+          foto?: string
+          id?: string
+          nome?: string
+          scansT8?: number
+          tenant_id?: string | null
+          totalColetado?: number
+          turma?: string
+          ultimoScan?: string | null
+          updatedAt?: string
+          userId: string
+        }
+        Update: {
+          foto?: string
+          id?: string
+          nome?: string
+          scansT8?: number
+          tenant_id?: string | null
+          totalColetado?: number
+          turma?: string
+          ultimoScan?: string | null
+          updatedAt?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "album_rankings_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      album_summary: {
+        Row: {
+          capturedByTurma: Json
+          lastCaptureAt: string | null
+          lastCaptureId: string | null
+          tenant_id: string | null
+          totalCollected: number
+          updatedAt: string
+          userId: string
+        }
+        Insert: {
+          capturedByTurma?: Json
+          lastCaptureAt?: string | null
+          lastCaptureId?: string | null
+          tenant_id?: string | null
+          totalCollected?: number
+          updatedAt?: string
+          userId: string
+        }
+        Update: {
+          capturedByTurma?: Json
+          lastCaptureAt?: string | null
+          lastCaptureId?: string | null
+          tenant_id?: string | null
+          totalCollected?: number
+          updatedAt?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "album_summary_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_config: {
+        Row: {
+          backgrounds: Json | null
+          banco: string | null
+          capa: string | null
+          capaUrl: string | null
+          chave: string | null
+          cor: string | null
+          createdAt: string
+          data: Json
+          id: string
+          limitMessages: boolean | null
+          subtitulo: string | null
+          tenant_id: string | null
+          titular: string | null
+          titulo: string | null
+          updatedAt: string
+          validade: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          backgrounds?: Json | null
+          banco?: string | null
+          capa?: string | null
+          capaUrl?: string | null
+          chave?: string | null
+          cor?: string | null
+          createdAt?: string
+          data?: Json
+          id: string
+          limitMessages?: boolean | null
+          subtitulo?: string | null
+          tenant_id?: string | null
+          titular?: string | null
+          titulo?: string | null
+          updatedAt?: string
+          validade?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          backgrounds?: Json | null
+          banco?: string | null
+          capa?: string | null
+          capaUrl?: string | null
+          chave?: string | null
+          cor?: string | null
+          createdAt?: string
+          data?: Json
+          id?: string
+          limitMessages?: boolean | null
+          subtitulo?: string | null
+          tenant_id?: string | null
+          titular?: string | null
+          titulo?: string | null
+          updatedAt?: string
+          validade?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_config_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      arena_matches: {
+        Row: {
+          data: Json
+          date: string
+          game: string | null
+          id: string
+          result: string | null
+          tenant_id: string | null
+          userId: string
+        }
+        Insert: {
+          data?: Json
+          date?: string
+          game?: string | null
+          id?: string
+          result?: string | null
+          tenant_id?: string | null
+          userId: string
+        }
+        Update: {
+          data?: Json
+          date?: string
+          game?: string | null
+          id?: string
+          result?: string | null
+          tenant_id?: string | null
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arena_matches_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assinaturas: {
+        Row: {
+          aluno: string
+          createdAt: string
+          data: Json
+          dataInicio: string | null
+          foto: string | null
+          id: string
+          metodo: string
+          planoId: string
+          planoNome: string
+          status: string
+          tenant_id: string | null
+          turma: string
+          updatedAt: string
+          userId: string | null
+          valorPago: number
+        }
+        Insert: {
+          aluno?: string
+          createdAt?: string
+          data?: Json
+          dataInicio?: string | null
+          foto?: string | null
+          id?: string
+          metodo?: string
+          planoId: string
+          planoNome?: string
+          status?: string
+          tenant_id?: string | null
+          turma?: string
+          updatedAt?: string
+          userId?: string | null
+          valorPago?: number
+        }
+        Update: {
+          aluno?: string
+          createdAt?: string
+          data?: Json
+          dataInicio?: string | null
+          foto?: string | null
+          id?: string
+          metodo?: string
+          planoId?: string
+          planoNome?: string
+          status?: string
+          tenant_id?: string | null
+          turma?: string
+          updatedAt?: string
+          userId?: string | null
+          valorPago?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assinaturas_planoId_fkey"
+            columns: ["planoId"]
+            isOneToOne: false
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assinaturas_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      banned_appeals: {
+        Row: {
+          createdAt: string
+          createdAtMs: number
+          data: Json
+          id: string
+          message: string
+          readByAdmin: boolean
+          reason: string | null
+          resolvedAt: string | null
+          response: string | null
+          status: string
+          tenant_id: string | null
+          updatedAt: string
+          userEmail: string | null
+          userId: string | null
+          userName: string
+        }
+        Insert: {
+          createdAt?: string
+          createdAtMs?: number
+          data?: Json
+          id?: string
+          message?: string
+          readByAdmin?: boolean
+          reason?: string | null
+          resolvedAt?: string | null
+          response?: string | null
+          status?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userEmail?: string | null
+          userId?: string | null
+          userName?: string
+        }
+        Update: {
+          createdAt?: string
+          createdAtMs?: number
+          data?: Json
+          id?: string
+          message?: string
+          readByAdmin?: boolean
+          reason?: string | null
+          resolvedAt?: string | null
+          response?: string | null
+          status?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userEmail?: string | null
+          userId?: string | null
+          userName?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banned_appeals_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categorias: {
+        Row: {
+          button_color: string | null
+          cover_img: string | null
+          createdAt: string
+          id: string
+          logo_url: string | null
+          nome: string
+          seller_id: string | null
+          seller_type: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          button_color?: string | null
+          cover_img?: string | null
+          createdAt?: string
+          id?: string
+          logo_url?: string | null
+          nome: string
+          seller_id?: string | null
+          seller_type?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          button_color?: string | null
+          cover_img?: string | null
+          createdAt?: string
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          seller_id?: string | null
+          seller_type?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categorias_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_category_reads: {
+        Row: {
+          categoria: string
+          categoriaKey: string
+          createdAt: string
+          id: string
+          readAt: string
+          tenant_id: string | null
+          updatedAt: string
+          userId: string
+        }
+        Insert: {
+          categoria: string
+          categoriaKey: string
+          createdAt?: string
+          id?: string
+          readAt?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userId: string
+        }
+        Update: {
+          categoria?: string
+          categoriaKey?: string
+          createdAt?: string
+          id?: string
+          readAt?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_category_reads_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_category_reads_userId_fkey"
+            columns: ["userId"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      denuncias: {
+        Row: {
+          data: Json
+          id: string
+          postText: string | null
+          reason: string
+          reporterId: string
+          reviewedAt: string | null
+          reviewedBy: string | null
+          status: string
+          targetId: string
+          targetType: string
+          tenant_id: string | null
+          timestamp: string
+        }
+        Insert: {
+          data?: Json
+          id?: string
+          postText?: string | null
+          reason?: string
+          reporterId: string
+          reviewedAt?: string | null
+          reviewedBy?: string | null
+          status?: string
+          targetId: string
+          targetType?: string
+          tenant_id?: string | null
+          timestamp?: string
+        }
+        Update: {
+          data?: Json
+          id?: string
+          postText?: string | null
+          reason?: string
+          reporterId?: string
+          reviewedAt?: string | null
+          reviewedBy?: string | null
+          status?: string
+          targetId?: string
+          targetType?: string
+          tenant_id?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "denuncias_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eventos: {
+        Row: {
+          categoria: string | null
+          contatoComprovante: string | null
+          createdAt: string
+          criadorId: string | null
+          criadorNome: string | null
+          data: string | null
+          data_extra: Json
+          descricao: string | null
+          destaque: string | null
+          hora: string | null
+          id: string
+          imagem: string | null
+          imagePositionY: number
+          interessados: string[]
+          isLowStock: boolean
+          likesList: string[]
+          local: string | null
+          lotes: Json
+          mapsUrl: string | null
+          payment_config: Json | null
+          pixBanco: string | null
+          pixChave: string | null
+          pixTitular: string | null
+          sale_status: string | null
+          stats: Json
+          status: string
+          tenant_id: string | null
+          tipo: string | null
+          titulo: string
+          updatedAt: string
+          vendasTotais: Json
+        }
+        Insert: {
+          categoria?: string | null
+          contatoComprovante?: string | null
+          createdAt?: string
+          criadorId?: string | null
+          criadorNome?: string | null
+          data?: string | null
+          data_extra?: Json
+          descricao?: string | null
+          destaque?: string | null
+          hora?: string | null
+          id?: string
+          imagem?: string | null
+          imagePositionY?: number
+          interessados?: string[]
+          isLowStock?: boolean
+          likesList?: string[]
+          local?: string | null
+          lotes?: Json
+          mapsUrl?: string | null
+          payment_config?: Json | null
+          pixBanco?: string | null
+          pixChave?: string | null
+          pixTitular?: string | null
+          sale_status?: string | null
+          stats?: Json
+          status?: string
+          tenant_id?: string | null
+          tipo?: string | null
+          titulo?: string
+          updatedAt?: string
+          vendasTotais?: Json
+        }
+        Update: {
+          categoria?: string | null
+          contatoComprovante?: string | null
+          createdAt?: string
+          criadorId?: string | null
+          criadorNome?: string | null
+          data?: string | null
+          data_extra?: Json
+          descricao?: string | null
+          destaque?: string | null
+          hora?: string | null
+          id?: string
+          imagem?: string | null
+          imagePositionY?: number
+          interessados?: string[]
+          isLowStock?: boolean
+          likesList?: string[]
+          local?: string | null
+          lotes?: Json
+          mapsUrl?: string | null
+          payment_config?: Json | null
+          pixBanco?: string | null
+          pixChave?: string | null
+          pixTitular?: string | null
+          sale_status?: string | null
+          stats?: Json
+          status?: string
+          tenant_id?: string | null
+          tipo?: string | null
+          titulo?: string
+          updatedAt?: string
+          vendasTotais?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventos_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eventos_comentarios: {
+        Row: {
+          createdAt: string
+          data: Json
+          eventoId: string
+          hidden: boolean
+          id: string
+          likes: string[]
+          reports: string[]
+          role: string | null
+          tenant_id: string | null
+          text: string
+          updatedAt: string
+          userAvatar: string
+          userId: string
+          userName: string
+          userPatente: string | null
+          userPlanoCor: string | null
+          userPlanoIcon: string | null
+          userTurma: string
+        }
+        Insert: {
+          createdAt?: string
+          data?: Json
+          eventoId: string
+          hidden?: boolean
+          id?: string
+          likes?: string[]
+          reports?: string[]
+          role?: string | null
+          tenant_id?: string | null
+          text?: string
+          updatedAt?: string
+          userAvatar?: string
+          userId: string
+          userName?: string
+          userPatente?: string | null
+          userPlanoCor?: string | null
+          userPlanoIcon?: string | null
+          userTurma?: string
+        }
+        Update: {
+          createdAt?: string
+          data?: Json
+          eventoId?: string
+          hidden?: boolean
+          id?: string
+          likes?: string[]
+          reports?: string[]
+          role?: string | null
+          tenant_id?: string | null
+          text?: string
+          updatedAt?: string
+          userAvatar?: string
+          userId?: string
+          userName?: string
+          userPatente?: string | null
+          userPlanoCor?: string | null
+          userPlanoIcon?: string | null
+          userTurma?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventos_comentarios_eventoId_fkey"
+            columns: ["eventoId"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventos_comentarios_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eventos_enquetes: {
+        Row: {
+          allowUserOptions: boolean
+          createdAt: string
+          eventoId: string
+          id: string
+          options: Json
+          question: string
+          tenant_id: string | null
+          updatedAt: string
+          userVotes: Json
+          voters: string[]
+        }
+        Insert: {
+          allowUserOptions?: boolean
+          createdAt?: string
+          eventoId: string
+          id?: string
+          options?: Json
+          question?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userVotes?: Json
+          voters?: string[]
+        }
+        Update: {
+          allowUserOptions?: boolean
+          createdAt?: string
+          eventoId?: string
+          id?: string
+          options?: Json
+          question?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userVotes?: Json
+          voters?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventos_enquetes_eventoId_fkey"
+            columns: ["eventoId"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventos_enquetes_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eventos_rsvps: {
+        Row: {
+          eventoId: string
+          id: string
+          status: string
+          tenant_id: string | null
+          timestamp: string
+          userAvatar: string
+          userId: string
+          userName: string
+          userTurma: string
+        }
+        Insert: {
+          eventoId: string
+          id?: string
+          status: string
+          tenant_id?: string | null
+          timestamp?: string
+          userAvatar?: string
+          userId: string
+          userName?: string
+          userTurma?: string
+        }
+        Update: {
+          eventoId?: string
+          id?: string
+          status?: string
+          tenant_id?: string | null
+          timestamp?: string
+          userAvatar?: string
+          userId?: string
+          userName?: string
+          userTurma?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventos_rsvps_eventoId_fkey"
+            columns: ["eventoId"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventos_rsvps_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guia_data: {
+        Row: {
+          categoria: string | null
+          cor: string | null
+          createdAt: string
+          data: Json
+          descricao: string | null
+          detalhe: string | null
+          foto: string | null
+          horario: string | null
+          id: string
+          nome: string | null
+          numero: string | null
+          ordem: number | null
+          tenant_id: string | null
+          titulo: string | null
+          updatedAt: string
+          url: string | null
+        }
+        Insert: {
+          categoria?: string | null
+          cor?: string | null
+          createdAt?: string
+          data?: Json
+          descricao?: string | null
+          detalhe?: string | null
+          foto?: string | null
+          horario?: string | null
+          id?: string
+          nome?: string | null
+          numero?: string | null
+          ordem?: number | null
+          tenant_id?: string | null
+          titulo?: string | null
+          updatedAt?: string
+          url?: string | null
+        }
+        Update: {
+          categoria?: string | null
+          cor?: string | null
+          createdAt?: string
+          data?: Json
+          descricao?: string | null
+          detalhe?: string | null
+          foto?: string | null
+          horario?: string | null
+          id?: string
+          nome?: string | null
+          numero?: string | null
+          ordem?: number | null
+          tenant_id?: string | null
+          titulo?: string | null
+          updatedAt?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guia_data_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gym_logs: {
+        Row: {
+          data: Json
+          date: string
+          id: string
+          local: string | null
+          tenant_id: string | null
+          userId: string
+        }
+        Insert: {
+          data?: Json
+          date?: string
+          id?: string
+          local?: string | null
+          tenant_id?: string | null
+          userId: string
+        }
+        Update: {
+          data?: Json
+          date?: string
+          id?: string
+          local?: string | null
+          tenant_id?: string | null
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gym_logs_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historic_events: {
+        Row: {
+          ano: string | null
+          createdAt: string
+          data: string | null
+          data_extra: Json
+          descricao: string | null
+          foto: string | null
+          id: string
+          local: string | null
+          tenant_id: string | null
+          titulo: string | null
+          updatedAt: string
+        }
+        Insert: {
+          ano?: string | null
+          createdAt?: string
+          data?: string | null
+          data_extra?: Json
+          descricao?: string | null
+          foto?: string | null
+          id?: string
+          local?: string | null
+          tenant_id?: string | null
+          titulo?: string | null
+          updatedAt?: string
+        }
+        Update: {
+          ano?: string | null
+          createdAt?: string
+          data?: string | null
+          data_extra?: Json
+          descricao?: string | null
+          foto?: string | null
+          id?: string
+          local?: string | null
+          tenant_id?: string | null
+          titulo?: string | null
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historic_events_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_docs: {
+        Row: {
+          conteudo: string
+          createdAt: string
+          data: Json
+          iconName: string
+          id: string
+          tenant_id: string | null
+          tipo: string
+          titulo: string
+          updatedAt: string
+        }
+        Insert: {
+          conteudo?: string
+          createdAt?: string
+          data?: Json
+          iconName?: string
+          id?: string
+          tenant_id?: string | null
+          tipo?: string
+          titulo?: string
+          updatedAt?: string
+        }
+        Update: {
+          conteudo?: string
+          createdAt?: string
+          data?: Json
+          iconName?: string
+          id?: string
+          tenant_id?: string | null
+          tipo?: string
+          titulo?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_docs_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ligas_config: {
+        Row: {
+          ativa: boolean
+          bizu: string | null
+          createdAt: string
+          data: Json
+          descricao: string | null
+          eventos: Json
+          foto: string | null
+          id: string
+          likes: number
+          logo: string | null
+          logoBase64: string | null
+          logoUrl: string | null
+          membros: Json
+          membrosIds: string[]
+          nome: string | null
+          perguntas: Json
+          presidente: string | null
+          senha: string | null
+          sigla: string | null
+          status: string
+          tenant_id: string | null
+          updatedAt: string
+          visivel: boolean
+        }
+        Insert: {
+          ativa?: boolean
+          bizu?: string | null
+          createdAt?: string
+          data?: Json
+          descricao?: string | null
+          eventos?: Json
+          foto?: string | null
+          id?: string
+          likes?: number
+          logo?: string | null
+          logoBase64?: string | null
+          logoUrl?: string | null
+          membros?: Json
+          membrosIds?: string[]
+          nome?: string | null
+          perguntas?: Json
+          presidente?: string | null
+          senha?: string | null
+          sigla?: string | null
+          status?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          visivel?: boolean
+        }
+        Update: {
+          ativa?: boolean
+          bizu?: string | null
+          createdAt?: string
+          data?: Json
+          descricao?: string | null
+          eventos?: Json
+          foto?: string | null
+          id?: string
+          likes?: number
+          logo?: string | null
+          logoBase64?: string | null
+          logoUrl?: string | null
+          membros?: Json
+          membrosIds?: string[]
+          nome?: string | null
+          perguntas?: Json
+          presidente?: string | null
+          senha?: string | null
+          sigla?: string | null
+          status?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          visivel?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ligas_config_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mini_vendor_followers: {
+        Row: {
+          created_at: string
+          followed_at: string
+          id: string
+          mini_vendor_id: string
+          tenant_id: string
+          user_avatar: string | null
+          user_id: string
+          user_name: string
+          user_turma: string | null
+        }
+        Insert: {
+          created_at?: string
+          followed_at?: string
+          id?: string
+          mini_vendor_id: string
+          tenant_id: string
+          user_avatar?: string | null
+          user_id: string
+          user_name?: string
+          user_turma?: string | null
+        }
+        Update: {
+          created_at?: string
+          followed_at?: string
+          id?: string
+          mini_vendor_id?: string
+          tenant_id?: string
+          user_avatar?: string | null
+          user_id?: string
+          user_name?: string
+          user_turma?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mini_vendor_followers_mini_vendor_id_fkey"
+            columns: ["mini_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "mini_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mini_vendor_followers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mini_vendor_followers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      mini_vendor_likes: {
+        Row: {
+          created_at: string
+          id: string
+          liked_at: string
+          mini_vendor_id: string
+          tenant_id: string
+          user_avatar: string | null
+          user_id: string
+          user_name: string
+          user_turma: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          liked_at?: string
+          mini_vendor_id: string
+          tenant_id: string
+          user_avatar?: string | null
+          user_id: string
+          user_name?: string
+          user_turma?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          liked_at?: string
+          mini_vendor_id?: string
+          tenant_id?: string
+          user_avatar?: string | null
+          user_id?: string
+          user_name?: string
+          user_turma?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mini_vendor_likes_mini_vendor_id_fkey"
+            columns: ["mini_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "mini_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mini_vendor_likes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mini_vendor_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      mini_vendors: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          category_button_color: string | null
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          instagram: string | null
+          instagram_enabled: boolean
+          logo_url: string | null
+          pix_bank: string | null
+          pix_holder: string | null
+          pix_key: string | null
+          pix_whatsapp: string | null
+          slug: string | null
+          status: string
+          store_name: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+          whatsapp: string | null
+          whatsapp_enabled: boolean
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category_button_color?: string | null
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          instagram?: string | null
+          instagram_enabled?: boolean
+          logo_url?: string | null
+          pix_bank?: string | null
+          pix_holder?: string | null
+          pix_key?: string | null
+          pix_whatsapp?: string | null
+          slug?: string | null
+          status?: string
+          store_name?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+          whatsapp?: string | null
+          whatsapp_enabled?: boolean
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          category_button_color?: string | null
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          instagram?: string | null
+          instagram_enabled?: boolean
+          logo_url?: string | null
+          pix_bank?: string | null
+          pix_holder?: string | null
+          pix_key?: string | null
+          pix_whatsapp?: string | null
+          slug?: string | null
+          status?: string
+          store_name?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+          whatsapp?: string | null
+          whatsapp_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mini_vendors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mini_vendors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          createdAt: string
+          data: Json
+          id: string
+          link: string | null
+          message: string
+          read: boolean
+          tenant_id: string | null
+          title: string
+          type: string | null
+          updatedAt: string
+          userId: string
+        }
+        Insert: {
+          createdAt?: string
+          data?: Json
+          id?: string
+          link?: string | null
+          message?: string
+          read?: boolean
+          tenant_id?: string | null
+          title?: string
+          type?: string | null
+          updatedAt?: string
+          userId: string
+        }
+        Update: {
+          createdAt?: string
+          data?: Json
+          id?: string
+          link?: string | null
+          message?: string
+          read?: boolean
+          tenant_id?: string | null
+          title?: string
+          type?: string | null
+          updatedAt?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          approvedby: string | null
+          approvedBy: string | null
+          createdAt: string
+          data: Json
+          id: string
+          itens: number | null
+          payment_config: Json | null
+          price: number
+          productid: string | null
+          productId: string
+          productname: string | null
+          productName: string
+          quantidade: number
+          seller_id: string | null
+          seller_logo_url: string | null
+          seller_name: string | null
+          seller_type: string | null
+          status: string
+          tenant_id: string | null
+          total: number | null
+          updatedat: string | null
+          updatedAt: string
+          userId: string
+          username: string | null
+          userName: string
+        }
+        Insert: {
+          approvedby?: string | null
+          approvedBy?: string | null
+          createdAt?: string
+          data?: Json
+          id?: string
+          itens?: number | null
+          payment_config?: Json | null
+          price?: number
+          productid?: string | null
+          productId: string
+          productname?: string | null
+          productName?: string
+          quantidade?: number
+          seller_id?: string | null
+          seller_logo_url?: string | null
+          seller_name?: string | null
+          seller_type?: string | null
+          status?: string
+          tenant_id?: string | null
+          total?: number | null
+          updatedat?: string | null
+          updatedAt?: string
+          userId: string
+          username?: string | null
+          userName?: string
+        }
+        Update: {
+          approvedby?: string | null
+          approvedBy?: string | null
+          createdAt?: string
+          data?: Json
+          id?: string
+          itens?: number | null
+          payment_config?: Json | null
+          price?: number
+          productid?: string | null
+          productId?: string
+          productname?: string | null
+          productName?: string
+          quantidade?: number
+          seller_id?: string | null
+          seller_logo_url?: string | null
+          seller_name?: string | null
+          seller_type?: string | null
+          status?: string
+          tenant_id?: string | null
+          total?: number | null
+          updatedat?: string | null
+          updatedAt?: string
+          userId?: string
+          username?: string | null
+          userName?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_productId_fkey"
+            columns: ["productId"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parceiros: {
+        Row: {
+          categoria: string
+          cnpj: string | null
+          cpf: string | null
+          createdAt: string
+          cupons: Json
+          data: Json
+          descricao: string | null
+          email: string | null
+          endereco: string | null
+          horario: string | null
+          id: string
+          imgCapa: string | null
+          imgLogo: string | null
+          insta: string | null
+          mensalidade: number
+          nome: string
+          responsavel: string | null
+          senha: string | null
+          site: string | null
+          status: string
+          telefone: string | null
+          tenant_id: string | null
+          tier: string
+          totalScans: number
+          updatedAt: string
+          vendasTotal: number
+          whats: string | null
+        }
+        Insert: {
+          categoria?: string
+          cnpj?: string | null
+          cpf?: string | null
+          createdAt?: string
+          cupons?: Json
+          data?: Json
+          descricao?: string | null
+          email?: string | null
+          endereco?: string | null
+          horario?: string | null
+          id?: string
+          imgCapa?: string | null
+          imgLogo?: string | null
+          insta?: string | null
+          mensalidade?: number
+          nome: string
+          responsavel?: string | null
+          senha?: string | null
+          site?: string | null
+          status?: string
+          telefone?: string | null
+          tenant_id?: string | null
+          tier?: string
+          totalScans?: number
+          updatedAt?: string
+          vendasTotal?: number
+          whats?: string | null
+        }
+        Update: {
+          categoria?: string
+          cnpj?: string | null
+          cpf?: string | null
+          createdAt?: string
+          cupons?: Json
+          data?: Json
+          descricao?: string | null
+          email?: string | null
+          endereco?: string | null
+          horario?: string | null
+          id?: string
+          imgCapa?: string | null
+          imgLogo?: string | null
+          insta?: string | null
+          mensalidade?: number
+          nome?: string
+          responsavel?: string | null
+          senha?: string | null
+          site?: string | null
+          status?: string
+          telefone?: string | null
+          tenant_id?: string | null
+          tier?: string
+          totalScans?: number
+          updatedAt?: string
+          vendasTotal?: number
+          whats?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parceiros_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patentes_config: {
+        Row: {
+          bg: string | null
+          border: string | null
+          cor: string
+          iconName: string
+          id: string
+          minXp: number
+          tenant_id: string | null
+          text: string | null
+          titulo: string
+          updatedAt: string
+        }
+        Insert: {
+          bg?: string | null
+          border?: string | null
+          cor?: string
+          iconName?: string
+          id: string
+          minXp?: number
+          tenant_id?: string | null
+          text?: string | null
+          titulo: string
+          updatedAt?: string
+        }
+        Update: {
+          bg?: string | null
+          border?: string | null
+          cor?: string
+          iconName?: string
+          id?: string
+          minXp?: number
+          tenant_id?: string | null
+          text?: string | null
+          titulo?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patentes_config_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planos: {
+        Row: {
+          beneficios: string[]
+          cor: string | null
+          createdAt: string
+          descontoLoja: number
+          descricao: string | null
+          destaque: boolean
+          icon: string | null
+          id: string
+          nivelPrioridade: number
+          nome: string
+          parcelamento: string | null
+          preco: string
+          precoVal: number
+          tenant_id: string | null
+          updatedAt: string
+          xpMultiplier: number
+        }
+        Insert: {
+          beneficios?: string[]
+          cor?: string | null
+          createdAt?: string
+          descontoLoja?: number
+          descricao?: string | null
+          destaque?: boolean
+          icon?: string | null
+          id?: string
+          nivelPrioridade?: number
+          nome?: string
+          parcelamento?: string | null
+          preco?: string
+          precoVal?: number
+          tenant_id?: string | null
+          updatedAt?: string
+          xpMultiplier?: number
+        }
+        Update: {
+          beneficios?: string[]
+          cor?: string | null
+          createdAt?: string
+          descontoLoja?: number
+          descricao?: string | null
+          destaque?: boolean
+          icon?: string | null
+          id?: string
+          nivelPrioridade?: number
+          nome?: string
+          parcelamento?: string | null
+          preco?: string
+          precoVal?: number
+          tenant_id?: string | null
+          updatedAt?: string
+          xpMultiplier?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planos_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          avatar: string
+          blocked: boolean
+          categoria: string
+          comentarios: number
+          commentsDisabled: boolean
+          createdAt: string
+          data: Json
+          denunciasCount: number
+          fixado: boolean
+          handle: string
+          hype: string[]
+          id: string
+          imagem: string | null
+          likes: string[]
+          patente: string | null
+          patente_cor: string | null
+          patente_icon: string | null
+          plano: string | null
+          plano_cor: string | null
+          plano_icon: string | null
+          role: string | null
+          tenant_id: string | null
+          texto: string
+          updatedAt: string
+          userId: string
+          userName: string
+        }
+        Insert: {
+          avatar?: string
+          blocked?: boolean
+          categoria?: string
+          comentarios?: number
+          commentsDisabled?: boolean
+          createdAt?: string
+          data?: Json
+          denunciasCount?: number
+          fixado?: boolean
+          handle?: string
+          hype?: string[]
+          id?: string
+          imagem?: string | null
+          likes?: string[]
+          patente?: string | null
+          patente_cor?: string | null
+          patente_icon?: string | null
+          plano?: string | null
+          plano_cor?: string | null
+          plano_icon?: string | null
+          role?: string | null
+          tenant_id?: string | null
+          texto?: string
+          updatedAt?: string
+          userId: string
+          userName?: string
+        }
+        Update: {
+          avatar?: string
+          blocked?: boolean
+          categoria?: string
+          comentarios?: number
+          commentsDisabled?: boolean
+          createdAt?: string
+          data?: Json
+          denunciasCount?: number
+          fixado?: boolean
+          handle?: string
+          hype?: string[]
+          id?: string
+          imagem?: string | null
+          likes?: string[]
+          patente?: string | null
+          patente_cor?: string | null
+          patente_icon?: string | null
+          plano?: string | null
+          plano_cor?: string | null
+          plano_icon?: string | null
+          role?: string | null
+          tenant_id?: string | null
+          texto?: string
+          updatedAt?: string
+          userId?: string
+          userName?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts_comments: {
+        Row: {
+          avatar: string
+          createdAt: string
+          data: Json
+          id: string
+          likes: string[]
+          patente: string | null
+          patente_cor: string | null
+          patente_icon: string | null
+          plano: string | null
+          plano_cor: string | null
+          plano_icon: string | null
+          postId: string
+          role: string | null
+          tenant_id: string | null
+          texto: string
+          updatedAt: string
+          userId: string
+          userName: string
+        }
+        Insert: {
+          avatar?: string
+          createdAt?: string
+          data?: Json
+          id?: string
+          likes?: string[]
+          patente?: string | null
+          patente_cor?: string | null
+          patente_icon?: string | null
+          plano?: string | null
+          plano_cor?: string | null
+          plano_icon?: string | null
+          postId: string
+          role?: string | null
+          tenant_id?: string | null
+          texto?: string
+          updatedAt?: string
+          userId: string
+          userName?: string
+        }
+        Update: {
+          avatar?: string
+          createdAt?: string
+          data?: Json
+          id?: string
+          likes?: string[]
+          patente?: string | null
+          patente_cor?: string | null
+          patente_icon?: string | null
+          plano?: string | null
+          plano_cor?: string | null
+          plano_icon?: string | null
+          postId?: string
+          role?: string | null
+          tenant_id?: string | null
+          texto?: string
+          updatedAt?: string
+          userId?: string
+          userName?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_comments_postId_fkey"
+            columns: ["postId"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_comments_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produtos: {
+        Row: {
+          active: boolean
+          aprovado: boolean
+          caracteristicas: string[]
+          categoria: string
+          cliques: number
+          cores: string | null
+          createdAt: string
+          data: Json
+          descricao: string
+          estoque: number
+          id: string
+          img: string | null
+          likes: string[]
+          lote: string | null
+          nome: string
+          payment_config: Json | null
+          plan_prices: Json
+          plan_visibility: Json
+          preco: number
+          precoAntigo: number | null
+          seller_id: string | null
+          seller_logo_url: string | null
+          seller_name: string | null
+          seller_type: string | null
+          status: string | null
+          tagColor: string | null
+          tagEffect: string | null
+          tagLabel: string | null
+          tenant_id: string | null
+          updatedAt: string
+          variantes: Json
+          vendidos: number
+        }
+        Insert: {
+          active?: boolean
+          aprovado?: boolean
+          caracteristicas?: string[]
+          categoria?: string
+          cliques?: number
+          cores?: string | null
+          createdAt?: string
+          data?: Json
+          descricao?: string
+          estoque?: number
+          id?: string
+          img?: string | null
+          likes?: string[]
+          lote?: string | null
+          nome?: string
+          payment_config?: Json | null
+          plan_prices?: Json
+          plan_visibility?: Json
+          preco?: number
+          precoAntigo?: number | null
+          seller_id?: string | null
+          seller_logo_url?: string | null
+          seller_name?: string | null
+          seller_type?: string | null
+          status?: string | null
+          tagColor?: string | null
+          tagEffect?: string | null
+          tagLabel?: string | null
+          tenant_id?: string | null
+          updatedAt?: string
+          variantes?: Json
+          vendidos?: number
+        }
+        Update: {
+          active?: boolean
+          aprovado?: boolean
+          caracteristicas?: string[]
+          categoria?: string
+          cliques?: number
+          cores?: string | null
+          createdAt?: string
+          data?: Json
+          descricao?: string
+          estoque?: number
+          id?: string
+          img?: string | null
+          likes?: string[]
+          lote?: string | null
+          nome?: string
+          payment_config?: Json | null
+          plan_prices?: Json
+          plan_visibility?: Json
+          preco?: number
+          precoAntigo?: number | null
+          seller_id?: string | null
+          seller_logo_url?: string | null
+          seller_name?: string | null
+          seller_type?: string | null
+          status?: string | null
+          tagColor?: string | null
+          tagEffect?: string | null
+          tagLabel?: string | null
+          tenant_id?: string | null
+          updatedAt?: string
+          variantes?: Json
+          vendidos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_history: {
+        Row: {
+          createdAt: string
+          data: Json
+          date: string
+          id: string
+          keywords: string[]
+          tenant_id: string | null
+          topMatch: string
+          updatedAt: string
+          userId: string
+        }
+        Insert: {
+          createdAt?: string
+          data?: Json
+          date?: string
+          id?: string
+          keywords?: string[]
+          tenant_id?: string | null
+          topMatch?: string
+          updatedAt?: string
+          userId: string
+        }
+        Update: {
+          createdAt?: string
+          data?: Json
+          date?: string
+          id?: string
+          keywords?: string[]
+          tenant_id?: string | null
+          topMatch?: string
+          updatedAt?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_history_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_history_userId_fkey"
+            columns: ["userId"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          approved: boolean
+          comment: string
+          createdAt: string
+          data: Json
+          id: string
+          productId: string
+          rating: number
+          status: string
+          tenant_id: string | null
+          updatedAt: string
+          userAvatar: string | null
+          userId: string
+          userName: string
+        }
+        Insert: {
+          approved?: boolean
+          comment?: string
+          createdAt?: string
+          data?: Json
+          id?: string
+          productId: string
+          rating: number
+          status?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userAvatar?: string | null
+          userId: string
+          userName?: string
+        }
+        Update: {
+          approved?: boolean
+          comment?: string
+          createdAt?: string
+          data?: Json
+          id?: string
+          productId?: string
+          rating?: number
+          status?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userAvatar?: string | null
+          userId?: string
+          userName?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_productId_fkey"
+            columns: ["productId"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scans: {
+        Row: {
+          cupom: string | null
+          data: string | null
+          empresa: string
+          empresaId: string
+          extra: Json
+          hora: string | null
+          id: string
+          tenant_id: string | null
+          timestamp: string
+          userId: string | null
+          usuario: string
+          valorEconomizado: string | null
+        }
+        Insert: {
+          cupom?: string | null
+          data?: string | null
+          empresa?: string
+          empresaId: string
+          extra?: Json
+          hora?: string | null
+          id?: string
+          tenant_id?: string | null
+          timestamp?: string
+          userId?: string | null
+          usuario?: string
+          valorEconomizado?: string | null
+        }
+        Update: {
+          cupom?: string | null
+          data?: string | null
+          empresa?: string
+          empresaId?: string
+          extra?: Json
+          hora?: string | null
+          id?: string
+          tenant_id?: string | null
+          timestamp?: string
+          userId?: string | null
+          usuario?: string
+          valorEconomizado?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scans_empresaId_fkey"
+            columns: ["empresaId"]
+            isOneToOne: false
+            referencedRelation: "parceiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scans_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          createdAt: string
+          data: Json
+          id: string
+          modalidades: string[]
+          tenant_id: string | null
+          updatedAt: string
+        }
+        Insert: {
+          createdAt?: string
+          data?: Json
+          id: string
+          modalidades?: string[]
+          tenant_id?: string | null
+          updatedAt?: string
+        }
+        Update: {
+          createdAt?: string
+          data?: Json
+          id?: string
+          modalidades?: string[]
+          tenant_id?: string | null
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settings_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_config: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_config_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solicitacoes_adesao: {
+        Row: {
+          comprovanteUrl: string | null
+          data: Json
+          dataSolicitacao: string
+          id: string
+          metodo: string
+          planoId: string
+          planoNome: string
+          status: string
+          tenant_id: string | null
+          updatedAt: string
+          userId: string
+          userName: string
+          userTurma: string
+          valor: number
+        }
+        Insert: {
+          comprovanteUrl?: string | null
+          data?: Json
+          dataSolicitacao?: string
+          id?: string
+          metodo?: string
+          planoId: string
+          planoNome?: string
+          status?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userId: string
+          userName?: string
+          userTurma?: string
+          valor?: number
+        }
+        Update: {
+          comprovanteUrl?: string | null
+          data?: Json
+          dataSolicitacao?: string
+          id?: string
+          metodo?: string
+          planoId?: string
+          planoNome?: string
+          status?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userId?: string
+          userName?: string
+          userTurma?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_adesao_planoId_fkey"
+            columns: ["planoId"]
+            isOneToOne: false
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_adesao_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solicitacoes_ingressos: {
+        Row: {
+          aprovadoPor: string | null
+          data: Json
+          dataAprovacao: string | null
+          dataSolicitacao: string
+          eventoId: string
+          eventoNome: string
+          id: string
+          loteId: string
+          loteNome: string
+          metodo: string
+          payment_config: Json | null
+          quantidade: number
+          status: string
+          tenant_id: string | null
+          userId: string
+          userName: string
+          userPhone: string | null
+          userTurma: string
+          valorTotal: string
+          valorUnitario: string
+        }
+        Insert: {
+          aprovadoPor?: string | null
+          data?: Json
+          dataAprovacao?: string | null
+          dataSolicitacao?: string
+          eventoId: string
+          eventoNome?: string
+          id?: string
+          loteId: string
+          loteNome?: string
+          metodo?: string
+          payment_config?: Json | null
+          quantidade?: number
+          status?: string
+          tenant_id?: string | null
+          userId: string
+          userName?: string
+          userPhone?: string | null
+          userTurma?: string
+          valorTotal?: string
+          valorUnitario?: string
+        }
+        Update: {
+          aprovadoPor?: string | null
+          data?: Json
+          dataAprovacao?: string | null
+          dataSolicitacao?: string
+          eventoId?: string
+          eventoNome?: string
+          id?: string
+          loteId?: string
+          loteNome?: string
+          metodo?: string
+          payment_config?: Json | null
+          quantidade?: number
+          status?: string
+          tenant_id?: string | null
+          userId?: string
+          userName?: string
+          userPhone?: string | null
+          userTurma?: string
+          valorTotal?: string
+          valorUnitario?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_ingressos_eventoId_fkey"
+            columns: ["eventoId"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_ingressos_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_redemptions: {
+        Row: {
+          cost: number
+          createdAt: string
+          data: Json
+          id: string
+          rewardId: string | null
+          rewardTitle: string
+          status: string
+          tenant_id: string | null
+          updatedAt: string
+          userId: string
+          userName: string
+        }
+        Insert: {
+          cost?: number
+          createdAt?: string
+          data?: Json
+          id?: string
+          rewardId?: string | null
+          rewardTitle?: string
+          status?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userId: string
+          userName?: string
+        }
+        Update: {
+          cost?: number
+          createdAt?: string
+          data?: Json
+          id?: string
+          rewardId?: string | null
+          rewardTitle?: string
+          status?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userId?: string
+          userName?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_redemptions_rewardId_fkey"
+            columns: ["rewardId"]
+            isOneToOne: false
+            referencedRelation: "store_rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_redemptions_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_rewards: {
+        Row: {
+          active: boolean
+          cost: number
+          createdAt: string
+          data: Json
+          id: string
+          image: string | null
+          stock: number
+          tenant_id: string | null
+          title: string
+          updatedAt: string
+        }
+        Insert: {
+          active?: boolean
+          cost?: number
+          createdAt?: string
+          data?: Json
+          id?: string
+          image?: string | null
+          stock?: number
+          tenant_id?: string | null
+          title?: string
+          updatedAt?: string
+        }
+        Update: {
+          active?: boolean
+          cost?: number
+          createdAt?: string
+          data?: Json
+          id?: string
+          image?: string | null
+          stock?: number
+          tenant_id?: string | null
+          title?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_rewards_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_requests: {
+        Row: {
+          category: string
+          createdAt: string
+          createdAtMs: number
+          data: Json
+          id: string
+          message: string
+          module: string | null
+          readByAdmin: boolean
+          resolvedAt: string | null
+          response: string | null
+          status: string
+          subject: string
+          tenant_id: string | null
+          updatedAt: string
+          userEmail: string | null
+          userId: string
+          userName: string
+        }
+        Insert: {
+          category?: string
+          createdAt?: string
+          createdAtMs?: number
+          data?: Json
+          id?: string
+          message?: string
+          module?: string | null
+          readByAdmin?: boolean
+          resolvedAt?: string | null
+          response?: string | null
+          status?: string
+          subject?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userEmail?: string | null
+          userId: string
+          userName?: string
+        }
+        Update: {
+          category?: string
+          createdAt?: string
+          createdAtMs?: number
+          data?: Json
+          id?: string
+          message?: string
+          module?: string | null
+          readByAdmin?: boolean
+          resolvedAt?: string | null
+          response?: string | null
+          status?: string
+          subject?: string
+          tenant_id?: string | null
+          updatedAt?: string
+          userEmail?: string | null
+          userId?: string
+          userName?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_requests_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_invites: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number
+          requires_approval: boolean
+          role_to_assign: string
+          tenant_id: string
+          token: string
+          updated_at: string
+          uses_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number
+          requires_approval?: boolean
+          role_to_assign?: string
+          tenant_id: string
+          token: string
+          updated_at?: string
+          uses_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number
+          requires_approval?: boolean
+          role_to_assign?: string
+          tenant_id?: string
+          token?: string
+          updated_at?: string
+          uses_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "tenant_invites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_join_requests: {
+        Row: {
+          approved_role: string | null
+          created_at: string
+          id: string
+          invite_id: string | null
+          rejection_reason: string | null
+          requested_at: string
+          requested_role: string
+          requester_user_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          approved_role?: string | null
+          created_at?: string
+          id?: string
+          invite_id?: string | null
+          rejection_reason?: string | null
+          requested_at?: string
+          requested_role?: string
+          requester_user_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          approved_role?: string | null
+          created_at?: string
+          id?: string
+          invite_id?: string | null
+          rejection_reason?: string | null
+          requested_at?: string
+          requested_role?: string
+          requester_user_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_join_requests_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_invites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_join_requests_requester_user_id_fkey"
+            columns: ["requester_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "tenant_join_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "tenant_join_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_memberships: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          invited_by: string | null
+          role: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_memberships_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "tenant_memberships_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "tenant_memberships_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_memberships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      tenant_onboarding_requests: {
+        Row: {
+          allow_public_signup: boolean
+          approved_tenant_id: string | null
+          area: string | null
+          cidade: string | null
+          cnpj: string | null
+          contato_email: string | null
+          contato_telefone: string | null
+          created_at: string
+          curso: string | null
+          faculdade: string
+          id: string
+          logo_url: string | null
+          nome: string
+          palette_key: string
+          rejection_reason: string | null
+          requester_user_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sigla: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          allow_public_signup?: boolean
+          approved_tenant_id?: string | null
+          area?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          contato_email?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          curso?: string | null
+          faculdade: string
+          id?: string
+          logo_url?: string | null
+          nome: string
+          palette_key?: string
+          rejection_reason?: string | null
+          requester_user_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sigla: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          allow_public_signup?: boolean
+          approved_tenant_id?: string | null
+          area?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          contato_email?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          curso?: string | null
+          faculdade?: string
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          palette_key?: string
+          rejection_reason?: string | null
+          requester_user_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sigla?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_onboarding_requests_approved_tenant_id_fkey"
+            columns: ["approved_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_onboarding_requests_requester_user_id_fkey"
+            columns: ["requester_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "tenant_onboarding_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      tenant_platform_config: {
+        Row: {
+          created_at: string
+          id: string
+          tokenization_active: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tokenization_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tokenization_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_platform_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          allow_public_signup: boolean
+          area: string | null
+          cidade: string | null
+          cnpj: string | null
+          contato_email: string | null
+          contato_telefone: string | null
+          created_at: string
+          created_by: string | null
+          curso: string | null
+          faculdade: string
+          id: string
+          logo_url: string | null
+          nome: string
+          palette_key: string
+          sigla: string
+          slug: string
+          status: string
+          updated_at: string
+          visible_in_directory: boolean
+        }
+        Insert: {
+          allow_public_signup?: boolean
+          area?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          contato_email?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          curso?: string | null
+          faculdade: string
+          id?: string
+          logo_url?: string | null
+          nome: string
+          palette_key?: string
+          sigla: string
+          slug: string
+          status?: string
+          updated_at?: string
+          visible_in_directory?: boolean
+        }
+        Update: {
+          allow_public_signup?: boolean
+          area?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          contato_email?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          curso?: string | null
+          faculdade?: string
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          palette_key?: string
+          sigla?: string
+          slug?: string
+          status?: string
+          updated_at?: string
+          visible_in_directory?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenants_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      treinos: {
+        Row: {
+          confirmados: string[]
+          createdAt: string
+          data: Json
+          descricao: string | null
+          dia: string
+          diaSemana: string | null
+          horario: string
+          id: string
+          imagem: string | null
+          local: string
+          modalidade: string
+          ordemDia: number
+          status: string
+          tenant_id: string | null
+          treinador: string
+          treinadorAvatar: string | null
+          treinadorId: string | null
+          updatedAt: string
+        }
+        Insert: {
+          confirmados?: string[]
+          createdAt?: string
+          data?: Json
+          descricao?: string | null
+          dia: string
+          diaSemana?: string | null
+          horario: string
+          id?: string
+          imagem?: string | null
+          local?: string
+          modalidade: string
+          ordemDia?: number
+          status?: string
+          tenant_id?: string | null
+          treinador?: string
+          treinadorAvatar?: string | null
+          treinadorId?: string | null
+          updatedAt?: string
+        }
+        Update: {
+          confirmados?: string[]
+          createdAt?: string
+          data?: Json
+          descricao?: string | null
+          dia?: string
+          diaSemana?: string | null
+          horario?: string
+          id?: string
+          imagem?: string | null
+          local?: string
+          modalidade?: string
+          ordemDia?: number
+          status?: string
+          tenant_id?: string | null
+          treinador?: string
+          treinadorAvatar?: string | null
+          treinadorId?: string | null
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treinos_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treinos_chamada: {
+        Row: {
+          avatar: string
+          id: string
+          nome: string
+          origem: string
+          pagamento: string | null
+          status: string
+          tenant_id: string | null
+          timestamp: string
+          treinoId: string
+          turma: string
+          updatedAt: string
+          userId: string
+        }
+        Insert: {
+          avatar?: string
+          id?: string
+          nome?: string
+          origem: string
+          pagamento?: string | null
+          status: string
+          tenant_id?: string | null
+          timestamp?: string
+          treinoId: string
+          turma?: string
+          updatedAt?: string
+          userId: string
+        }
+        Update: {
+          avatar?: string
+          id?: string
+          nome?: string
+          origem?: string
+          pagamento?: string | null
+          status?: string
+          tenant_id?: string | null
+          timestamp?: string
+          treinoId?: string
+          turma?: string
+          updatedAt?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treinos_chamada_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treinos_chamada_treinoId_fkey"
+            columns: ["treinoId"]
+            isOneToOne: false
+            referencedRelation: "treinos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treinos_rsvps: {
+        Row: {
+          id: string
+          status: string
+          tenant_id: string | null
+          timestamp: string
+          treinoId: string
+          userAvatar: string
+          userId: string
+          userName: string
+          userTurma: string
+        }
+        Insert: {
+          id?: string
+          status: string
+          tenant_id?: string | null
+          timestamp?: string
+          treinoId: string
+          userAvatar?: string
+          userId: string
+          userName?: string
+          userTurma?: string
+        }
+        Update: {
+          id?: string
+          status?: string
+          tenant_id?: string | null
+          timestamp?: string
+          treinoId?: string
+          userAvatar?: string
+          userId?: string
+          userName?: string
+          userTurma?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treinos_rsvps_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treinos_rsvps_treinoId_fkey"
+            columns: ["treinoId"]
+            isOneToOne: false
+            referencedRelation: "treinos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          apelido: string | null
+          bio: string | null
+          capa: string | null
+          cidadeOrigem: string | null
+          createdAt: string
+          data_adesao: string | null
+          dataNascimento: string | null
+          desconto_loja: number
+          email: string | null
+          esportes: string[]
+          estadoOrigem: string | null
+          extra: Json
+          foto: string | null
+          idadePublica: boolean
+          instagram: string | null
+          invited_by: string | null
+          isAnonymous: boolean
+          level: number
+          matricula: string | null
+          nivel_prioridade: number
+          nome: string
+          patente: string | null
+          patente_cor: string | null
+          patente_icon: string | null
+          pets: string | null
+          plano: string
+          plano_badge: string | null
+          plano_cor: string
+          plano_icon: string
+          plano_status: string | null
+          relacionamentoPublico: boolean
+          role: string
+          selos: number
+          sharkCoins: number
+          stats: Json
+          status: string
+          statusRelacionamento: string | null
+          telefone: string | null
+          tenant_id: string | null
+          tenant_role: string | null
+          tenant_status: string | null
+          tier: string
+          turma: string | null
+          uid: string
+          ultimoLoginDiario: string | null
+          updatedAt: string
+          whatsappPublico: boolean
+          xp: number
+          xpMultiplier: number
+        }
+        Insert: {
+          apelido?: string | null
+          bio?: string | null
+          capa?: string | null
+          cidadeOrigem?: string | null
+          createdAt?: string
+          data_adesao?: string | null
+          dataNascimento?: string | null
+          desconto_loja?: number
+          email?: string | null
+          esportes?: string[]
+          estadoOrigem?: string | null
+          extra?: Json
+          foto?: string | null
+          idadePublica?: boolean
+          instagram?: string | null
+          invited_by?: string | null
+          isAnonymous?: boolean
+          level?: number
+          matricula?: string | null
+          nivel_prioridade?: number
+          nome?: string
+          patente?: string | null
+          patente_cor?: string | null
+          patente_icon?: string | null
+          pets?: string | null
+          plano?: string
+          plano_badge?: string | null
+          plano_cor?: string
+          plano_icon?: string
+          plano_status?: string | null
+          relacionamentoPublico?: boolean
+          role?: string
+          selos?: number
+          sharkCoins?: number
+          stats?: Json
+          status?: string
+          statusRelacionamento?: string | null
+          telefone?: string | null
+          tenant_id?: string | null
+          tenant_role?: string | null
+          tenant_status?: string | null
+          tier?: string
+          turma?: string | null
+          uid: string
+          ultimoLoginDiario?: string | null
+          updatedAt?: string
+          whatsappPublico?: boolean
+          xp?: number
+          xpMultiplier?: number
+        }
+        Update: {
+          apelido?: string | null
+          bio?: string | null
+          capa?: string | null
+          cidadeOrigem?: string | null
+          createdAt?: string
+          data_adesao?: string | null
+          dataNascimento?: string | null
+          desconto_loja?: number
+          email?: string | null
+          esportes?: string[]
+          estadoOrigem?: string | null
+          extra?: Json
+          foto?: string | null
+          idadePublica?: boolean
+          instagram?: string | null
+          invited_by?: string | null
+          isAnonymous?: boolean
+          level?: number
+          matricula?: string | null
+          nivel_prioridade?: number
+          nome?: string
+          patente?: string | null
+          patente_cor?: string | null
+          patente_icon?: string | null
+          pets?: string | null
+          plano?: string
+          plano_badge?: string | null
+          plano_cor?: string
+          plano_icon?: string
+          plano_status?: string | null
+          relacionamentoPublico?: boolean
+          role?: string
+          selos?: number
+          sharkCoins?: number
+          stats?: Json
+          status?: string
+          statusRelacionamento?: string | null
+          telefone?: string | null
+          tenant_id?: string | null
+          tenant_role?: string | null
+          tenant_status?: string | null
+          tier?: string
+          turma?: string | null
+          uid?: string
+          ultimoLoginDiario?: string | null
+          updatedAt?: string
+          whatsappPublico?: boolean
+          xp?: number
+          xpMultiplier?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_invited_by_fk"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "users_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users_followers: {
+        Row: {
+          followedAt: string
+          foto: string
+          id: string
+          nome: string
+          tenant_id: string | null
+          turma: string
+          uid: string
+          userId: string
+        }
+        Insert: {
+          followedAt?: string
+          foto?: string
+          id?: string
+          nome?: string
+          tenant_id?: string | null
+          turma?: string
+          uid: string
+          userId: string
+        }
+        Update: {
+          followedAt?: string
+          foto?: string
+          id?: string
+          nome?: string
+          tenant_id?: string | null
+          turma?: string
+          uid?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_followers_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users_following: {
+        Row: {
+          followedAt: string
+          foto: string
+          id: string
+          nome: string
+          tenant_id: string | null
+          turma: string
+          uid: string
+          userId: string
+        }
+        Insert: {
+          followedAt?: string
+          foto?: string
+          id?: string
+          nome?: string
+          tenant_id?: string | null
+          turma?: string
+          uid: string
+          userId: string
+        }
+        Update: {
+          followedAt?: string
+          foto?: string
+          id?: string
+          nome?: string
+          tenant_id?: string | null
+          turma?: string
+          uid?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_following_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      pedidos_loja: {
+        Row: {
+          approvedBy: string | null
+          createdAt: string | null
+          data: Json | null
+          id: string | null
+          itens: number | null
+          price: number | null
+          productId: string | null
+          productName: string | null
+          quantidade: number | null
+          status: string | null
+          total: number | null
+          updatedAt: string | null
+          userId: string | null
+          userName: string | null
+        }
+        Insert: {
+          approvedBy?: string | null
+          createdAt?: string | null
+          data?: Json | null
+          id?: string | null
+          itens?: number | null
+          price?: number | null
+          productId?: string | null
+          productName?: string | null
+          quantidade?: number | null
+          status?: string | null
+          total?: number | null
+          updatedAt?: string | null
+          userId?: string | null
+          userName?: string | null
+        }
+        Update: {
+          approvedBy?: string | null
+          createdAt?: string | null
+          data?: Json | null
+          id?: string | null
+          itens?: number | null
+          price?: number | null
+          productId?: string | null
+          productName?: string | null
+          quantidade?: number | null
+          status?: string | null
+          total?: number | null
+          updatedAt?: string | null
+          userId?: string | null
+          userName?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_productId_fkey"
+            columns: ["productId"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_orders: {
+        Row: {
+          approvedBy: string | null
+          createdAt: string | null
+          data: Json | null
+          id: string | null
+          itens: number | null
+          price: number | null
+          productId: string | null
+          productName: string | null
+          quantidade: number | null
+          status: string | null
+          total: number | null
+          updatedAt: string | null
+          userId: string | null
+          userName: string | null
+        }
+        Insert: {
+          approvedBy?: string | null
+          createdAt?: string | null
+          data?: Json | null
+          id?: string | null
+          itens?: number | null
+          price?: number | null
+          productId?: string | null
+          productName?: string | null
+          quantidade?: number | null
+          status?: string | null
+          total?: number | null
+          updatedAt?: string | null
+          userId?: string | null
+          userName?: string | null
+        }
+        Update: {
+          approvedBy?: string | null
+          createdAt?: string | null
+          data?: Json | null
+          id?: string | null
+          itens?: number | null
+          price?: number | null
+          productId?: string | null
+          productName?: string | null
+          quantidade?: number | null
+          status?: string | null
+          total?: number | null
+          updatedAt?: string | null
+          userId?: string | null
+          userName?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_productId_fkey"
+            columns: ["productId"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Functions: {
+      admin_event_presence_page: {
+        Args: { p_event_id: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          aprovadoPor: string
+          dataAprovacao: string
+          id: string
+          lote: string
+          pagamento: string
+          quantidade: number
+          rsvpStatus: string
+          ticketRequestId: string
+          userAvatar: string
+          userId: string
+          userName: string
+          userTurma: string
+          valorTotal: string
+        }[]
+      }
+      admin_partner_counts_bundle: {
+        Args: { p_tenant_id?: string }
+        Returns: Json
+      }
+      admin_partner_page_bundle: {
+        Args: {
+          p_cursor_id?: string
+          p_limit?: number
+          p_status?: string
+          p_tenant_id?: string
+          p_view?: string
+        }
+        Returns: Json
+      }
+      community_category_counts_bundle: {
+        Args: {
+          p_categories?: string[]
+          p_include_blocked?: boolean
+          p_recent_window_days?: number
+          p_tenant_id?: string
+          p_unread_since_days?: number
+          p_user_id?: string
+        }
+        Returns: Json
+      }
+      dashboard_public_home_bundle: {
+        Args: {
+          p_reference_date?: string
+          p_tenant_id?: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
+      dashboard_total_caca_calouros:
+        | { Args: never; Returns: number }
+        | { Args: { p_tenant_id?: string }; Returns: number }
+      mt_build_invite_token: { Args: never; Returns: string }
+      mt_can_access_tenant_row: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
+      mt_can_manage_tenant: {
+        Args: { target_tenant: string }
+        Returns: boolean
+      }
+      mt_current_tenant_id: { Args: never; Returns: string }
+      mt_extract_tenant_id_from_scoped_text_id: {
+        Args: { p_id: string }
+        Returns: string
+      }
+      mt_is_platform_master: { Args: never; Returns: boolean }
+      mt_parse_day_end: { Args: { p_value: string }; Returns: string }
+      mt_parse_event_datetime: {
+        Args: { p_date: string; p_time?: string }
+        Returns: string
+      }
+      mt_parse_local_date_text: { Args: { p_value: string }; Returns: string }
+      mt_safe_timestamptz: { Args: { p_value: string }; Returns: string }
+      mt_seed_new_tenant_bootstrap: {
+        Args: {
+          p_contato_email?: string
+          p_contato_telefone?: string
+          p_tenant_id: string
+          p_tenant_nome?: string
+          p_tenant_sigla?: string
+        }
+        Returns: undefined
+      }
+      profile_follow_list_page: {
+        Args: {
+          p_cursor_followed_at?: string
+          p_cursor_uid?: string
+          p_limit?: number
+          p_list_type?: string
+          p_target_user_id?: string
+          p_tenant_id?: string
+        }
+        Returns: Json
+      }
+      profile_public_bundle: {
+        Args: {
+          p_events_limit?: number
+          p_ligas_limit?: number
+          p_posts_limit?: number
+          p_target_user_id?: string
+          p_tenant_id?: string
+          p_treinos_limit?: number
+          p_viewer_user_id?: string
+        }
+        Returns: Json
+      }
+      public_partner_list_bundle: {
+        Args: { p_limit?: number; p_tenant_id?: string }
+        Returns: Json
+      }
+      tenant_approve_join_request: {
+        Args: { p_approved_role?: string; p_request_id: string }
+        Returns: undefined
+      }
+      tenant_approve_onboarding_request: {
+        Args: { p_request_id: string }
+        Returns: string
+      }
+      tenant_create_invite: {
+        Args: {
+          p_expires_in_hours?: number
+          p_max_uses?: number
+          p_requires_approval?: boolean
+          p_role_to_assign?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          expires_at: string
+          invite_id: string
+          token: string
+        }[]
+      }
+      tenant_create_member_invite: {
+        Args: {
+          p_expires_in_hours?: number
+          p_max_uses?: number
+          p_tenant_id: string
+        }
+        Returns: {
+          expires_at: string
+          invite_id: string
+          token: string
+        }[]
+      }
+      tenant_create_with_master:
+        | {
+            Args: {
+              p_allow_public_signup?: boolean
+              p_area?: string
+              p_cidade?: string
+              p_cnpj?: string
+              p_contato_email?: string
+              p_contato_telefone?: string
+              p_curso?: string
+              p_faculdade?: string
+              p_logo_url?: string
+              p_nome: string
+              p_palette_key?: string
+              p_sigla: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_allow_public_signup?: boolean
+              p_area?: string
+              p_cidade?: string
+              p_cnpj?: string
+              p_curso?: string
+              p_faculdade?: string
+              p_logo_url?: string
+              p_nome: string
+              p_palette_key?: string
+              p_sigla: string
+            }
+            Returns: string
+          }
+      tenant_invite_activation_ranking: {
+        Args: { p_limit?: number; p_tenant_id: string }
+        Returns: {
+          approved_count: number
+          inviter_user_id: string
+          last_activation_at: string
+          pending_count: number
+          total_count: number
+        }[]
+      }
+      tenant_reject_join_request: {
+        Args: { p_reason?: string; p_request_id: string }
+        Returns: undefined
+      }
+      tenant_reject_onboarding_request: {
+        Args: { p_reason?: string; p_request_id: string }
+        Returns: undefined
+      }
+      tenant_request_join_manual: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
+      tenant_request_join_with_invite: {
+        Args: { p_token: string }
+        Returns: string
+      }
+      tenant_set_launch_tokenization: {
+        Args: { p_active: boolean }
+        Returns: undefined
+      }
+      tenant_submit_onboarding_request:
+        | {
+            Args: {
+              p_allow_public_signup?: boolean
+              p_area?: string
+              p_cidade?: string
+              p_cnpj?: string
+              p_contato_email?: string
+              p_contato_telefone?: string
+              p_curso?: string
+              p_faculdade?: string
+              p_logo_url?: string
+              p_nome: string
+              p_palette_key?: string
+              p_sigla: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_allow_public_signup?: boolean
+              p_area?: string
+              p_cidade?: string
+              p_cnpj?: string
+              p_curso?: string
+              p_faculdade?: string
+              p_logo_url?: string
+              p_nome: string
+              p_palette_key?: string
+              p_sigla: string
+            }
+            Returns: string
+          }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
