@@ -7,10 +7,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.usc1.core.ui.ModulePlaceholderScreen
+import com.example.usc1.data.repository.MockEventsRepository
 import com.example.usc1.domain.model.AppModules
 import com.example.usc1.ui.auth.AccountSecurityScreen
 import com.example.usc1.ui.auth.AuthViewModel
@@ -19,15 +22,29 @@ import com.example.usc1.ui.auth.InviteRequiredScreen
 import com.example.usc1.ui.auth.LoginScreen
 import com.example.usc1.ui.auth.RegisterScreen
 import com.example.usc1.ui.auth.WaitingApprovalScreen
+import com.example.usc1.ui.events.EventCheckoutScreen
+import com.example.usc1.ui.events.EventCheckoutUiState
+import com.example.usc1.ui.events.EventDetailScreen
+import com.example.usc1.ui.events.EventDetailViewModel
+import com.example.usc1.ui.events.EventsScreen
+import com.example.usc1.ui.events.EventsViewModel
 import com.example.usc1.ui.home.HomeScreen
 import com.example.usc1.ui.home.HomeViewModel
 import com.example.usc1.ui.membershipCard.MembershipCardScreen
 import com.example.usc1.ui.membershipCard.MembershipCardViewModel
+import com.example.usc1.ui.orders.EventOrderDetailScreen
+import com.example.usc1.ui.orders.EventOrderDetailViewModel
+import com.example.usc1.ui.orders.EventOrdersScreen
+import com.example.usc1.ui.orders.EventOrdersViewModel
 import com.example.usc1.ui.profile.ProfileScreen
 import com.example.usc1.ui.profile.ProfileViewModel
 import com.example.usc1.ui.settings.SettingsAction
 import com.example.usc1.ui.settings.SettingsScreen
 import com.example.usc1.ui.settings.SettingsViewModel
+import com.example.usc1.ui.tickets.EventTicketDetailScreen
+import com.example.usc1.ui.tickets.EventTicketDetailViewModel
+import com.example.usc1.ui.tickets.EventTicketsScreen
+import com.example.usc1.ui.tickets.EventTicketsViewModel
 
 @Composable
 fun UscNavGraph() {
@@ -39,6 +56,7 @@ fun UscNavGraph() {
             AppRoute.Profile,
             AppRoute.Settings,
             AppRoute.MembershipCard,
+            AppRoute.Events,
         )
     }
     val authViewModel: AuthViewModel = viewModel()
@@ -167,6 +185,146 @@ fun UscNavGraph() {
             MembershipCardScreen(
                 state = membershipCardState,
                 onRefreshClick = membershipCardViewModel::refresh,
+                onBackClick = { navController.navigateUp() },
+            )
+        }
+
+        composable(AppRoute.Events) {
+            val eventsViewModel: EventsViewModel = viewModel()
+            val eventsState by eventsViewModel.uiState.collectAsState()
+
+            EventsScreen(
+                state = eventsState,
+                onEventClick = { event ->
+                    navController.navigate(AppRoute.eventDetail(event.id)) {
+                        launchSingleTop = true
+                    }
+                },
+                onStatusFilterClick = eventsViewModel::loadEvents,
+                onTicketsClick = {
+                    navController.navigate(AppRoute.EventTickets) {
+                        launchSingleTop = true
+                    }
+                },
+                onOrdersClick = {
+                    navController.navigate(AppRoute.EventOrders) {
+                        launchSingleTop = true
+                    }
+                },
+                onRetryClick = { eventsViewModel.loadEvents() },
+            )
+        }
+
+        composable(
+            route = AppRoute.EventDetail,
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
+            val eventDetailViewModel: EventDetailViewModel = viewModel()
+            val eventDetailState by eventDetailViewModel.uiState.collectAsState()
+
+            LaunchedEffect(eventId) {
+                eventDetailViewModel.loadEvent(eventId)
+            }
+
+            EventDetailScreen(
+                state = eventDetailState,
+                onCheckoutClick = { event ->
+                    navController.navigate(AppRoute.eventCheckout(event.id)) {
+                        launchSingleTop = true
+                    }
+                },
+                onTicketsClick = {
+                    navController.navigate(AppRoute.EventTickets) {
+                        launchSingleTop = true
+                    }
+                },
+                onBackClick = { navController.navigateUp() },
+            )
+        }
+
+        composable(
+            route = AppRoute.EventCheckout,
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
+            val event = remember(eventId) {
+                MockEventsRepository.mockEvents.firstOrNull { it.id == eventId }
+                    ?: MockEventsRepository.mockEvents.first()
+            }
+
+            EventCheckoutScreen(
+                state = EventCheckoutUiState(event = event),
+                onConfirmClick = {
+                    navController.navigate(AppRoute.EventOrders) {
+                        launchSingleTop = true
+                    }
+                },
+                onBackClick = { navController.navigateUp() },
+            )
+        }
+
+        composable(AppRoute.EventTickets) {
+            val ticketsViewModel: EventTicketsViewModel = viewModel()
+            val ticketsState by ticketsViewModel.uiState.collectAsState()
+
+            EventTicketsScreen(
+                state = ticketsState,
+                onTicketClick = { ticket ->
+                    navController.navigate(AppRoute.eventTicketDetail(ticket.id)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+
+        composable(
+            route = AppRoute.EventTicketDetail,
+            arguments = listOf(navArgument("ticketId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val ticketId = backStackEntry.arguments?.getString("ticketId").orEmpty()
+            val ticketDetailViewModel: EventTicketDetailViewModel = viewModel()
+            val ticketDetailState by ticketDetailViewModel.uiState.collectAsState()
+
+            LaunchedEffect(ticketId) {
+                ticketDetailViewModel.loadTicket(ticketId)
+            }
+
+            EventTicketDetailScreen(
+                state = ticketDetailState,
+                onTransferClick = {},
+                onBackClick = { navController.navigateUp() },
+            )
+        }
+
+        composable(AppRoute.EventOrders) {
+            val ordersViewModel: EventOrdersViewModel = viewModel()
+            val ordersState by ordersViewModel.uiState.collectAsState()
+
+            EventOrdersScreen(
+                state = ordersState,
+                onOrderClick = { order ->
+                    navController.navigate(AppRoute.eventOrderDetail(order.id)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+
+        composable(
+            route = AppRoute.EventOrderDetail,
+            arguments = listOf(navArgument("orderId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId").orEmpty()
+            val orderDetailViewModel: EventOrderDetailViewModel = viewModel()
+            val orderDetailState by orderDetailViewModel.uiState.collectAsState()
+
+            LaunchedEffect(orderId) {
+                orderDetailViewModel.loadOrder(orderId)
+            }
+
+            EventOrderDetailScreen(
+                state = orderDetailState,
                 onBackClick = { navController.navigateUp() },
             )
         }

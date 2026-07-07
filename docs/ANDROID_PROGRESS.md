@@ -62,11 +62,77 @@
   - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
 - Commit local: `Add home profile settings and membership card screens`.
 
+## Fase 5 - Eventos, Ingressos, QR e Pedidos
+
+- Modelos de domínio criados:
+  - `Event`
+  - `EventStatus`
+  - `EventProduct`
+  - `EventTicket`
+  - `TicketStatus`
+  - `EventOrder`
+  - `OrderStatus`
+  - `PaymentStatus`
+- Interfaces preparadas:
+  - `EventsRepository`
+  - `EventTicketsRepository`
+  - `EventOrdersRepository`
+- Repositórios mockados criados:
+  - `MockEventsRepository`
+  - `MockEventTicketsRepository`
+  - `MockEventOrdersRepository`
+- Telas nativas criadas:
+  - `EventsScreen`
+  - `EventDetailScreen`
+  - `EventCheckoutScreen`
+  - `EventTicketsScreen`
+  - `EventTicketDetailScreen`
+  - `EventOrdersScreen`
+  - `EventOrderDetailScreen`
+- Componentes criados:
+  - `EventCard`
+  - `EventStatusChip`
+  - `EventCover`
+  - `TicketCard`
+  - `TicketQrPlaceholder`
+  - `TicketStatusChip`
+  - `EventOrderCard`
+  - `OrderStatusChip`
+- ViewModels e estados adicionados:
+  - `EventsViewModel`
+  - `EventDetailViewModel`
+  - `EventsUiState`
+  - `EventDetailUiState`
+  - `EventCheckoutUiState`
+  - `EventTicketsViewModel`
+  - `EventTicketDetailViewModel`
+  - `EventTicketsUiState`
+  - `EventTicketDetailUiState`
+  - `EventOrdersViewModel`
+  - `EventOrderDetailViewModel`
+  - `EventOrdersUiState`
+  - `EventOrderDetailUiState`
+- Navigation Compose integrado para lista, detalhe, checkout, ingressos, detalhe de ingresso, pedidos e detalhe de pedido.
+- Previews criados:
+  - `EventsScreenPreview`
+  - `EventsScreenLoadingPreview`
+  - `EventsScreenEmptyPreview`
+  - `EventDetailScreenPreview`
+  - `EventTicketsScreenPreview`
+  - `EventTicketDetailScreenPreview`
+  - `EventOrdersScreenPreview`
+  - `EventOrderDetailScreenPreview`
+  - `TicketCardPreview`
+  - `EventCardPreview`
+- Validação executada:
+  - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
+  - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
+- Commit local: `Add events tickets QR and event orders screens`.
+
 ## Próximas fases
 
-1. Fase 5: Eventos + Ingressos + QR visual + Pedidos.
-2. Fase 6: Loja + Carrinho + Checkout visual + Pedidos de loja.
-3. Fase 7: Planos + Treinos + Parceiros + Comunidade.
-4. Fase 8: Ligas + Diretório + Comissões + Tenant.
-5. Fase 9: Mini-vendor + Modo vendas + Scanner/check-in.
-6. Fase 10: Supabase real.
+1. Fase 6: Loja + Carrinho + Checkout visual + Pedidos de loja.
+2. Fase 7: Planos + Treinos + Parceiros + Comunidade.
+3. Fase 8: Ligas + Diretório + Comissões + Tenant.
+4. Fase 9: Mini-vendor + Modo vendas + Scanner/check-in.
+5. Fase 10: Supabase real.
