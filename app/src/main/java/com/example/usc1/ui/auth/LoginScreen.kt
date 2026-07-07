@@ -2,23 +2,24 @@ package com.example.usc1.ui.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.Login
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.outlined.MarkEmailUnread
+import androidx.compose.material.icons.outlined.Password
+import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.usc1.core.ui.PremiumPrimaryButton
+import com.example.usc1.core.ui.PremiumSecondaryButton
+import com.example.usc1.core.ui.PremiumTextField
 import com.example.usc1.ui.theme.UscTheme
 
 @Composable
@@ -32,97 +33,79 @@ fun LoginScreen(
     onMockWaitingClick: () -> Unit,
     onMockInviteClick: () -> Unit,
     onMockBannedClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier,
 ) {
     AuthScreenShell(
         modifier = modifier,
         icon = Icons.Outlined.Login,
-        title = "Entrar na sua atlética",
-        subtitle = "Acesse eventos, loja, carteirinha, treinos e comunidade em uma experiência Android nativa.",
+        title = "Acesso USC",
+        subtitle = "Entre para acessar eventos, carteirinha, loja, treinos e comunidade.",
     ) {
-        OutlinedTextField(
+        PremiumTextField(
             value = state.email,
             onValueChange = onEmailChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("E-mail") },
-            singleLine = true,
+            label = "E-mail",
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            leadingIcon = Icons.Outlined.Email,
         )
-        OutlinedTextField(
+        PremiumTextField(
             value = state.password,
             onValueChange = onPasswordChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Senha") },
-            singleLine = true,
+            label = "Senha",
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            leadingIcon = Icons.Outlined.Password,
         )
 
         state.errorMessage?.let { message ->
             AuthInlineMessage(text = message)
         }
 
-        Button(
+        PremiumPrimaryButton(
+            text = "Entrar",
             onClick = onLoginClick,
-            modifier = Modifier.fillMaxWidth(),
             enabled = state.canSubmitLogin,
-        ) {
-            if (state.isLoading) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Text("Entrar")
-            }
-        }
+            loading = state.isLoading,
+            icon = Icons.Outlined.Login,
+        )
 
-        TextButton(
+        PremiumSecondaryButton(
+            text = "Criar conta",
             onClick = onRegisterClick,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Criar conta")
-        }
+            icon = Icons.Outlined.PersonAdd,
+        )
 
-        TextButton(
+        PremiumSecondaryButton(
+            text = "Segurança da conta",
             onClick = onSecurityClick,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Segurança da conta")
-        }
+            icon = Icons.Outlined.Security,
+        )
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = "Cenários mockados",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedButton(
+            AuthInlineMessage(text = "Cenários mockados para validar RouteGuard sem Supabase real.")
+            PremiumSecondaryButton(
+                text = "Usuário aguardando aprovação",
                 onClick = onMockWaitingClick,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Usuário aguardando aprovação")
-            }
-            OutlinedButton(
+                icon = Icons.Outlined.HourglassTop,
+            )
+            PremiumSecondaryButton(
+                text = "Convite necessário",
                 onClick = onMockInviteClick,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Convite necessário")
-            }
-            OutlinedButton(
+                icon = Icons.Outlined.MarkEmailUnread,
+            )
+            PremiumSecondaryButton(
+                text = "Usuário banido",
                 onClick = onMockBannedClick,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Usuário banido")
-            }
+                icon = Icons.Outlined.Block,
+            )
         }
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF02050D)
 @Composable
 fun LoginScreenPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         LoginScreen(
             state = AuthUiState(
                 email = "membro@usc.app",

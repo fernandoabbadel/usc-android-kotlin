@@ -1,14 +1,14 @@
 package com.example.usc1.ui.auth
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.usc1.core.ui.PremiumPrimaryButton
+import com.example.usc1.core.ui.PremiumSecondaryButton
 import com.example.usc1.ui.theme.UscTheme
 
 @Composable
@@ -21,30 +21,28 @@ fun AccountSecurityScreen(
         modifier = modifier,
         icon = Icons.Outlined.Security,
         title = "Segurança da conta",
-        subtitle = "Recuperação de acesso, validação de sessão e boas práticas antes da integração real com Supabase.",
+        subtitle = "Recuperação de acesso e validação de sessão sem salvar senhas ou segredos no app.",
     ) {
         AuthInlineMessage(
-            text = "Na versão real, a recuperação será feita por fluxo seguro do Supabase Auth. Nenhuma senha ou segredo será salvo no app.",
+            text = "Na versão real, a recuperação será feita por fluxo seguro do Supabase Auth. Nenhuma senha, token ou segredo será salvo no app.",
         )
-        Button(
+        PremiumPrimaryButton(
+            text = "Recuperar acesso",
             onClick = onRecoverAccountClick,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Recuperar acesso")
-        }
-        OutlinedButton(
+            icon = Icons.Outlined.RestartAlt,
+        )
+        PremiumSecondaryButton(
+            text = "Voltar",
             onClick = onBackClick,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Voltar")
-        }
+            icon = Icons.Outlined.ArrowBack,
+        )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF02050D)
 @Composable
 private fun AccountSecurityScreenPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         AccountSecurityScreen(
             onBackClick = {},
             onRecoverAccountClick = {},

@@ -1,5 +1,13 @@
 # Progresso Android USC
 
+## Direção Obrigatória
+
+- Não invente tela. Replique a tela web em Compose.
+- `web-reference` é a fonte visual obrigatória.
+- O Android deve ser nativo em Kotlin/Jetpack Compose.
+- Não usar WebView, wrapper, Supabase real, chaves, tokens, `.env` ou segredos no app.
+- Não fazer push sem ordem explícita.
+
 ## Fase 1 - Fundação Kotlin/Compose
 
 - Kotlin e Jetpack Compose habilitados no projeto Android.
@@ -35,37 +43,14 @@
 
 ## Fase 4 - Home, Perfil, Configurações e Carteirinha
 
-- Home/Dashboard real criado com dados mockados, saudação, tenant, plano, pedidos, atalhos, eventos e módulos principais.
-- `HomeViewModel` e `HomeUiState` adicionados.
-- Componentes reutilizáveis adicionados:
-  - `AppSectionHeader`
-  - `InfoChip`
-  - `QuickActionCard`
-  - `DashboardSummaryCard`
-  - `HomeEventCard`
-  - `HomeModuleCard`
-- Tela de perfil criada com avatar mockado, dados pessoais, curso, turma, tenant, role, status, plano ativo e atalhos.
-- Tela de configurações criada com seções para conta, pedidos, operação, suporte, termos, LGPD e sair da conta.
-- Carteirinha digital nativa criada com dados mockados, status, validade, identificador e QR visual mockado.
-- Navigation Compose atualizado para substituir placeholders por telas reais de Home, Perfil, Configurações e Carteirinha.
-- Placeholders mantidos apenas para módulos de fases futuras.
-- Previews criados:
-  - `HomeScreenPreview`
-  - `HomeScreenLoadingPreview`
-  - `HomeScreenErrorPreview`
-  - `ProfileScreenPreview`
-  - `SettingsScreenPreview`
-  - `MembershipCardScreenPreview`
-  - `MembershipCardPreview`
-- Validação executada:
-  - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
-  - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
-- Commit local: `Add home profile settings and membership card screens`.
+- Home/Dashboard, Perfil, Configurações e Carteirinha criados inicialmente com dados mockados.
+- `HomeViewModel`, `HomeUiState`, `ProfileViewModel`, `SettingsViewModel` e `MembershipCardViewModel` adicionados.
+- Navigation Compose atualizado para substituir placeholders por telas reais.
+- Commit local: `d857d6b Add home profile settings and membership card screens`.
 
-## Fase 4.1 - Correção de paridade visual com o web app
+## Fase 4.1 - Correção de paridade visual da Home
 
 - Implementação de novas funcionalidades pausada para corrigir a direção visual da Home Android.
-- `web-reference` passou a ser a fonte visual obrigatória para a Home/Dashboard nativa.
 - Home refeita para se aproximar da dashboard mobile web:
   - fundo preto premium;
   - identidade neon verde/dourada;
@@ -76,21 +61,8 @@
   - card “Carteirinha” com imagem de fundo e visual premium;
   - card “Caça aos Calouros” com visual de radar neon;
   - bottom navigation flutuante com Início, Eventos, Scanner central, Carteira e Menu.
-- Componentes visuais criados:
-  - `PremiumDashboardCard`
-  - `FloatingBottomNavigation`
-  - `ScannerCenterButton`
-  - `NeonStatusChip`
-  - `DashboardHeader`
-  - `MembershipHomeCard`
-  - `SalesModeCard`
-  - `RadarAlbumCard`
-  - `DashboardSectionTitle`
-- Assets públicos da referência web copiados para `app/src/main/res/drawable-nodpi` para uso nativo em Compose.
-- Regra de direção registrada: “Não invente tela. Replique a tela web em Compose.”
-- Validação executada:
-  - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
-  - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
+- Assets públicos da referência web copiados para `app/src/main/res/drawable-nodpi`.
+- Commit local: `842d5e9 Improve dashboard visual parity with web app`.
 
 ## Fase 5 - Eventos, Ingressos, QR e Pedidos
 
@@ -103,14 +75,7 @@
   - `EventOrder`
   - `OrderStatus`
   - `PaymentStatus`
-- Interfaces preparadas:
-  - `EventsRepository`
-  - `EventTicketsRepository`
-  - `EventOrdersRepository`
-- Repositórios mockados criados:
-  - `MockEventsRepository`
-  - `MockEventTicketsRepository`
-  - `MockEventOrdersRepository`
+- Interfaces e repositórios mockados criados para eventos, ingressos e pedidos.
 - Telas nativas criadas:
   - `EventsScreen`
   - `EventDetailScreen`
@@ -119,50 +84,62 @@
   - `EventTicketDetailScreen`
   - `EventOrdersScreen`
   - `EventOrderDetailScreen`
-- Componentes criados:
-  - `EventCard`
-  - `EventStatusChip`
-  - `EventCover`
-  - `TicketCard`
-  - `TicketQrPlaceholder`
-  - `TicketStatusChip`
-  - `EventOrderCard`
-  - `OrderStatusChip`
-- ViewModels e estados adicionados:
-  - `EventsViewModel`
-  - `EventDetailViewModel`
-  - `EventsUiState`
-  - `EventDetailUiState`
-  - `EventCheckoutUiState`
-  - `EventTicketsViewModel`
-  - `EventTicketDetailViewModel`
-  - `EventTicketsUiState`
-  - `EventTicketDetailUiState`
-  - `EventOrdersViewModel`
-  - `EventOrderDetailViewModel`
-  - `EventOrdersUiState`
-  - `EventOrderDetailUiState`
 - Navigation Compose integrado para lista, detalhe, checkout, ingressos, detalhe de ingresso, pedidos e detalhe de pedido.
-- Previews criados:
-  - `EventsScreenPreview`
-  - `EventsScreenLoadingPreview`
-  - `EventsScreenEmptyPreview`
-  - `EventDetailScreenPreview`
-  - `EventTicketsScreenPreview`
-  - `EventTicketDetailScreenPreview`
-  - `EventOrdersScreenPreview`
-  - `EventOrderDetailScreenPreview`
-  - `TicketCardPreview`
-  - `EventCardPreview`
+- Commit local: `7169aba Add events tickets QR and event orders screens`.
+
+## Fase 5.1 - Revisão visual das fases anteriores
+
+- Revisão feita a partir de `web-reference`, principalmente:
+  - `login/LoginPageClient.tsx`
+  - `cadastro/page.tsx`
+  - `carteirinha/page.tsx`
+  - `configuracoes/page.tsx`
+  - `eventos/EventosClientPage.tsx`
+  - `eventos/[id]/page.tsx`
+  - `components/BottomNav.tsx`
+  - `globals.css`
+- Base visual Compose criada em `PremiumComponents.kt`, com:
+  - fundo dark premium;
+  - cards `rounded-3xl`;
+  - chips neon;
+  - botões sólidos e outline;
+  - inputs escuros;
+  - header mobile;
+  - QR visual;
+  - menu rows no estilo web.
+- Telas de autenticação revisadas visualmente:
+  - `LoginScreen`
+  - `RegisterScreen`
+  - `WaitingApprovalScreen`
+  - `InviteRequiredScreen`
+  - `BannedUserScreen`
+  - `AccountSecurityScreen`
+- Telas de conta revisadas visualmente:
+  - `ProfileScreen`
+  - `SettingsScreen`
+  - `MembershipCardScreen`
+  - `MembershipCard`
+- Telas de eventos, ingressos e pedidos revisadas visualmente:
+  - `EventsScreen`
+  - `EventDetailScreen`
+  - `EventCheckoutScreen`
+  - `EventTicketsScreen`
+  - `EventTicketDetailScreen`
+  - `EventOrdersScreen`
+  - `EventOrderDetailScreen`
+  - `EventCard`
+  - `TicketCard`
+  - `EventOrderCard`
+- Previews principais atualizados para visual dark/premium.
 - Validação executada:
   - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
   - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
-- Commit local: `Add events tickets QR and event orders screens`.
 
 ## Próximas fases
 
-1. Fase 6: Loja + Carrinho + Checkout visual + Pedidos de loja.
-2. Fase 7: Planos + Treinos + Parceiros + Comunidade.
+1. Fase 6: Loja + Carrinho + Checkout visual + Pedidos de loja, copiando `web-reference/src/app/loja`, `carrinho` e `checkout`.
+2. Fase 7: Planos + Treinos/Gym + Parceiros + Comunidade.
 3. Fase 8: Ligas + Diretório + Comissões + Tenant.
 4. Fase 9: Mini-vendor + Modo vendas + Scanner/check-in.
-5. Fase 10: Supabase real.
+5. Fase 10: Guia, Álbum, Games, Boardround, Conquistas, Fidelidade, Pedidos gerais e revisão de roles.
+6. Fase 11: Integração Supabase real, somente depois da paridade visual e sem expor segredos no app.

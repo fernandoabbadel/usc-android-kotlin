@@ -1,27 +1,30 @@
 package com.example.usc1.ui.events
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.usc1.core.ui.AppSectionHeader
+import com.example.usc1.core.ui.PremiumChip
+import com.example.usc1.core.ui.PremiumEmptyState
+import com.example.usc1.core.ui.PremiumHeader
+import com.example.usc1.core.ui.PremiumLoadingState
+import com.example.usc1.core.ui.PremiumPrimaryButton
+import com.example.usc1.core.ui.PremiumScreen
+import com.example.usc1.core.ui.PremiumSecondaryButton
+import com.example.usc1.core.ui.PremiumTextField
 import com.example.usc1.data.repository.MockEventsRepository
 import com.example.usc1.domain.model.Event
 import com.example.usc1.domain.model.EventStatus
@@ -37,30 +40,29 @@ fun EventsScreen(
     onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        when {
-            state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            state.errorMessage != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(text = state.errorMessage, color = MaterialTheme.colorScheme.error)
-                    Button(onClick = onRetryClick) {
-                        Text("Tentar novamente")
-                    }
-                }
-            }
-            else -> EventsLoadedContent(
-                state = state,
-                onEventClick = onEventClick,
-                onStatusFilterClick = onStatusFilterClick,
-                onTicketsClick = onTicketsClick,
-                onOrdersClick = onOrdersClick,
+    when {
+        state.isLoading -> PremiumLoadingState(text = "Carregando agenda", modifier = modifier)
+        state.errorMessage != null -> PremiumScreen(modifier = modifier) {
+            PremiumHeader(
+                title = "AgendaEventos",
+                subtitle = "Falha ao carregar eventos",
+                icon = Icons.Outlined.CalendarMonth,
             )
+            PremiumEmptyState(
+                title = "Erro em eventos",
+                subtitle = state.errorMessage,
+                icon = Icons.Outlined.CalendarMonth,
+            )
+            PremiumPrimaryButton(text = "Tentar novamente", onClick = onRetryClick)
         }
+        else -> EventsLoadedContent(
+            state = state,
+            onEventClick = onEventClick,
+            onStatusFilterClick = onStatusFilterClick,
+            onTicketsClick = onTicketsClick,
+            onOrdersClick = onOrdersClick,
+            modifier = modifier,
+        )
     }
 }
 
@@ -71,51 +73,74 @@ private fun EventsLoadedContent(
     onStatusFilterClick: (EventStatus?) -> Unit,
     onTicketsClick: () -> Unit,
     onOrdersClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    PremiumScreen(
+        modifier = modifier,
+        bottomPadding = 120.dp,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = "Eventos",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(
-                text = "Ingressos, lotes, fichas e pedidos da atlética.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        PremiumHeader(
+            title = "AgendaEventos",
+            subtitle = "Próximos eventos",
+            icon = Icons.Outlined.CalendarMonth,
+        )
+
+        PremiumTextField(
+            value = "",
+            onValueChange = {},
+            label = "Buscar evento por nome, local ou tipo",
+            leadingIcon = Icons.Outlined.Search,
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(modifier = Modifier.clickable { onStatusFilterClick(null) }) {
+                PremiumChip(
+                    label = "Todos",
+                    accent = if (state.selectedStatus == null) com.example.usc1.core.ui.PremiumBrand else com.example.usc1.core.ui.PremiumZinc500,
+                    filled = state.selectedStatus == null,
+                )
+            }
+            EventStatus.entries.forEach { status ->
+                Box(modifier = Modifier.clickable { onStatusFilterClick(status) }) {
+                    PremiumChip(
+                        label = status.label,
+                        accent = if (state.selectedStatus == status) eventStatusColor(status) else com.example.usc1.core.ui.PremiumZinc500,
+                        filled = state.selectedStatus == status,
+                    )
+                }
+            }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(onClick = onTicketsClick, modifier = Modifier.weight(1f)) {
-                Text("Meus ingressos")
-            }
-            Button(onClick = onOrdersClick, modifier = Modifier.weight(1f)) {
-                Text("Pedidos")
-            }
+            PremiumSecondaryButton(
+                text = "Meus ingressos",
+                onClick = onTicketsClick,
+                icon = Icons.Outlined.ConfirmationNumber,
+                modifier = Modifier.weight(1f),
+            )
+            PremiumSecondaryButton(
+                text = "Pedidos",
+                onClick = onOrdersClick,
+                icon = Icons.Outlined.History,
+                modifier = Modifier.weight(1f),
+            )
         }
 
-        EventStatusFilters(
-            selectedStatus = state.selectedStatus,
-            onStatusFilterClick = onStatusFilterClick,
-        )
-
-        AppSectionHeader(
-            title = "Lista de eventos",
-            subtitle = "Dados mockados até a integração Supabase.",
-        )
+        PremiumChip(label = "PÚBLICO • INTERNO • VENDAS", icon = Icons.Outlined.CalendarMonth)
 
         if (state.isEmpty) {
-            EmptyEventsMessage()
+            PremiumEmptyState(
+                title = "Nada por aqui",
+                subtitle = "Nenhum evento ativo encontrado para este filtro.",
+                icon = Icons.Outlined.CalendarMonth,
+            )
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 state.events.forEach { event ->
                     EventCard(
                         event = event,
@@ -127,56 +152,10 @@ private fun EventsLoadedContent(
     }
 }
 
-@Composable
-private fun EventStatusFilters(
-    selectedStatus: EventStatus?,
-    onStatusFilterClick: (EventStatus?) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = "Filtrar por status",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            AssistChip(
-                onClick = { onStatusFilterClick(null) },
-                label = { Text("Todos") },
-                enabled = selectedStatus != null,
-            )
-            EventStatus.entries.forEach { status ->
-                AssistChip(
-                    onClick = { onStatusFilterClick(status) },
-                    label = { Text(status.label) },
-                    enabled = selectedStatus != status,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyEventsMessage() {
-    Surface(
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surface,
-    ) {
-        Text(
-            text = "Nenhum evento encontrado para este filtro.",
-            modifier = Modifier.padding(16.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
 fun EventsScreenPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         EventsScreen(
             state = EventsUiState(events = MockEventsRepository.mockEvents),
             onEventClick = {},
@@ -188,10 +167,10 @@ fun EventsScreenPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
 fun EventsScreenLoadingPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         EventsScreen(
             state = EventsUiState.loading(),
             onEventClick = {},
@@ -203,10 +182,10 @@ fun EventsScreenLoadingPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
 fun EventsScreenEmptyPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         EventsScreen(
             state = EventsUiState.empty(),
             onEventClick = {},

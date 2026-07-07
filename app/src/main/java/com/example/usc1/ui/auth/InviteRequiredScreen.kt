@@ -1,17 +1,17 @@
 package com.example.usc1.ui.auth
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Login
 import androidx.compose.material.icons.outlined.MarkEmailUnread
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.usc1.core.session.AuthStatus
 import com.example.usc1.core.session.AuthUser
 import com.example.usc1.core.session.UserSession
+import com.example.usc1.core.ui.PremiumPrimaryButton
+import com.example.usc1.core.ui.PremiumSecondaryButton
 import com.example.usc1.ui.theme.UscTheme
 
 @Composable
@@ -25,30 +25,28 @@ fun InviteRequiredScreen(
         modifier = modifier,
         icon = Icons.Outlined.MarkEmailUnread,
         title = "Convite necessário",
-        subtitle = "Esta atlética exige um convite válido antes de liberar cadastro e acesso aos módulos internos.",
+        subtitle = "Esta atlética exige link ou código válido antes de liberar cadastro e módulos internos.",
     ) {
         AuthInlineMessage(
             text = "Peça um convite para a diretoria ou use o link enviado pela sua turma.",
         )
-        Button(
+        PremiumPrimaryButton(
+            text = "Inserir convite",
             onClick = onRegisterClick,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Inserir convite")
-        }
-        OutlinedButton(
+            icon = Icons.Outlined.PersonAdd,
+        )
+        PremiumSecondaryButton(
+            text = "Voltar para login",
             onClick = onSignOutClick,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Voltar para login")
-        }
+            icon = Icons.Outlined.Login,
+        )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF02050D)
 @Composable
 fun InviteRequiredScreenPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         InviteRequiredScreen(
             state = AuthUiState(
                 session = UserSession(

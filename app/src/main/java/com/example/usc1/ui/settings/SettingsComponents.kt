@@ -2,30 +2,20 @@ package com.example.usc1.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storefront
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.usc1.core.ui.AppSectionHeader
+import com.example.usc1.core.ui.PremiumAmber
+import com.example.usc1.core.ui.PremiumMenuRow
+import com.example.usc1.core.ui.PremiumRed
 
 @Composable
 fun SettingsSection(
@@ -33,7 +23,6 @@ fun SettingsSection(
     onItemClick: (SettingsItemUiModel) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        AppSectionHeader(title = section.title)
         section.items.forEach { item ->
             SettingsItem(
                 item = item,
@@ -47,49 +36,22 @@ fun SettingsSection(
 fun SettingsItem(
     item: SettingsItemUiModel,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = iconFor(item.action),
-                contentDescription = null,
-                modifier = Modifier.size(26.dp),
-                tint = if (item.action == SettingsAction.SignOut) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.primary
-                },
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = item.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+    val accent = when (item.action) {
+        SettingsAction.SignOut -> PremiumRed
+        SettingsAction.Plans,
+        SettingsAction.Invites,
+        -> PremiumAmber
+        else -> com.example.usc1.core.ui.PremiumBrand
     }
+    PremiumMenuRow(
+        title = item.title,
+        subtitle = item.description,
+        icon = iconFor(item.action),
+        accent = accent,
+        badge = if (item.action == SettingsAction.Orders) "Novo" else null,
+        onClick = onClick,
+    )
 }
 
 private fun iconFor(action: SettingsAction): ImageVector = when (action) {
@@ -104,8 +66,8 @@ private fun iconFor(action: SettingsAction): ImageVector = when (action) {
     SettingsAction.MiniVendor,
     SettingsAction.SalesMode,
     -> Icons.Outlined.Storefront
+    SettingsAction.SignOut -> Icons.Outlined.Logout
     SettingsAction.Invites,
     SettingsAction.Support,
-    SettingsAction.SignOut,
     -> Icons.Outlined.Settings
 }

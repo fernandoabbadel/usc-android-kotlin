@@ -1,23 +1,17 @@
 package com.example.usc1.ui.tickets
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.usc1.core.ui.AppSectionHeader
+import com.example.usc1.core.ui.PremiumEmptyState
+import com.example.usc1.core.ui.PremiumHeader
+import com.example.usc1.core.ui.PremiumLoadingState
+import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.data.repository.MockEventTicketsRepository
 import com.example.usc1.domain.model.EventTicket
 import com.example.usc1.ui.theme.UscTheme
@@ -28,41 +22,37 @@ fun EventTicketsScreen(
     onTicketClick: (EventTicket) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        when {
-            state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            state.errorMessage != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = state.errorMessage, color = MaterialTheme.colorScheme.error)
-            }
-            else -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Text(
-                    text = "Meus ingressos",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
+    when {
+        state.isLoading -> PremiumLoadingState(text = "Carregando ingressos", modifier = modifier)
+        state.errorMessage != null -> PremiumScreen(modifier = modifier) {
+            PremiumHeader(
+                title = "Meus ingressos",
+                subtitle = "Erro ao carregar QR Codes",
+                icon = Icons.Outlined.ConfirmationNumber,
+            )
+            PremiumEmptyState(
+                title = "Ingressos indisponíveis",
+                subtitle = state.errorMessage,
+                icon = Icons.Outlined.ConfirmationNumber,
+            )
+        }
+        else -> PremiumScreen(
+            modifier = modifier,
+            bottomPadding = 110.dp,
+        ) {
+            PremiumHeader(
+                title = "Meus ingressos",
+                subtitle = "QR visual e status de entrada",
+                icon = Icons.Outlined.ConfirmationNumber,
+            )
+            if (state.isEmpty) {
+                PremiumEmptyState(
+                    title = "Sem ingressos",
+                    subtitle = "Você ainda não tem ingressos ativos.",
+                    icon = Icons.Outlined.ConfirmationNumber,
                 )
-                AppSectionHeader(
-                    title = "Ingressos ativos e históricos",
-                    subtitle = "QR visual mockado até a validação real.",
-                )
-                if (state.isEmpty) {
-                    Text(
-                        text = "Você ainda não tem ingressos.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     state.tickets.forEach { ticket ->
                         TicketCard(
                             ticket = ticket,
@@ -75,10 +65,10 @@ fun EventTicketsScreen(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
 fun EventTicketsScreenPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         EventTicketsScreen(
             state = EventTicketsUiState(tickets = MockEventTicketsRepository.mockTickets),
             onTicketClick = {},

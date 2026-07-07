@@ -1,20 +1,18 @@
 package com.example.usc1.ui.auth
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Badge
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonAdd
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import com.example.usc1.core.ui.PremiumPrimaryButton
+import com.example.usc1.core.ui.PremiumSecondaryButton
+import com.example.usc1.core.ui.PremiumTextField
 import com.example.usc1.ui.theme.UscTheme
 
 @Composable
@@ -31,63 +29,51 @@ fun RegisterScreen(
         modifier = modifier,
         icon = Icons.Outlined.PersonAdd,
         title = "Cadastro USC",
-        subtitle = "Crie seu acesso para a atlética. Algumas contas precisam de convite ou aprovação da diretoria.",
+        subtitle = "Complete sua ficha para entrar na atlética. Convites e aprovação seguem mockados nesta fase.",
     ) {
-        OutlinedTextField(
+        PremiumTextField(
             value = state.fullName,
             onValueChange = onFullNameChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Nome completo") },
-            singleLine = true,
+            label = "Nome completo",
+            leadingIcon = Icons.Outlined.Person,
         )
-        OutlinedTextField(
+        PremiumTextField(
             value = state.email,
             onValueChange = onEmailChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("E-mail") },
-            singleLine = true,
+            label = "E-mail",
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            leadingIcon = Icons.Outlined.Email,
         )
-        OutlinedTextField(
+        PremiumTextField(
             value = state.inviteCode,
             onValueChange = onInviteCodeChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Código de convite") },
-            singleLine = true,
+            label = "Código de convite",
+            leadingIcon = Icons.Outlined.Badge,
         )
 
         state.errorMessage?.let { message ->
             AuthInlineMessage(text = message)
         }
 
-        Button(
+        PremiumPrimaryButton(
+            text = "Enviar cadastro",
             onClick = onRegisterClick,
-            modifier = Modifier.fillMaxWidth(),
             enabled = state.canSubmitRegister,
-        ) {
-            if (state.isLoading) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Text("Enviar cadastro")
-            }
-        }
+            loading = state.isLoading,
+            icon = Icons.Outlined.PersonAdd,
+        )
 
-        TextButton(
+        PremiumSecondaryButton(
+            text = "Já tenho conta",
             onClick = onBackToLoginClick,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Já tenho conta")
-        }
+        )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF02050D)
 @Composable
 fun RegisterScreenPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         RegisterScreen(
             state = AuthUiState(
                 fullName = "Fernando Abbadel",

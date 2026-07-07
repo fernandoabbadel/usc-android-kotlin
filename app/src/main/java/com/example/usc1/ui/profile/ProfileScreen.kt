@@ -1,5 +1,9 @@
 package com.example.usc1.ui.profile
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,28 +12,43 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.usc1.core.ui.AppSectionHeader
-import com.example.usc1.core.ui.InfoChip
+import androidx.compose.ui.unit.sp
+import com.example.usc1.R
+import com.example.usc1.core.ui.PremiumBrand
+import com.example.usc1.core.ui.PremiumCard
+import com.example.usc1.core.ui.PremiumChip
+import com.example.usc1.core.ui.PremiumEmptyState
+import com.example.usc1.core.ui.PremiumHeader
+import com.example.usc1.core.ui.PremiumInfoRow
+import com.example.usc1.core.ui.PremiumLoadingState
+import com.example.usc1.core.ui.PremiumMenuRow
+import com.example.usc1.core.ui.PremiumScreen
+import com.example.usc1.core.ui.PremiumZinc400
+import com.example.usc1.core.ui.PremiumZinc500
+import com.example.usc1.core.ui.PremiumZinc800
 import com.example.usc1.ui.theme.UscTheme
 
 @Composable
@@ -39,27 +58,29 @@ fun ProfileScreen(
     onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        when {
-            state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            state.errorMessage != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = state.errorMessage, color = MaterialTheme.colorScheme.error)
-                    Button(onClick = onRetryClick) {
-                        Text("Tentar novamente")
-                    }
-                }
-            }
-            else -> ProfileLoadedContent(
-                state = state,
-                onShortcutClick = onShortcutClick,
+    when {
+        state.isLoading -> PremiumLoadingState(text = "Carregando perfil", modifier = modifier)
+        state.errorMessage != null -> PremiumScreen(modifier = modifier) {
+            PremiumHeader(
+                title = "Perfil",
+                subtitle = "Não foi possível carregar seus dados",
+                icon = Icons.Outlined.Person,
+            )
+            PremiumEmptyState(
+                title = "Erro no perfil",
+                subtitle = state.errorMessage,
+                icon = Icons.Outlined.Person,
+            )
+            com.example.usc1.core.ui.PremiumPrimaryButton(
+                text = "Tentar novamente",
+                onClick = onRetryClick,
             )
         }
+        else -> ProfileLoadedContent(
+            state = state,
+            onShortcutClick = onShortcutClick,
+            modifier = modifier,
+        )
     }
 }
 
@@ -67,165 +88,150 @@ fun ProfileScreen(
 private fun ProfileLoadedContent(
     state: ProfileUiState,
     onShortcutClick: (ProfileShortcutUiModel) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val profile = state.profile
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+    PremiumScreen(
+        modifier = modifier,
+        bottomPadding = 110.dp,
     ) {
+        PremiumHeader(
+            title = "Perfil",
+            subtitle = "Dados do sócio USC",
+            icon = Icons.Outlined.Person,
+        )
+
+        ProfileHeroCard(profile = profile)
+
+        PremiumCard {
+            PremiumInfoRow("Curso", profile.course)
+            PremiumInfoRow("Turma", profile.className)
+            PremiumInfoRow("Atlética", profile.tenantName)
+            PremiumInfoRow("Plano ativo", profile.activePlan)
+            PremiumInfoRow("Membro desde", profile.memberSince)
+        }
+
+        Text(
+            text = "ATALHOS DO PERFIL",
+            color = PremiumZinc500,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp,
+            modifier = Modifier.padding(start = 2.dp),
+        )
+        state.shortcuts.forEach { shortcut ->
+            PremiumMenuRow(
+                title = shortcut.title,
+                subtitle = shortcut.description,
+                icon = shortcutIcon(shortcut),
+                onClick = { onShortcutClick(shortcut) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileHeroCard(profile: ProfileUserUiModel) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(32.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF18181B),
+                        Color.Black,
+                    ),
+                ),
+            )
+            .border(1.dp, PremiumZinc800, RoundedCornerShape(32.dp))
+            .padding(20.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(130.dp)
+                .clip(CircleShape)
+                .background(PremiumBrand.copy(alpha = 0.10f)),
+        )
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ProfileAvatar(initials = profile.initials)
+            Box {
+                Surface(
+                    modifier = Modifier.size(86.dp),
+                    shape = CircleShape,
+                    color = Color.Black,
+                    border = BorderStroke(3.dp, PremiumBrand),
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_aaakn),
+                        contentDescription = "Avatar",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(30.dp),
+                    shape = CircleShape,
+                    color = Color.Black,
+                    border = BorderStroke(2.dp, Color.Black),
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_usc),
+                        contentDescription = "Turma",
+                        modifier = Modifier.padding(3.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     text = profile.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = profile.email,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = PremiumZinc400,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    InfoChip(label = profile.role)
-                    InfoChip(label = profile.accountStatus)
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    PremiumChip(label = profile.role)
+                    PremiumChip(label = profile.accountStatus)
                 }
             }
         }
-
-        ProfileInfoCard(profile = profile)
-
-        AppSectionHeader(
-            title = "Atalhos do perfil",
-            subtitle = "Áreas que usam seus dados de membro.",
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            state.shortcuts.forEach { shortcut ->
-                ProfileShortcutCard(
-                    shortcut = shortcut,
-                    onClick = { onShortcutClick(shortcut) },
-                )
-            }
-        }
     }
 }
 
-@Composable
-private fun ProfileAvatar(
-    initials: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier.size(78.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.primary,
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = initials,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimary,
-            )
-        }
+private fun shortcutIcon(shortcut: ProfileShortcutUiModel) =
+    when {
+        shortcut.title.contains("Carteirinha", ignoreCase = true) -> Icons.Outlined.CreditCard
+        shortcut.title.contains("Evento", ignoreCase = true) -> Icons.Outlined.Event
+        shortcut.title.contains("Loja", ignoreCase = true) -> Icons.Outlined.Storefront
+        shortcut.title.contains("Config", ignoreCase = true) -> Icons.Outlined.Settings
+        else -> Icons.Outlined.Person
     }
-}
 
-@Composable
-private fun ProfileInfoCard(profile: ProfileUserUiModel) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            AppSectionHeader(title = "Dados acadêmicos")
-            ProfileInfoRow("Curso", profile.course)
-            ProfileInfoRow("Turma", profile.className)
-            ProfileInfoRow("Atlética", profile.tenantName)
-            ProfileInfoRow("Plano ativo", profile.activePlan)
-            ProfileInfoRow("Membro desde", profile.memberSince)
-        }
-    }
-}
-
-@Composable
-private fun ProfileInfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
-@Composable
-private fun ProfileShortcutCard(
-    shortcut: ProfileShortcutUiModel,
-    onClick: () -> Unit,
-) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Person,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Column {
-                Text(
-                    text = shortcut.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = shortcut.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
 fun ProfileScreenPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         ProfileScreen(
             state = ProfileUiState(),
             onShortcutClick = {},

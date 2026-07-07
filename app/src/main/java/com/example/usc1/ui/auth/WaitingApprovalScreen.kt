@@ -1,11 +1,9 @@
 package com.example.usc1.ui.auth
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.HourglassTop
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -14,6 +12,9 @@ import com.example.usc1.core.session.AuthUser
 import com.example.usc1.core.session.UserSession
 import com.example.usc1.core.tenant.TenantContext
 import com.example.usc1.core.tenant.TenantMembershipStatus
+import com.example.usc1.core.ui.PremiumAmber
+import com.example.usc1.core.ui.PremiumPrimaryButton
+import com.example.usc1.core.ui.PremiumSecondaryButton
 import com.example.usc1.ui.theme.UscTheme
 
 @Composable
@@ -29,31 +30,32 @@ fun WaitingApprovalScreen(
         modifier = modifier,
         icon = Icons.Outlined.HourglassTop,
         title = "Aguardando aprovação",
-        subtitle = "Seu cadastro foi recebido e precisa ser aprovado antes de liberar o app.",
+        subtitle = "Seu cadastro foi recebido. A diretoria precisa liberar o acesso interno.",
     ) {
         AuthInlineMessage(
             text = "Atlética: $tenantName\nStatus: análise da diretoria",
         )
-        Button(
+        PremiumPrimaryButton(
+            text = "Atualizar status",
             onClick = onRefreshClick,
-            modifier = Modifier.fillMaxWidth(),
             enabled = !state.isLoading,
-        ) {
-            Text("Atualizar status")
-        }
-        OutlinedButton(
+            loading = state.isLoading,
+            accent = PremiumAmber,
+            icon = Icons.Outlined.Refresh,
+        )
+        PremiumSecondaryButton(
+            text = "Sair da conta",
             onClick = onSignOutClick,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Sair da conta")
-        }
+            accent = PremiumAmber,
+            icon = Icons.Outlined.Logout,
+        )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF02050D)
 @Composable
 fun WaitingApprovalScreenPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         WaitingApprovalScreen(
             state = AuthUiState(
                 session = UserSession(

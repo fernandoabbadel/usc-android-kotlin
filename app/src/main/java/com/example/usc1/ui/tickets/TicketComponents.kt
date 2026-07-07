@@ -1,18 +1,16 @@
 package com.example.usc1.ui.tickets
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +20,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.usc1.core.ui.PremiumAmber
+import com.example.usc1.core.ui.PremiumBrand
+import com.example.usc1.core.ui.PremiumChip
+import com.example.usc1.core.ui.PremiumQrCode
+import com.example.usc1.core.ui.PremiumRed
+import com.example.usc1.core.ui.PremiumSecondaryButton
+import com.example.usc1.core.ui.PremiumZinc400
+import com.example.usc1.core.ui.PremiumZinc500
+import com.example.usc1.core.ui.PremiumZinc800
+import com.example.usc1.core.ui.PremiumZinc900
 import com.example.usc1.data.repository.MockEventTicketsRepository
 import com.example.usc1.domain.model.EventTicket
 import com.example.usc1.domain.model.TicketStatus
@@ -33,13 +42,14 @@ fun TicketCard(
     onDetailsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(26.dp),
+        color = PremiumZinc900,
+        border = BorderStroke(1.dp, PremiumZinc800),
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -49,28 +59,33 @@ fun TicketCard(
             )
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                Text(
-                    text = ticket.eventTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = ticket.dateLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 TicketStatusChip(status = ticket.status)
                 Text(
-                    text = ticket.token,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = ticket.eventTitle,
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Black,
                 )
-                OutlinedButton(onClick = onDetailsClick) {
-                    Text("Detalhes")
-                }
+                Text(
+                    text = "${ticket.dateLabel} • ${ticket.lotName}",
+                    color = PremiumZinc400,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = ticket.token,
+                    color = PremiumZinc500,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                PremiumSecondaryButton(
+                    text = "Detalhes",
+                    onClick = onDetailsClick,
+                    icon = Icons.Outlined.ArrowForward,
+                )
             }
         }
     }
@@ -82,49 +97,13 @@ fun TicketQrPlaceholder(
     modifier: Modifier = Modifier,
     compact: Boolean = false,
 ) {
-    val cell = if (compact) 5.dp else 9.dp
-    val padding = if (compact) 6.dp else 12.dp
-
-    Surface(
+    PremiumQrCode(
+        payload = payload,
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = Color.White,
-        shadowElevation = if (compact) 0.dp else 2.dp,
-    ) {
-        Column(
-            modifier = Modifier.padding(padding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                repeat(11) { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        repeat(11) { column ->
-                            val filled = row in 0..2 && column in 0..2 ||
-                                row in 0..2 && column in 8..10 ||
-                                row in 8..10 && column in 0..2 ||
-                                (payload.length + row * 7 + column * 11) % 5 != 0
-                            Box(
-                                modifier = Modifier
-                                    .size(cell)
-                                    .background(
-                                        color = if (filled) Color.Black else Color.White,
-                                        shape = RoundedCornerShape(1.dp),
-                                    ),
-                            )
-                        }
-                    }
-                }
-            }
-            if (!compact) {
-                Text(
-                    text = "QR mockado",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Black,
-                )
-            }
-        }
-    }
+        cells = if (compact) 9 else 13,
+        cellSize = if (compact) 4.dp else 9.dp,
+        label = if (compact) null else "QR mockado",
+    )
 }
 
 @Composable
@@ -132,32 +111,24 @@ fun TicketStatusChip(
     status: TicketStatus,
     modifier: Modifier = Modifier,
 ) {
-    val color = when (status) {
-        TicketStatus.Active -> MaterialTheme.colorScheme.primary
-        TicketStatus.Pending -> MaterialTheme.colorScheme.secondary
-        TicketStatus.Used -> MaterialTheme.colorScheme.onSurfaceVariant
-        TicketStatus.Transferred -> MaterialTheme.colorScheme.primary
-        TicketStatus.Cancelled -> MaterialTheme.colorScheme.error
-    }
-    Surface(
+    PremiumChip(
+        label = status.label,
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.14f),
-    ) {
-        Text(
-            text = status.label,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = color,
-        )
-    }
+        icon = Icons.Outlined.ConfirmationNumber,
+        accent = when (status) {
+            TicketStatus.Active -> PremiumBrand
+            TicketStatus.Pending -> PremiumAmber
+            TicketStatus.Used -> PremiumZinc500
+            TicketStatus.Transferred -> PremiumBrand
+            TicketStatus.Cancelled -> PremiumRed
+        },
+    )
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
 fun TicketCardPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         TicketCard(
             ticket = MockEventTicketsRepository.mockTickets.first(),
             onDetailsClick = {},

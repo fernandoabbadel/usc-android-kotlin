@@ -1,23 +1,17 @@
 package com.example.usc1.ui.orders
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.usc1.core.ui.AppSectionHeader
+import com.example.usc1.core.ui.PremiumEmptyState
+import com.example.usc1.core.ui.PremiumHeader
+import com.example.usc1.core.ui.PremiumLoadingState
+import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.data.repository.MockEventOrdersRepository
 import com.example.usc1.domain.model.EventOrder
 import com.example.usc1.ui.theme.UscTheme
@@ -28,41 +22,37 @@ fun EventOrdersScreen(
     onOrderClick: (EventOrder) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-    ) {
-        when {
-            state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            state.errorMessage != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = state.errorMessage, color = MaterialTheme.colorScheme.error)
-            }
-            else -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Text(
-                    text = "Pedidos de eventos",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
+    when {
+        state.isLoading -> PremiumLoadingState(text = "Carregando pedidos", modifier = modifier)
+        state.errorMessage != null -> PremiumScreen(modifier = modifier) {
+            PremiumHeader(
+                title = "Pedidos de eventos",
+                subtitle = "Erro ao carregar histórico",
+                icon = Icons.Outlined.ReceiptLong,
+            )
+            PremiumEmptyState(
+                title = "Pedidos indisponíveis",
+                subtitle = state.errorMessage,
+                icon = Icons.Outlined.ReceiptLong,
+            )
+        }
+        else -> PremiumScreen(
+            modifier = modifier,
+            bottomPadding = 110.dp,
+        ) {
+            PremiumHeader(
+                title = "Pedidos de eventos",
+                subtitle = "Pendentes, aprovados e cancelados",
+                icon = Icons.Outlined.ReceiptLong,
+            )
+            if (state.isEmpty) {
+                PremiumEmptyState(
+                    title = "Sem pedidos",
+                    subtitle = "Nenhum pedido de evento encontrado.",
+                    icon = Icons.Outlined.ReceiptLong,
                 )
-                AppSectionHeader(
-                    title = "Histórico de pedidos",
-                    subtitle = "Pendentes, aprovados e cancelados com pagamento mockado.",
-                )
-                if (state.isEmpty) {
-                    Text(
-                        text = "Nenhum pedido de evento encontrado.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     state.orders.forEach { order ->
                         EventOrderCard(
                             order = order,
@@ -75,10 +65,10 @@ fun EventOrdersScreen(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
 fun EventOrdersScreenPreview() {
-    UscTheme {
+    UscTheme(darkTheme = true) {
         EventOrdersScreen(
             state = EventOrdersUiState(orders = MockEventOrdersRepository.mockOrders),
             onOrderClick = {},
