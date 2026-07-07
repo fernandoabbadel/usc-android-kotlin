@@ -7,6 +7,7 @@ enum class PermissionBlockReason {
     InviteRequired,
     MissingRole,
     ModuleHidden,
+    FeatureNotNativeYet,
 }
 
 data class PermissionDecision(

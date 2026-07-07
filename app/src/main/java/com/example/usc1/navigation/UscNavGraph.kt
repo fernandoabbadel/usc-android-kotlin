@@ -90,6 +90,21 @@ fun UscNavGraph() {
             AppRoute.Training,
             AppRoute.Gym,
             AppRoute.Partners,
+            AppRoute.Community,
+            AppRoute.Leagues,
+            AppRoute.Directory,
+            AppRoute.Commissions,
+            AppRoute.Tenant,
+            AppRoute.MiniVendor,
+            AppRoute.Scanner,
+            AppRoute.Guide,
+            AppRoute.Legal,
+            AppRoute.Album,
+            AppRoute.Games,
+            AppRoute.Boardround,
+            AppRoute.Achievements,
+            AppRoute.Loyalty,
+            AppRoute.OrdersHub,
         )
     }
     val authViewModel: AuthViewModel = viewModel()
@@ -684,6 +699,8 @@ fun UscNavGraph() {
                 onBackClick = { navController.navigateUp() },
             )
         }
+
+        remainingNativeRoutes(navController)
 
         modules.filterNot { module -> module.route in concreteModuleRoutes }.forEach { module ->
             composable(module.route) {

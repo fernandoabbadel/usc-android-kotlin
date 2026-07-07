@@ -8,6 +8,9 @@ enum class UserRole(val remoteValue: String) {
     Treinador("treinador"),
     Empresa("empresa"),
     AdminTreino("admin_treino"),
+    GestorLiga("gestor_liga"),
+    GestorDiretorio("gestor_diretorio"),
+    GestorComissao("gestor_comissao"),
     AdminGeral("admin_geral"),
     AdminGestor("admin_gestor"),
     MasterTenant("master_tenant"),
@@ -28,12 +31,18 @@ enum class UserRole(val remoteValue: String) {
             AdminGestor,
             AdminTreino,
             Treinador,
+            GestorLiga,
+            GestorDiretorio,
+            GestorComissao,
         )
 
         val tenantManagerRoles = setOf(
             MasterTenant,
             AdminGeral,
             AdminGestor,
+            GestorLiga,
+            GestorDiretorio,
+            GestorComissao,
         )
 
         fun fromRemote(value: String?): UserRole {
@@ -41,6 +50,9 @@ enum class UserRole(val remoteValue: String) {
             return entries.firstOrNull { it.remoteValue == normalized }
                 ?: when (normalized) {
                     "admin_tenant" -> AdminGeral
+                    "league_manager" -> GestorLiga
+                    "directory_manager" -> GestorDiretorio
+                    "commission_manager" -> GestorComissao
                     else -> Visitante
                 }
         }

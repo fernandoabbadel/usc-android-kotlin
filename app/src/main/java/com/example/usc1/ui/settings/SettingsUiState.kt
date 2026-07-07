@@ -27,12 +27,12 @@ enum class SettingsAction(val route: String?) {
     Orders(AppRoute.StoreOrders),
     Tickets(AppRoute.EventTickets),
     Plans(AppRoute.PlanOrders),
-    MiniVendor("mini-vendor"),
-    SalesMode("scanner"),
+    MiniVendor(AppRoute.MiniVendor),
+    SalesMode(AppRoute.SalesMode),
     Invites("auth"),
-    Support("guide"),
-    TermsPrivacy("legal"),
-    Lgpd("legal"),
+    Support(AppRoute.Support),
+    TermsPrivacy(AppRoute.Terms),
+    Lgpd(AppRoute.PrivacyLgpd),
     SignOut(null),
 }
 

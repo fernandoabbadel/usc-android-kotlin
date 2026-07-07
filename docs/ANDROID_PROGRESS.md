@@ -230,10 +230,135 @@
   - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
 - Commit local previsto: `Add store plans training and partners native screens`.
 
+## Fase 7 a 10 - Módulos restantes com paridade visual
+
+- Bloco nativo criado em Kotlin/Jetpack Compose para cobrir os módulos restantes sem WebView, wrapper, Supabase real ou segredo no app.
+- Kit compartilhado criado:
+  - `NativeModuleComponents.kt`
+  - `NativeModuleHeroCard`
+  - `NativeActionCard`
+  - `NativeStatCard`
+  - `NativeSectionTitle`
+  - `NativeProgressBar`
+- Comunidade criada:
+  - `CommunityScreen`
+  - `CommunityPostDetailScreen`
+  - `CommunityPostCard`
+  - `CommunityUiState`
+  - `CommunityViewModel`
+- Ligas, Diretório e Comissões criados:
+  - `LeaguesScreen`, `LeagueDetailScreen`, `LeagueMembersScreen`, `LeagueAgendaScreen`, `LeagueStoreScreen`, `LeagueEventsScreen`, `LeagueInfoScreen`
+  - `DirectoryScreen`, `DirectoryDetailScreen`, `DirectoryMembersScreen`, `DirectoryAgendaScreen`, `DirectoryStoreScreen`, `DirectoryEventsScreen`, `DirectoryInfoScreen`
+  - `CommissionsScreen`, `CommissionDetailScreen`, `CommissionMembersScreen`, `CommissionAgendaScreen`, `CommissionStoreScreen`, `CommissionEventsScreen`
+  - `LeagueCard`, `DirectoryCard`, `CommissionCard`
+  - `LeagueUiState`, `DirectoryUiState`, `CommissionUiState`
+  - `LeaguesViewModel`, `DirectoryViewModel`, `CommissionsViewModel`
+- Tenant/Atlética preparado:
+  - `TenantSwitcherScreen`
+  - `TenantIdentityHeader`
+  - `TenantThemePreviewCard`
+  - `TenantUiState`
+  - `TenantViewModel`
+- Mini-vendor e Modo Vendas criados:
+  - `MiniVendorScreen`
+  - `MiniVendorProductsScreen`
+  - `MiniVendorPendingOrdersScreen`
+  - `MiniVendorApprovedOrdersScreen`
+  - `MiniVendorFinanceScreen`
+  - `SalesModeScreen`
+  - `SalesModeEventMenuScreen`
+  - `MiniVendorProductCard`
+  - `MiniVendorOrderCard`
+  - `MiniVendorUiState`
+  - `MiniVendorViewModel`
+- Scanner/check-in criado sem câmera real:
+  - `ScannerScreen`
+  - `ScannerResultSuccessScreen`
+  - `ScannerResultErrorScreen`
+  - `EventCheckInScannerScreen`
+  - `PartyScannerScreen`
+  - `ProductWithdrawalScannerScreen`
+  - `ScannerPermissionDeniedScreen`
+  - `ScannerUiState`
+  - `ScannerViewModel`
+- Guia, FAQ, Suporte, Termos e LGPD criados:
+  - `GuideScreen`
+  - `FaqScreen`
+  - `ContactUscScreen`
+  - `SupportScreen`
+  - `TermsScreen`
+  - `PrivacyLgpdScreen`
+  - `LgpdRequestScreen`
+  - `LegalDocumentScreen`
+  - `GuideUiState`
+  - `LegalUiState`
+- Álbum, Galera e Caça-calouro criados:
+  - `AlbumScreen`
+  - `AlbumTurmaScreen`
+  - `CacaCalouroScreen`
+  - `CalouroRankingScreen`
+  - `AlbumPhotoGrid`
+  - `AlbumUiState`
+  - `AlbumViewModel`
+- Games, Boardround, Conquistas e Fidelidade criados:
+  - `GamesScreen`
+  - `BoardroundScreen`
+  - `BoardroundRankingScreen`
+  - `BoardroundStatsScreen`
+  - `AchievementsScreen`
+  - `LoyaltyScreen`
+  - `GameRulesScreen`
+  - `RankingCard`
+  - `AchievementCard`
+  - `LoyaltyCard`
+  - `GamesUiState`
+  - `GamesViewModel`
+- Pedidos gerais criados:
+  - `OrdersHubScreen`
+  - `GeneralOrderDetailScreen`
+  - `OrdersByTypeScreen`
+  - `OrdersStatusTabs`
+  - `GeneralOrderCard`
+  - `GeneralOrdersViewModel`
+- Roles, permissões e navegação revisadas:
+  - novas permissões para pedidos, ligas, diretório, comissões, parceiros, tenant, guia, legal, álbum, games, conquistas e fidelidade.
+  - novas roles mockadas para gestor de liga, diretório e comissão.
+  - `AppRoute.kt` expandido para todos os módulos nativos.
+  - `RemainingNativeRoutes.kt` criado para manter o `UscNavGraph.kt` organizado.
+  - `SettingsUiState` atualizado para apontar para Mini-vendor, Modo Vendas, Suporte, Termos e LGPD nativos.
+- Assets reais copiados do `web-reference/public`:
+  - `turma1.jpeg` a `turma9.jpeg`
+  - `capa_t1.jpg` a `capa_t9.jpeg`
+- Previews principais criados/atualizados:
+  - `CommunityScreenPreview`
+  - `CommunityPostDetailScreenPreview`
+  - `CommunityPostCardPreview`
+  - `LeaguesScreenPreview`
+  - `LeagueDetailScreenPreview`
+  - `DirectoryScreenPreview`
+  - `DirectoryDetailScreenPreview`
+  - `CommissionsScreenPreview`
+  - `CommissionDetailScreenPreview`
+  - `TenantSwitcherScreenPreview`
+  - `MiniVendorScreenPreview`
+  - `SalesModeScreenPreview`
+  - `ScannerScreenPreview`
+  - `ScannerResultSuccessScreenPreview`
+  - `GuideScreenPreview`
+  - `TermsScreenPreview`
+  - `AlbumScreenPreview`
+  - `CacaCalouroScreenPreview`
+  - `GamesScreenPreview`
+  - `BoardroundScreenPreview`
+  - `OrdersHubScreenPreview`
+  - `GeneralOrderDetailScreenPreview`
+- Validação executada:
+  - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
+  - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
+- Commit local previsto: `Add remaining native modules with web visual parity`.
+
 ## Próximas fases
 
-1. Fase 7: Comunidade.
-2. Fase 8: Ligas + Diretório + Comissões + Tenant.
-3. Fase 9: Mini-vendor + Modo vendas + Scanner/check-in.
-4. Fase 10: Guia, Álbum, Games, Boardround, Conquistas, Fidelidade, Pedidos gerais e revisão de roles.
-5. Fase 11: Integração Supabase real, somente depois da paridade visual e sem expor segredos no app.
+1. Revisão visual fina com screenshots em Android Studio/emulador para comparar pixel a pixel contra `web-reference`.
+2. Completar microinterações e estados vazios específicos por módulo.
+3. Integração Supabase real, somente depois da paridade visual e sem expor segredos no app.
