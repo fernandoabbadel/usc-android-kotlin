@@ -4,13 +4,14 @@ import com.example.usc1.core.roles.UserRole
 import com.example.usc1.core.tenant.TenantContext
 
 data class UserSession(
-    val user: SessionUser? = null,
+    val user: AuthUser? = null,
     val tenant: TenantContext? = null,
+    val status: AuthStatus = AuthStatus.Unauthenticated,
 ) {
-    val isAuthenticated: Boolean = user != null
+    val isAuthenticated: Boolean = status == AuthStatus.Authenticated && user != null
 }
 
-data class SessionUser(
+data class AuthUser(
     val id: String,
     val name: String,
     val email: String,
@@ -18,6 +19,17 @@ data class SessionUser(
     val role: UserRole = UserRole.Visitante,
     val status: UserStatus = UserStatus.Ativo,
 )
+
+typealias SessionUser = AuthUser
+
+enum class AuthStatus {
+    Loading,
+    Unauthenticated,
+    Authenticated,
+    WaitingApproval,
+    InviteRequired,
+    Banned,
+}
 
 enum class UserStatus(val remoteValue: String) {
     Ativo("ativo"),
