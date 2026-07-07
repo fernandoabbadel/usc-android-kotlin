@@ -76,7 +76,7 @@ class MockAuthRepository : AuthRepository {
                 id = "mock-user-1",
                 name = "Fernando USC",
                 email = email.ifBlank { "membro@usc.app" },
-                role = UserRole.User,
+                role = roleForEmail(email),
                 status = UserStatus.Ativo,
             ),
             tenant = approvedTenant,
@@ -138,5 +138,19 @@ class MockAuthRepository : AuthRepository {
             name = "AAAKN USC",
             membershipStatus = TenantMembershipStatus.Approved,
         )
+    }
+}
+
+private fun roleForEmail(email: String): UserRole {
+    val normalizedEmail = email.trim().lowercase()
+    return when {
+        "master" in normalizedEmail -> UserRole.Master
+        "admin" in normalizedEmail -> UserRole.AdminGestor
+        "vendas" in normalizedEmail -> UserRole.Vendas
+        "mini" in normalizedEmail -> UserRole.MiniVendor
+        "liga" in normalizedEmail -> UserRole.GestorLiga
+        "diretorio" in normalizedEmail -> UserRole.GestorDiretorio
+        "comissao" in normalizedEmail -> UserRole.GestorComissao
+        else -> UserRole.User
     }
 }

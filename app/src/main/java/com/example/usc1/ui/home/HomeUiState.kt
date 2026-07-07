@@ -69,7 +69,7 @@ private val defaultQuickActions = listOf(
     QuickActionUiModel("Eventos", "Ingressos e festas", AppRoute.Events, QuickActionKind.Events),
     QuickActionUiModel("Loja", "Produtos da atlética", AppRoute.Store, QuickActionKind.Store),
     QuickActionUiModel("Treinos", "Agenda e presença", AppRoute.Training, QuickActionKind.Training),
-    QuickActionUiModel("Comunidade", "Feed da turma", "community", QuickActionKind.Community),
+    QuickActionUiModel("Comunidade", "Feed da turma", AppRoute.Community, QuickActionKind.Community),
     QuickActionUiModel("Perfil", "Dados e histórico", AppRoute.Profile, QuickActionKind.Profile),
 )
 
@@ -89,8 +89,8 @@ private val defaultEvents = listOf(
 )
 
 private val defaultModules = listOf(
-    HomeModuleUiModel("Ligas", "Membros, agenda, loja e eventos das ligas.", "leagues", QuickActionKind.Leagues),
-    HomeModuleUiModel("Comunidade", "Publicações, comentários e interações.", "community", QuickActionKind.Community),
+    HomeModuleUiModel("Ligas", "Membros, agenda, loja e eventos das ligas.", AppRoute.Leagues, QuickActionKind.Leagues),
+    HomeModuleUiModel("Comunidade", "Publicações, comentários e interações.", AppRoute.Community, QuickActionKind.Community),
     HomeModuleUiModel("Loja", "Produtos, categorias e pedidos.", AppRoute.Store, QuickActionKind.Store),
     HomeModuleUiModel("Treinos", "Frequência e check-in de treino.", AppRoute.Training, QuickActionKind.Training),
     HomeModuleUiModel("Planos", "Plano ativo, adesões e benefícios.", AppRoute.Plans, QuickActionKind.Profile),

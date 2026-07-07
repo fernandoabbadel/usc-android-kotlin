@@ -16,7 +16,6 @@ import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Button
@@ -27,9 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -85,9 +84,15 @@ private fun HomeLoadedContent(
     )
     val storeAction = state.actionOrFallback(
         kind = QuickActionKind.Store,
+        title = "Loja",
+        subtitle = "Produtos da atlética",
+        route = AppRoute.Store,
+    )
+    val salesAction = QuickActionUiModel(
         title = "Modo vendas",
         subtitle = "Menu do evento",
-        route = AppRoute.Store,
+        route = AppRoute.SalesMode,
+        kind = QuickActionKind.Store,
     )
     val profileAction = state.actionOrFallback(
         kind = QuickActionKind.Profile,
@@ -104,7 +109,7 @@ private fun HomeLoadedContent(
     val scannerModule = HomeModuleUiModel(
         title = "Scanner",
         description = "Leitura e validação de QR Codes.",
-        route = "scanner",
+        route = AppRoute.Scanner,
         kind = QuickActionKind.Events,
     )
     val firstEvent = state.upcomingEvents.firstOrNull()
@@ -151,7 +156,7 @@ private fun HomeLoadedContent(
                             HomeBrand.copy(alpha = 0.18f),
                             Color.Transparent,
                         ),
-                        center = androidx.compose.ui.geometry.Offset(160f, 90f),
+                        center = Offset(160f, 90f),
                         radius = 460f,
                     ),
                 ),
@@ -173,7 +178,7 @@ private fun HomeLoadedContent(
 
             SalesModeCard(
                 eventTitle = firstEvent?.title ?: "Evento ativo",
-                onClick = { onQuickActionClick(storeAction) },
+                onClick = { onQuickActionClick(salesAction) },
             )
 
             PremiumDashboardCard(
@@ -215,7 +220,7 @@ private fun HomeLoadedContent(
                         HomeModuleUiModel(
                             title = "BoardRound",
                             description = "Ranking, estatísticas e quizzes.",
-                            route = "boardround",
+                            route = AppRoute.Boardround,
                             kind = QuickActionKind.Community,
                         ),
                     )

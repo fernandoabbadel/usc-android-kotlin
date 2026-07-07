@@ -221,8 +221,10 @@ private fun ProfileHeroCard(profile: ProfileUserUiModel) {
 
 private fun shortcutIcon(shortcut: ProfileShortcutUiModel) =
     when {
+        shortcut.title.contains("Pedido", ignoreCase = true) -> Icons.Outlined.CreditCard
         shortcut.title.contains("Carteirinha", ignoreCase = true) -> Icons.Outlined.CreditCard
         shortcut.title.contains("Plano", ignoreCase = true) -> Icons.Outlined.CreditCard
+        shortcut.title.contains("Ingresso", ignoreCase = true) -> Icons.Outlined.Event
         shortcut.title.contains("Evento", ignoreCase = true) -> Icons.Outlined.Event
         shortcut.title.contains("Loja", ignoreCase = true) -> Icons.Outlined.Storefront
         shortcut.title.contains("Config", ignoreCase = true) -> Icons.Outlined.Settings

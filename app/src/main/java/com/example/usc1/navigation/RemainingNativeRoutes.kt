@@ -1,5 +1,6 @@
 package com.example.usc1.navigation
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -9,12 +10,17 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.usc1.core.permissions.Permission
+import com.example.usc1.core.permissions.PermissionBlockReason
+import com.example.usc1.core.permissions.PermissionPolicy
+import com.example.usc1.core.ui.PermissionDeniedScreen
 import com.example.usc1.ui.album.AlbumMockData
 import com.example.usc1.ui.album.AlbumScreen
 import com.example.usc1.ui.album.AlbumTurmaScreen
 import com.example.usc1.ui.album.AlbumViewModel
 import com.example.usc1.ui.album.CacaCalouroScreen
 import com.example.usc1.ui.album.CalouroRankingScreen
+import com.example.usc1.ui.auth.AuthUiState
 import com.example.usc1.ui.collectives.CollectiveMockData
 import com.example.usc1.ui.collectives.CommissionAgendaScreen
 import com.example.usc1.ui.collectives.CommissionDetailScreen
@@ -86,7 +92,10 @@ import com.example.usc1.ui.vendor.MiniVendorViewModel
 import com.example.usc1.ui.vendor.SalesModeEventMenuScreen
 import com.example.usc1.ui.vendor.SalesModeScreen
 
-fun NavGraphBuilder.remainingNativeRoutes(navController: NavHostController) {
+fun NavGraphBuilder.remainingNativeRoutes(
+    navController: NavHostController,
+    authState: AuthUiState,
+) {
     composable(AppRoute.Community) {
         val viewModel: CommunityViewModel = viewModel()
         val state by viewModel.uiState.collectAsState()
@@ -133,8 +142,8 @@ fun NavGraphBuilder.remainingNativeRoutes(navController: NavHostController) {
         TenantSwitcherScreen(state = state, onTenantClick = viewModel::selectTenant)
     }
 
-    miniVendorRoutes(navController)
-    scannerRoutes(navController)
+    miniVendorRoutes(navController, authState)
+    scannerRoutes(navController, authState)
     guideRoutes(navController)
     albumRoutes(navController)
     gamesRoutes(navController)
@@ -202,24 +211,59 @@ private fun NavGraphBuilder.commissionRoutes(navController: NavHostController) {
     composable(AppRoute.CommissionEvents, listOf(navArgument("commissionId") { type = NavType.StringType })) { entry -> CommissionEventsScreen(CollectiveMockData.commissionById(entry.arguments?.getString("commissionId").orEmpty()), { navController.navigateUp() }) }
 }
 
-private fun NavGraphBuilder.miniVendorRoutes(navController: NavHostController) {
+private fun NavGraphBuilder.miniVendorRoutes(
+    navController: NavHostController,
+    authState: AuthUiState,
+) {
     composable(AppRoute.MiniVendor) {
-        val viewModel: MiniVendorViewModel = viewModel()
-        val state by viewModel.uiState.collectAsState()
-        MiniVendorScreen(
-            state = state,
-            onProductsClick = { navController.navigate(AppRoute.MiniVendorProducts) },
-            onPendingOrdersClick = { navController.navigate(AppRoute.MiniVendorPendingOrders) },
-            onApprovedOrdersClick = { navController.navigate(AppRoute.MiniVendorApprovedOrders) },
-            onFinanceClick = { navController.navigate(AppRoute.MiniVendorFinance) },
-        )
+        PermissionGate(authState, Permission.ManageMiniVendor, "Mini-vendor") {
+            val viewModel: MiniVendorViewModel = viewModel()
+            val state by viewModel.uiState.collectAsState()
+            MiniVendorScreen(
+                state = state,
+                onProductsClick = { navController.navigate(AppRoute.MiniVendorProducts) },
+                onPendingOrdersClick = { navController.navigate(AppRoute.MiniVendorPendingOrders) },
+                onApprovedOrdersClick = { navController.navigate(AppRoute.MiniVendorApprovedOrders) },
+                onFinanceClick = { navController.navigate(AppRoute.MiniVendorFinance) },
+            )
+        }
     }
-    composable(AppRoute.MiniVendorProducts) { miniVendorState { MiniVendorProductsScreen(it, { navController.navigateUp() }) } }
-    composable(AppRoute.MiniVendorPendingOrders) { miniVendorState { MiniVendorPendingOrdersScreen(it, { navController.navigateUp() }) } }
-    composable(AppRoute.MiniVendorApprovedOrders) { miniVendorState { MiniVendorApprovedOrdersScreen(it, { navController.navigateUp() }) } }
-    composable(AppRoute.MiniVendorFinance) { miniVendorState { MiniVendorFinanceScreen(it, { navController.navigateUp() }) } }
-    composable(AppRoute.SalesMode) { miniVendorState { SalesModeScreen(it, { navController.navigate(AppRoute.SalesModeEventMenu) }, { navController.navigate(AppRoute.ProductWithdrawalScanner) }) } }
-    composable(AppRoute.SalesModeEventMenu) { miniVendorState { SalesModeEventMenuScreen(it, { navController.navigateUp() }) } }
+    composable(AppRoute.MiniVendorProducts) {
+        PermissionGate(authState, Permission.ManageMiniVendor, "Produtos mini-vendor") {
+            miniVendorState { MiniVendorProductsScreen(it, { navController.navigateUp() }) }
+        }
+    }
+    composable(AppRoute.MiniVendorPendingOrders) {
+        PermissionGate(authState, Permission.ManageMiniVendor, "Pedidos pendentes") {
+            miniVendorState { MiniVendorPendingOrdersScreen(it, { navController.navigateUp() }) }
+        }
+    }
+    composable(AppRoute.MiniVendorApprovedOrders) {
+        PermissionGate(authState, Permission.ManageMiniVendor, "Pedidos aprovados") {
+            miniVendorState { MiniVendorApprovedOrdersScreen(it, { navController.navigateUp() }) }
+        }
+    }
+    composable(AppRoute.MiniVendorFinance) {
+        PermissionGate(authState, Permission.ManageMiniVendor, "Financeiro mini-vendor") {
+            miniVendorState { MiniVendorFinanceScreen(it, { navController.navigateUp() }) }
+        }
+    }
+    composable(AppRoute.SalesMode) {
+        PermissionGate(authState, Permission.ManageMiniVendor, "Modo vendas") {
+            miniVendorState {
+                SalesModeScreen(
+                    it,
+                    { navController.navigate(AppRoute.SalesModeEventMenu) },
+                    { navController.navigate(AppRoute.ProductWithdrawalScanner) },
+                )
+            }
+        }
+    }
+    composable(AppRoute.SalesModeEventMenu) {
+        PermissionGate(authState, Permission.ManageMiniVendor, "Menu do evento") {
+            miniVendorState { SalesModeEventMenuScreen(it, { navController.navigateUp() }) }
+        }
+    }
 }
 
 @androidx.compose.runtime.Composable
@@ -229,22 +273,47 @@ private fun miniVendorState(content: @androidx.compose.runtime.Composable (com.e
     content(state)
 }
 
-private fun NavGraphBuilder.scannerRoutes(navController: NavHostController) {
+private fun NavGraphBuilder.scannerRoutes(
+    navController: NavHostController,
+    authState: AuthUiState,
+) {
     composable(AppRoute.Scanner) {
-        val viewModel: ScannerViewModel = viewModel()
-        val state by viewModel.uiState.collectAsState()
-        ScannerScreen(
-            state = state,
-            onEventScannerClick = { navController.navigate(AppRoute.EventCheckInScanner) },
-            onPartyScannerClick = { navController.navigate(AppRoute.PartyScanner) },
-            onProductScannerClick = { navController.navigate(AppRoute.ProductWithdrawalScanner) },
-        )
+        PermissionGate(authState, Permission.UseScanner, "Scanner") {
+            val viewModel: ScannerViewModel = viewModel()
+            val state by viewModel.uiState.collectAsState()
+            ScannerScreen(
+                state = state,
+                onEventScannerClick = { navController.navigate(AppRoute.EventCheckInScanner) },
+                onPartyScannerClick = { navController.navigate(AppRoute.PartyScanner) },
+                onProductScannerClick = { navController.navigate(AppRoute.ProductWithdrawalScanner) },
+            )
+        }
     }
-    composable(AppRoute.EventCheckInScanner) { scannerState { EventCheckInScannerScreen(it, { navController.navigate(AppRoute.ScannerSuccess) }, { navController.navigate(AppRoute.ScannerError) }, { navController.navigateUp() }) } }
-    composable(AppRoute.PartyScanner) { scannerState { PartyScannerScreen(it, { navController.navigate(AppRoute.ScannerSuccess) }, { navController.navigate(AppRoute.ScannerError) }, { navController.navigateUp() }) } }
-    composable(AppRoute.ProductWithdrawalScanner) { scannerState { ProductWithdrawalScannerScreen(it, { navController.navigate(AppRoute.ScannerSuccess) }, { navController.navigate(AppRoute.ScannerError) }, { navController.navigateUp() }) } }
-    composable(AppRoute.ScannerSuccess) { scannerState { ScannerResultSuccessScreen(it.successResult, { navController.navigateUp() }) } }
-    composable(AppRoute.ScannerError) { scannerState { ScannerResultErrorScreen(it.errorResult, { navController.navigateUp() }) } }
+    composable(AppRoute.EventCheckInScanner) {
+        PermissionGate(authState, Permission.UseScanner, "Scanner Eventos") {
+            scannerState { EventCheckInScannerScreen(it, { navController.navigate(AppRoute.ScannerSuccess) }, { navController.navigate(AppRoute.ScannerError) }, { navController.navigateUp() }) }
+        }
+    }
+    composable(AppRoute.PartyScanner) {
+        PermissionGate(authState, Permission.UseScanner, "Scanner Festas") {
+            scannerState { PartyScannerScreen(it, { navController.navigate(AppRoute.ScannerSuccess) }, { navController.navigate(AppRoute.ScannerError) }, { navController.navigateUp() }) }
+        }
+    }
+    composable(AppRoute.ProductWithdrawalScanner) {
+        PermissionGate(authState, Permission.UseScanner, "Scanner Produtos") {
+            scannerState { ProductWithdrawalScannerScreen(it, { navController.navigate(AppRoute.ScannerSuccess) }, { navController.navigate(AppRoute.ScannerError) }, { navController.navigateUp() }) }
+        }
+    }
+    composable(AppRoute.ScannerSuccess) {
+        PermissionGate(authState, Permission.UseScanner, "Scanner") {
+            scannerState { ScannerResultSuccessScreen(it.successResult, { navController.navigateUp() }) }
+        }
+    }
+    composable(AppRoute.ScannerError) {
+        PermissionGate(authState, Permission.UseScanner, "Scanner") {
+            scannerState { ScannerResultErrorScreen(it.errorResult, { navController.navigateUp() }) }
+        }
+    }
     composable(AppRoute.ScannerPermissionDenied) { ScannerPermissionDeniedScreen() }
 }
 
@@ -332,3 +401,47 @@ private fun NavGraphBuilder.generalOrderRoutes(navController: NavHostController)
 
 private fun generalOrderType(value: String?): GeneralOrderType? =
     GeneralOrderType.values().firstOrNull { it.name == value }
+
+@Composable
+private fun PermissionGate(
+    authState: AuthUiState,
+    permission: Permission,
+    title: String,
+    content: @Composable () -> Unit,
+) {
+    val decision = remember(authState.session, permission) {
+        PermissionPolicy().canUsePermission(authState.session, permission)
+    }
+
+    if (decision.allowed) {
+        content()
+    } else {
+        PermissionDeniedScreen(
+            title = title,
+            subtitle = permissionMessage(permission, decision.reason),
+        )
+    }
+}
+
+private fun permissionMessage(
+    permission: Permission,
+    reason: PermissionBlockReason?,
+): String {
+    val module = when (permission) {
+        Permission.UseScanner -> "Scanner e check-in"
+        Permission.ManageMiniVendor -> "Mini-vendor e modo vendas"
+        Permission.ManageTenant -> "Gestão da atlética"
+        else -> "Este módulo"
+    }
+    val cause = when (reason) {
+        PermissionBlockReason.NotAuthenticated -> "Entre novamente para continuar."
+        PermissionBlockReason.Banned -> "Usuário bloqueado não pode acessar operações."
+        PermissionBlockReason.TenantPending -> "A associação à atlética ainda está pendente."
+        PermissionBlockReason.MissingRole -> "Use uma conta mockada com role admin, vendas, mini-vendor ou master."
+        PermissionBlockReason.ModuleHidden -> "O módulo não está habilitado para este tenant."
+        PermissionBlockReason.InviteRequired -> "O convite da atlética ainda é obrigatório."
+        PermissionBlockReason.FeatureNotNativeYet -> "A funcionalidade ainda não foi migrada para nativo."
+        null -> "Permissão insuficiente para abrir esta área."
+    }
+    return "$module exige uma role autorizada. $cause"
+}

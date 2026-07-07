@@ -357,6 +357,34 @@
   - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
 - Commit local previsto: `Add remaining native modules with web visual parity`.
 
+## QA Global - Navegação, visual e permissões
+
+- Revisão global executada após o commit `8262890 Add remaining native modules with web visual parity`.
+- Módulos revisados no Android nativo:
+  - Auth, Home/Dashboard, Perfil, Configurações, Carteirinha, Eventos, Loja, Planos, Treinos/Gym, Parceiros, Comunidade, Ligas, Diretório, Comissões, Tenant, Mini-vendor, Modo vendas, Scanner, Guia, Legal/LGPD, Álbum, Games, Boardround, Conquistas, Fidelidade e Pedidos gerais.
+- Navegação corrigida:
+  - Home mantém bottom navigation flutuante com Início, Eventos, Scanner central, Carteirinha e Menu.
+  - Card de Modo vendas na Home aponta para `AppRoute.SalesMode`.
+  - Scanner central aponta para `AppRoute.Scanner`.
+  - Boardround usa `AppRoute.Boardround`.
+  - Perfil ganhou atalho para Pedidos gerais.
+  - Configurações virou hub real dos módulos nativos, incluindo Comunidade, Ligas, Diretório, Comissões, Atlética, Álbum, Games, Mini-vendor, Modo vendas, Scanner, Guia, Suporte, Termos e LGPD.
+- Permissões mockadas revisadas:
+  - `PermissionPolicy` agora valida `UseScanner`, `ManageMiniVendor` e `ManageTenant` por role.
+  - Rotas de Mini-vendor, Modo vendas e Scanner exibem bloqueio premium quando a role mockada não permite acesso.
+  - `MockAuthRepository` permite testar roles por e-mail mockado: `admin`, `vendas`, `mini`, `master`, `liga`, `diretorio` e `comissao`.
+- Previews:
+  - Os módulos principais continuam com previews dark/premium em Compose.
+  - A revisão manteve previews sem rede e sem dependência de ViewModel real quando aplicável.
+- Avisos mantidos:
+  - Supabase real ainda não foi conectado.
+  - Nenhuma URL secreta, anon key, service role, token, senha, `.env` ou segredo foi adicionado.
+  - `web-reference` continua sendo fonte visual obrigatória e não deve ser editado.
+- Validação executada nesta QA:
+  - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
+  - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
+- Commit local previsto: `Polish navigation visual parity and module QA`.
+
 ## Próximas fases
 
 1. Revisão visual fina com screenshots em Android Studio/emulador para comparar pixel a pixel contra `web-reference`.

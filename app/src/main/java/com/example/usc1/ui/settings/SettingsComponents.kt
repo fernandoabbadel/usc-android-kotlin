@@ -5,10 +5,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -41,6 +44,11 @@ fun SettingsItem(
         SettingsAction.SignOut -> PremiumRed
         SettingsAction.Plans,
         SettingsAction.Invites,
+        SettingsAction.Album,
+        SettingsAction.Games,
+        SettingsAction.Boardround,
+        SettingsAction.Achievements,
+        SettingsAction.Loyalty,
         -> PremiumAmber
         SettingsAction.Membership -> com.example.usc1.core.ui.PremiumBrand
         else -> com.example.usc1.core.ui.PremiumBrand
@@ -65,11 +73,25 @@ private fun iconFor(action: SettingsAction): ImageVector = when (action) {
     SettingsAction.Lgpd,
     -> Icons.Outlined.CreditCard
     SettingsAction.Tickets -> Icons.Outlined.Event
+    SettingsAction.Community,
+    SettingsAction.Leagues,
+    SettingsAction.Directory,
+    SettingsAction.Commissions,
+    SettingsAction.Tenant,
+    -> Icons.Outlined.Groups
+    SettingsAction.Album,
+    SettingsAction.Games,
+    SettingsAction.Boardround,
+    SettingsAction.Achievements,
+    SettingsAction.Loyalty,
+    -> Icons.Outlined.Star
     SettingsAction.MiniVendor,
     SettingsAction.SalesMode,
     -> Icons.Outlined.Storefront
+    SettingsAction.Scanner -> Icons.Outlined.QrCodeScanner
     SettingsAction.SignOut -> Icons.Outlined.Logout
     SettingsAction.Invites,
+    SettingsAction.Guide,
     SettingsAction.Support,
     -> Icons.Outlined.Settings
 }

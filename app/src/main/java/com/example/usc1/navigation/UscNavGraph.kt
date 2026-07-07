@@ -700,7 +700,7 @@ fun UscNavGraph() {
             )
         }
 
-        remainingNativeRoutes(navController)
+        remainingNativeRoutes(navController, authState)
 
         modules.filterNot { module -> module.route in concreteModuleRoutes }.forEach { module ->
             composable(module.route) {

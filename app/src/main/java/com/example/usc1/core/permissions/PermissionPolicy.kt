@@ -37,12 +37,60 @@ class PermissionPolicy {
 
     fun isScannerAllowed(role: UserRole): Boolean = role in scannerRoles
 
+    fun canUsePermission(
+        session: UserSession,
+        permission: Permission,
+    ): PermissionDecision {
+        val user = session.user ?: return PermissionDecision.blocked(PermissionBlockReason.NotAuthenticated)
+
+        if (!session.isAuthenticated) {
+            return PermissionDecision.blocked(PermissionBlockReason.NotAuthenticated)
+        }
+
+        if (user.status.isBlocked) {
+            return PermissionDecision.blocked(PermissionBlockReason.Banned)
+        }
+
+        if (session.tenant?.membershipStatus?.isPending == true) {
+            return PermissionDecision.blocked(PermissionBlockReason.TenantPending)
+        }
+
+        return when (permission) {
+            Permission.UseScanner -> if (user.role in scannerRoles) {
+                PermissionDecision.Allowed
+            } else {
+                PermissionDecision.blocked(PermissionBlockReason.MissingRole)
+            }
+            Permission.ManageMiniVendor -> if (user.role in miniVendorRoles) {
+                PermissionDecision.Allowed
+            } else {
+                PermissionDecision.blocked(PermissionBlockReason.MissingRole)
+            }
+            Permission.ManageTenant -> if (user.role.canManageTenant) {
+                PermissionDecision.Allowed
+            } else {
+                PermissionDecision.blocked(PermissionBlockReason.MissingRole)
+            }
+            else -> PermissionDecision.Allowed
+        }
+    }
+
     companion object {
         val scannerRoles = setOf(
             UserRole.Master,
             UserRole.MasterTenant,
             UserRole.AdminGeral,
             UserRole.AdminGestor,
+            UserRole.MiniVendor,
+            UserRole.Vendas,
+        )
+
+        val miniVendorRoles = setOf(
+            UserRole.Master,
+            UserRole.MasterTenant,
+            UserRole.AdminGeral,
+            UserRole.AdminGestor,
+            UserRole.MiniVendor,
             UserRole.Vendas,
         )
     }
