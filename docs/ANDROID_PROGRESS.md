@@ -1,11 +1,28 @@
 # Progresso Android USC
 
+## Integração Supabase inicial - Eventos públicos
+
+- `web-reference/src/lib/eventsNativeService.ts`, `web-reference/src/lib/eventsService.ts`, `web-reference/src/app/eventos/EventosPageContent.tsx`, `web-reference/src/app/eventos/EventosClientPage.tsx` e `web-reference/src/app/eventos/[id]/page.tsx` foram usados como fonte.
+- Android ganhou `SupabaseEventsRepository` como implementação real de `EventsRepository`.
+- `EventsViewModel` e `EventDetailViewModel` agora usam Supabase real como padrão, sem fallback silencioso para `MockEventsRepository`.
+- A listagem pública consulta `eventos` por `tenant_id`, `status = ativo`, ordenação por `data`, limite de busca e recorte de página.
+- O detalhe consulta `eventos` por `id` e `tenant_id`.
+- O escopo do organizador é derivado dos campos reais encontrados no web app: `tipo`, `categoria` e `stats.leagueId`; não foi encontrado campo explícito `owner_type`/`organizer_type` nas consultas web analisadas.
+- `Event` agora carrega `tenantId`, `saleStatus`, `imageUrl`, `ownerType`, `ownerId`, `ownerName` e `likesCount`.
+- Checkout, ingressos, pedidos, QR, baixa, pagamento, financeiro e split de evento não foram implementados; a rota de checkout mostra estado bloqueado até clonagem segura do fluxo web.
+- Nenhuma Edge Function, Realtime, Storage novo, câmera ou serviço pago foi adicionado.
+- Validação executada:
+  - `.\gradlew.bat :app:compileDebugKotlin --no-daemon --console=plain --stacktrace`
+  - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
+
 ## Direção Obrigatória
 
 - Não invente tela. Replique a tela web em Compose.
 - `web-reference` é a fonte visual obrigatória.
 - O Android deve ser nativo em Kotlin/Jetpack Compose.
-- Não usar WebView, wrapper, Supabase real, chaves, tokens, `.env` ou segredos no app.
+- Não usar WebView ou wrapper.
+- Usar Supabase real direto quando for seguro, com Auth + RLS e tenant_id obrigatório.
+- Nunca colocar service_role, segredo de pagamento, token privado, `.env` ou credencial sensível no app.
 - Não fazer push sem ordem explícita.
 
 ## Fase 1 - Fundação Kotlin/Compose
@@ -228,11 +245,11 @@
 - Validação executada:
   - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
   - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
-- Commit local previsto: `Add store plans training and partners native screens`.
+- Registro histórico da fase: o commit não foi criado por esta auditoria.
 
 ## Fase 7 a 10 - Módulos restantes com paridade visual
 
-- Bloco nativo criado em Kotlin/Jetpack Compose para cobrir os módulos restantes sem WebView, wrapper, Supabase real ou segredo no app.
+- Bloco nativo criado em Kotlin/Jetpack Compose para cobrir os módulos restantes sem WebView, wrapper ou segredo no app.
 - Kit compartilhado criado:
   - `NativeModuleComponents.kt`
   - `NativeModuleHeroCard`
@@ -355,7 +372,7 @@
 - Validação executada:
   - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
   - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
-- Commit local previsto: `Add remaining native modules with web visual parity`.
+- Registro histórico da fase: o commit não foi criado por esta auditoria.
 
 ## QA Global - Navegação, visual e permissões
 
@@ -364,8 +381,8 @@
   - Auth, Home/Dashboard, Perfil, Configurações, Carteirinha, Eventos, Loja, Planos, Treinos/Gym, Parceiros, Comunidade, Ligas, Diretório, Comissões, Tenant, Mini-vendor, Modo vendas, Scanner, Guia, Legal/LGPD, Álbum, Games, Boardround, Conquistas, Fidelidade e Pedidos gerais.
 - Navegação corrigida:
   - Home mantém bottom navigation flutuante com Início, Eventos, Scanner central, Carteirinha e Menu.
-  - Card de Modo vendas na Home aponta para `AppRoute.SalesMode`.
-  - Scanner central aponta para `AppRoute.Scanner`.
+  - Registro histórico: o card de Modo Vendas apontava para `AppRoute.SalesMode`; hoje abre provisoriamente o detalhe do evento até existir a rota nativa exata do cardápio.
+  - Registro histórico: o scanner central apontava sempre para `AppRoute.Scanner`; hoje abre o scanner administrativo somente para perfis autorizados e `CacaCalouro` para os demais membros.
   - Boardround usa `AppRoute.Boardround`.
   - Perfil ganhou atalho para Pedidos gerais.
   - Configurações virou hub real dos módulos nativos, incluindo Comunidade, Ligas, Diretório, Comissões, Atlética, Álbum, Games, Mini-vendor, Modo vendas, Scanner, Guia, Suporte, Termos e LGPD.
@@ -377,16 +394,60 @@
   - Os módulos principais continuam com previews dark/premium em Compose.
   - A revisão manteve previews sem rede e sem dependência de ViewModel real quando aplicável.
 - Avisos mantidos:
-  - Supabase real ainda não foi conectado.
+  - Registro histórico: a integração começou em Auth/Tenant. No estado atual, Home, eventos públicos, catálogo público da loja, parceiros e vários fluxos admin já usam Supabase real, ainda com cobertura parcial.
   - Nenhuma URL secreta, anon key, service role, token, senha, `.env` ou segredo foi adicionado.
   - `web-reference` continua sendo fonte visual obrigatória e não deve ser editado.
 - Validação executada nesta QA:
   - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
   - `.\gradlew.bat :app:testDebugUnitTest --no-daemon --console=plain`
-- Commit local previsto: `Polish navigation visual parity and module QA`.
+- Registro histórico da fase: o commit não foi criado por esta auditoria.
 
 ## Próximas fases
 
 1. Revisão visual fina com screenshots em Android Studio/emulador para comparar pixel a pixel contra `web-reference`.
 2. Completar microinterações e estados vazios específicos por módulo.
-3. Integração Supabase real, somente depois da paridade visual e sem expor segredos no app.
+3. Substituir os mocks restantes por Supabase real, módulo a módulo, sem expor segredos no app.
+
+## Marco de paridade - Home/dashboard real
+
+- `web-reference/src/app/dashboard/DashboardPageContent.tsx`, `web-reference/src/lib/dashboardPublicService.ts`, o drawer e a navegação inferior do web foram usados como fonte da verdade.
+- `HomeViewModel` deixou de montar a tela com dados locais e passou a carregar `HomeDashboardBundle` por `SupabaseHomeDashboardRepository`.
+- A fonte principal é a RPC existente `dashboard_public_home_bundle`; os fallbacks de eventos, produtos, parceiros, ligas, comunidade, treinos, membros e Caça aos Calouros filtram explicitamente o tenant recebido.
+- O mapeamento preserva confirmação do usuário no evento, posição vertical da capa e ranking de turmas dos produtos.
+- A ordem das seções, cards, carrosséis, parceiros ouro/prata/standard, Modo Vendas, carteirinha, treinos, Caça aos Calouros e barra inferior foram reestruturados para a referência mobile.
+- O scanner central diferencia perfis autorizados e membros comuns; o Modo Vendas não envia mais o sócio para a área administrativa de mini-vendor.
+- Coil 3.4.0 foi adicionado para imagens remotas, versão compatível com o compilador Kotlin atual do projeto.
+- O visitante sem tenant agora é enviado ao diretório público real, seleciona uma atlética ativa revalidada por ID/slug/status e só então entra na Home. A sessão guest permanece em memória e não cria membership nem grava em `users`.
+- A visibilidade usa os 47 módulos efetivos devolvidos pelo endpoint público do dashboard. Em falha, preserva bloqueios do último mapa e da configuração da tenant; sem fonte válida, bloqueia todos os módulos conhecidos.
+- O marco ainda não é contado como rota concluída: faltam landing intermediária/App Links, persistência guest, identidade visual dinâmica, ações sociais, cardápio nativo específico do evento e QA visual em aparelho.
+- Validação executada:
+  - `.\\gradlew.bat :app:testDebugUnitTest :app:assembleDebug --no-daemon --console=plain`
+  - build limpo concluído com sucesso; 46 tarefas executadas; 17 testes executados, sem falhas.
+
+## Integração Supabase inicial - Auth/Tenant
+
+- Gradle recebeu Supabase Auth, PostgREST e Ktor Android, sem Storage, Realtime ou Functions.
+- `BuildConfig` lê `SUPABASE_URL`/`SUPABASE_ANON_KEY` ou `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` via `local.properties` ou variáveis de ambiente.
+- `SupabaseClientProvider` instala apenas Auth e PostgREST.
+- `SupabaseAuthRepository` substitui o mock como padrão do `AuthViewModel`.
+- Login Android foi alinhado ao web app: Google via Supabase Auth e visitante local.
+- Sessão tenta restaurar o usuário atual e consulta colunas mínimas em `users`, `tenant_memberships` e `tenants`.
+- Multi-tenant inicial usa `tenant_id`, status de membership e dados de tenant vindos do Supabase.
+- Convite inicial usa a RPC existente `tenant_request_join_with_invite`, sem criar Edge Function nova.
+- Cadastro/ficha de perfil, troca real de tenant e módulos de dados ainda estão pendentes.
+- Validação executada:
+  - `.\gradlew.bat :app:compileDebugKotlin --no-daemon --console=plain --stacktrace`
+  - `.\gradlew.bat :app:assembleDebug --no-daemon --console=plain`
+
+## Integração Supabase inicial - Loja pública
+
+- `web-reference/src/lib/storePublicService.ts` foi usado como fonte para a loja pública.
+- Android ganhou contrato `StoreCatalogRepository` e implementação `SupabaseStoreCatalogRepository`.
+- A loja Android agora lê `categorias` e `produtos` diretamente do Supabase com `tenant_id`, `active = true`, `aprovado = true`, paginação de 20 itens e limite de categorias.
+- O detalhe de produto agora busca `produtos` por `id` e `tenant_id`, sem fallback para o primeiro mock.
+- Produtos carregam `seller_type`, `seller_id`, `seller_name` e `seller_logo_url` no model Android.
+- O Android diferencia os tipos `tenant`, `league/liga`, `comissao`, `diretorio` e `mini_vendor` no model; o web app atual ainda normaliza publicamente loja como `tenant`, `league` e `mini_vendor`.
+- Carrinho, checkout, pedidos, pagamento, retirada e financeiro continuam mockados/visuais até espelhar o fluxo web completo com segurança.
+- Nenhuma Edge Function, Realtime, Storage novo, câmera ou serviço pago foi adicionado.
+- Validação executada:
+  - `.\gradlew.bat :app:compileDebugKotlin --no-daemon --console=plain --stacktrace`

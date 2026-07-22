@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -52,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.example.usc1.R
 
 val HomeBlack = Color(0xFF050505)
@@ -61,8 +64,6 @@ val HomeZinc800 = Color(0xFF27272A)
 val HomeZinc700 = Color(0xFF3F3F46)
 val HomeZinc500 = Color(0xFF71717A)
 val HomeZinc400 = Color(0xFFA1A1AA)
-val HomeBrand = Color(0xFF10B981)
-val HomeBrandAccent = Color(0xFF34D399)
 val HomeGold = Color(0xFFEAB308)
 val HomeAmber = Color(0xFFF59E0B)
 
@@ -71,7 +72,7 @@ private val DashboardCardShape = RoundedCornerShape(28.dp)
 @Composable
 fun DashboardHeader(
     firstName: String,
-    tenantName: String,
+    avatarUrl: String?,
     modifier: Modifier = Modifier,
     onAvatarClick: () -> Unit,
 ) {
@@ -85,7 +86,7 @@ fun DashboardHeader(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = "Fala, $firstName!",
+                text = if (firstName.isBlank()) "Fala!" else "Fala, $firstName!",
                 color = Color.White,
                 fontSize = 27.sp,
                 lineHeight = 30.sp,
@@ -100,10 +101,6 @@ fun DashboardHeader(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
-            NeonStatusChip(
-                label = tenantName.uppercase(),
-                icon = Icons.Outlined.CheckCircle,
-            )
         }
 
         Box(
@@ -116,14 +113,16 @@ fun DashboardHeader(
                 .padding(3.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.logo_aaakn),
+            AsyncImage(
+                model = avatarUrl,
                 contentDescription = "Perfil",
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(CircleShape)
                     .background(Color.Black),
                 contentScale = ContentScale.Crop,
+                fallback = painterResource(id = R.drawable.logo_usc),
+                error = painterResource(id = R.drawable.logo_usc),
             )
         }
     }
@@ -139,8 +138,8 @@ fun NeonStatusChip(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(7.dp),
-        color = HomeBrand.copy(alpha = 0.13f),
-        border = BorderStroke(1.dp, HomeBrand.copy(alpha = 0.42f)),
+        color = color.copy(alpha = 0.13f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.42f)),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
@@ -169,6 +168,8 @@ fun NeonStatusChip(
 @Composable
 fun SalesModeCard(
     eventTitle: String,
+    menuTitle: String = "Menu do evento",
+    imageUrl: String? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -181,12 +182,14 @@ fun SalesModeCard(
             .background(HomeZinc900)
             .border(1.dp, HomeAmber.copy(alpha = 0.62f), DashboardCardShape),
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.battle_forest),
+        AsyncImage(
+            model = imageUrl,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
             alpha = 0.38f,
+            fallback = painterResource(id = R.drawable.battle_forest),
+            error = painterResource(id = R.drawable.battle_forest),
         )
         Box(
             modifier = Modifier
@@ -212,7 +215,7 @@ fun SalesModeCard(
                     color = Color(0xFFFCD34D),
                 )
                 Text(
-                    text = "Menu do evento",
+                    text = menuTitle,
                     color = Color.White,
                     fontSize = 25.sp,
                     lineHeight = 27.sp,
@@ -239,10 +242,19 @@ fun SalesModeCard(
 fun MembershipHomeCard(
     membershipCode: String,
     planName: String,
-    tenantName: String,
+    className: String,
+    memberStatus: String,
+    backgroundImageRes: Int = R.drawable.carteirinha_bg,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val tenantStyle = HomeTenantTheme.current
+    val statusLabel = if (memberStatus.equals("ativo", ignoreCase = true)) {
+        "SÓCIO ATIVO"
+    } else {
+        memberStatus.ifBlank { "MEMBRO" }.uppercase()
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -253,7 +265,7 @@ fun MembershipHomeCard(
             .border(1.dp, HomeZinc800, DashboardCardShape),
     ) {
         Image(
-            painter = painterResource(id = R.drawable.carteirinha_bg),
+            painter = painterResource(id = backgroundImageRes),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
@@ -272,15 +284,17 @@ fun MembershipHomeCard(
                     ),
                 ),
         )
-        Image(
-            painter = painterResource(id = R.drawable.logo_usc),
-            contentDescription = null,
+        AsyncImage(
+            model = tenantStyle.logoUrl,
+            contentDescription = "Logo ${tenantStyle.displayName}",
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 14.dp)
                 .size(108.dp),
             contentScale = ContentScale.Fit,
             alpha = 0.22f,
+            fallback = painterResource(id = R.drawable.logo_usc),
+            error = painterResource(id = R.drawable.logo_usc),
         )
         Column(
             modifier = Modifier
@@ -298,7 +312,7 @@ fun MembershipHomeCard(
                     modifier = Modifier.size(17.dp),
                     tint = HomeBrand,
                 )
-                NeonStatusChip(label = "SÓCIO ATIVO")
+                NeonStatusChip(label = statusLabel)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
@@ -312,7 +326,10 @@ fun MembershipHomeCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "$tenantName • $planName".uppercase(),
+                text = listOf(
+                    className.takeIf(String::isNotBlank)?.let { "Turma $it" },
+                    planName.takeIf(String::isNotBlank),
+                ).filterNotNull().joinToString(" • ").ifBlank { "MEMBRO DA ATLÉTICA" }.uppercase(),
                 color = HomeZinc400,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
@@ -556,12 +573,13 @@ fun RadarAlbumCard(
 
 @Composable
 private fun NeonRadarBackground() {
+    val brand = HomeTenantTheme.colors.primary
     Canvas(modifier = Modifier.fillMaxSize()) {
         val grid = 22.dp.toPx()
         var x = 0f
         while (x <= size.width) {
             drawLine(
-                color = HomeBrand.copy(alpha = 0.08f),
+                color = brand.copy(alpha = 0.08f),
                 start = Offset(x, 0f),
                 end = Offset(x, size.height),
                 strokeWidth = 1f,
@@ -571,7 +589,7 @@ private fun NeonRadarBackground() {
         var y = 0f
         while (y <= size.height) {
             drawLine(
-                color = HomeBrand.copy(alpha = 0.08f),
+                color = brand.copy(alpha = 0.08f),
                 start = Offset(0f, y),
                 end = Offset(size.width, y),
                 strokeWidth = 1f,
@@ -580,15 +598,15 @@ private fun NeonRadarBackground() {
         }
 
         val center = Offset(size.width * 0.56f, size.height * 0.54f)
-        drawCircle(HomeBrand.copy(alpha = 0.16f), radius = size.width * 0.32f, center = center)
+        drawCircle(brand.copy(alpha = 0.16f), radius = size.width * 0.32f, center = center)
         drawCircle(
-            color = HomeBrand.copy(alpha = 0.28f),
+            color = brand.copy(alpha = 0.28f),
             radius = size.width * 0.52f,
             center = center,
             style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f),
         )
         drawCircle(
-            color = HomeBrand.copy(alpha = 0.22f),
+            color = brand.copy(alpha = 0.22f),
             radius = size.width * 0.34f,
             center = center,
             style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f),
@@ -636,11 +654,13 @@ fun FloatingBottomNavigation(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 18.dp),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Surface(
             modifier = Modifier
+                .widthIn(max = 448.dp)
                 .fillMaxWidth()
                 .height(76.dp),
             shape = RoundedCornerShape(27.dp),

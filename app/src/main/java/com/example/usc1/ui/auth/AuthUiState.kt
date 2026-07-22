@@ -10,7 +10,9 @@ data class AuthUiState(
     val fullName: String = "",
     val inviteCode: String = "",
     val isLoading: Boolean = false,
+    val isWaitingForOAuthRedirect: Boolean = false,
     val errorMessage: String? = null,
+    val statusMessage: String? = null,
 ) {
     val status: AuthStatus = when {
         isLoading -> AuthStatus.Loading
@@ -21,5 +23,5 @@ data class AuthUiState(
         get() = email.isNotBlank() && password.length >= 4 && !isLoading
 
     val canSubmitRegister: Boolean
-        get() = fullName.isNotBlank() && email.isNotBlank() && !isLoading
+        get() = inviteCode.isNotBlank() && !isLoading
 }

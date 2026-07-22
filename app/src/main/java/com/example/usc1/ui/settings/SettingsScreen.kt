@@ -1,145 +1,166 @@
 package com.example.usc1.ui.settings
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.usc1.R
-import com.example.usc1.core.ui.PremiumBrand
-import com.example.usc1.core.ui.PremiumCard
-import com.example.usc1.core.ui.PremiumChip
-import com.example.usc1.core.ui.PremiumHeader
-import com.example.usc1.core.ui.PremiumScreen
-import com.example.usc1.core.ui.PremiumZinc400
-import com.example.usc1.core.ui.PremiumZinc500
-import com.example.usc1.core.ui.PremiumZinc800
-import com.example.usc1.ui.theme.UscTheme
+import com.example.usc1.core.tenant.TenantPalette
 
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
     onItemClick: (SettingsItemUiModel) -> Unit,
     modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {},
+    onNotificationPreferenceChange: (Boolean) -> Unit = {},
+    onCreateInviteClick: () -> Unit = {},
+    onOpenInvitesClick: (() -> Unit)? = null,
+    onCopyInviteClick: (String) -> Unit = {},
+    onToggleAccountClick: () -> Unit = {},
+    onSignOutClick: (() -> Unit)? = null,
+    onDeleteAccountClick: () -> Unit = {},
 ) {
-    PremiumScreen(
-        modifier = modifier,
-        bottomPadding = 110.dp,
-    ) {
-        PremiumHeader(
-            title = "Central do Sócio",
-            subtitle = "Configurações, pedidos e permissões",
-            icon = Icons.Outlined.Settings,
-        )
+    var notificationsEnabled by rememberSaveable(state.notificationsEnabled) {
+        mutableStateOf(state.notificationsEnabled)
+    }
 
-        PremiumCard {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
+    val membershipItem = SettingsItemUiModel(
+        title = "Carteirinha",
+        description = "Identidade digital",
+        action = SettingsAction.Membership,
+    )
+    val invitesItem = state.sections
+        .flatMap(SettingsSectionUiModel::items)
+        .firstOrNull { it.action == SettingsAction.Invites }
+        ?: SettingsItemUiModel("Meus Convites", action = SettingsAction.Invites)
+    val signOutItem = SettingsItemUiModel("Sair da conta", action = SettingsAction.SignOut)
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SettingsBackground),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 448.dp)
+                .fillMaxSize(),
+        ) {
+            SettingsStickyHeader(onBackClick = onBackClick)
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = 16.dp,
+                    end = 16.dp,
+                    bottom = 112.dp,
+                ),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(24.dp),
             ) {
-                Surface(
-                    modifier = Modifier.size(72.dp),
-                    shape = CircleShape,
-                    color = Color.Black,
-                    border = BorderStroke(3.dp, PremiumBrand),
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_aaakn),
-                        contentDescription = "Perfil",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
+                item(key = "settings-profile") {
+                    SettingsProfileCard(
+                        state = state,
+                        onMembershipClick = { onItemClick(membershipItem) },
                     )
                 }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = state.userName,
-                        color = Color.White,
-                        fontSize = 21.sp,
-                        lineHeight = 22.sp,
-                        fontWeight = FontWeight.Black,
-                    )
-                    Text(
-                        text = state.userEmail,
-                        color = PremiumZinc400,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PremiumChip(label = "Bicho Solto")
-                        PremiumChip(label = "Ativo")
+
+                if (state.invitePanel.isVisible) {
+                    item(key = "settings-invite") {
+                        SettingsInvitePanel(
+                            state = state.invitePanel,
+                            tenantName = state.tenantName,
+                            onCreateInviteClick = onCreateInviteClick,
+                            onOpenInvitesClick = {
+                                onOpenInvitesClick?.invoke() ?: onItemClick(invitesItem)
+                            },
+                            onCopyInviteClick = onCopyInviteClick,
+                        )
                     }
                 }
-            }
-            com.example.usc1.core.ui.PremiumSecondaryButton(
-                text = "Abrir Carteirinha",
-                onClick = {
-                    onItemClick(
-                        SettingsItemUiModel(
-                            title = "Carteirinha",
-                            description = "Identidade digital",
-                            action = SettingsAction.Membership,
-                        ),
+
+                state.sections.forEachIndexed { index, section ->
+                    item(key = "settings-section-$index-${section.title}") {
+                        SettingsSection(
+                            section = section,
+                            notificationsEnabled = notificationsEnabled,
+                            onNotificationChange = { enabled ->
+                                notificationsEnabled = enabled
+                                onNotificationPreferenceChange(enabled)
+                            },
+                            onItemClick = onItemClick,
+                        )
+                    }
+                }
+
+                item(key = "settings-risk-zone") {
+                    SettingsRiskZone(
+                        state = state,
+                        onToggleAccountClick = onToggleAccountClick,
+                        onSignOutClick = {
+                            onSignOutClick?.invoke() ?: onItemClick(signOutItem)
+                        },
+                        onDeleteAccountClick = onDeleteAccountClick,
                     )
-                },
-                icon = Icons.Outlined.CreditCard,
-            )
+                }
+            }
         }
 
-        state.sections.forEach { section ->
-            Text(
-                text = section.title.uppercase(),
-                color = PremiumZinc500,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.sp,
-                modifier = Modifier.padding(start = 2.dp),
-            )
-            SettingsSection(
-                section = section,
-                onItemClick = onItemClick,
-            )
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.50f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(
+                    color = state.tenantPalette.settingsAccent(),
+                    strokeWidth = 2.dp,
+                )
+            }
         }
-
-        Text(
-            text = "AAAKN USC • ID: PREVIEW",
-            color = PremiumZinc800,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
+@Preview(showBackground = true, backgroundColor = 0xFF050505, widthDp = 390, heightDp = 844)
 @Composable
-fun SettingsScreenPreview() {
-    UscTheme(darkTheme = true) {
-        SettingsScreen(
-            state = SettingsUiState(),
-            onItemClick = {},
-        )
-    }
+private fun SettingsScreenPreview() {
+    SettingsScreen(
+        state = SettingsUiState(
+            userName = "Fernando Lopes Abbade",
+            userEmail = "fernando@example.com",
+            userInitials = "FL",
+            classLabel = "T2",
+            tenantName = "Atlética de Medicina",
+            tenantPalette = TenantPalette.Green,
+            roleLabel = "Master",
+            planLabel = "Atleta",
+            planColorKey = "emerald",
+            statusLabel = "ativo",
+            userIdLabel = "3E4FC3CA",
+            invitePanel = SettingsInviteUiModel(
+                isVisible = true,
+                remainingToday = 5,
+            ),
+        ),
+        onItemClick = {},
+    )
 }

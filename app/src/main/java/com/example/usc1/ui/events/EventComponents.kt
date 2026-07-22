@@ -38,7 +38,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.usc1.R
@@ -53,7 +52,6 @@ import com.example.usc1.core.ui.PremiumZinc800
 import com.example.usc1.core.ui.PremiumZinc900
 import com.example.usc1.domain.model.Event
 import com.example.usc1.domain.model.EventStatus
-import com.example.usc1.ui.theme.UscTheme
 
 @Composable
 fun EventCard(
@@ -145,7 +143,7 @@ fun EventCard(
                                     tint = Color(0xFFEF4444),
                                 )
                                 Text(
-                                    text = "24",
+                                    text = event.likesCount.toString(),
                                     color = PremiumZinc400,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Black,
@@ -349,16 +347,4 @@ private fun eventImage(event: Event): Int = when (event.status) {
     EventStatus.ComingSoon -> R.drawable.logo_usc_wide
     EventStatus.SoldOut -> R.drawable.carteirinha_bg
     EventStatus.Closed -> R.drawable.logo_platform_web
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun EventCardPreview() {
-    UscTheme(darkTheme = true) {
-        EventCard(
-            event = com.example.usc1.data.repository.MockEventsRepository.mockEvents.first(),
-            onClick = {},
-            modifier = Modifier.padding(16.dp),
-        )
-    }
 }

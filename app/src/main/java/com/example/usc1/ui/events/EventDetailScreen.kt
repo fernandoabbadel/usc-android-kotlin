@@ -11,7 +11,6 @@ import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.usc1.core.ui.PremiumCard
@@ -22,10 +21,7 @@ import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.core.ui.PremiumSecondaryButton
-import com.example.usc1.data.repository.MockEventsRepository
 import com.example.usc1.domain.model.Event
-import com.example.usc1.domain.model.EventStatus
-import com.example.usc1.ui.theme.UscTheme
 
 @Composable
 fun EventDetailScreen(
@@ -99,6 +95,7 @@ private fun EventDetailLoadedContent(
         PremiumCard {
             PremiumInfoRow("Lote", event.lotName)
             PremiumInfoRow("Preço", event.priceLabel)
+            PremiumInfoRow("Organizador", event.ownerName.ifBlank { event.ownerType.label })
             PremiumInfoRow("Vagas", "${event.availableSpots} disponíveis")
         }
 
@@ -124,33 +121,21 @@ private fun EventDetailLoadedContent(
         }
 
         PremiumPrimaryButton(
-            text = "Comprar / inscrever",
+            text = "Compra em integração",
             onClick = { onCheckoutClick(event) },
-            enabled = event.status == EventStatus.Open,
+            enabled = false,
             icon = Icons.Outlined.ConfirmationNumber,
         )
         PremiumSecondaryButton(
             text = "Ver meus ingressos",
             onClick = onTicketsClick,
+            enabled = false,
             icon = Icons.Outlined.ConfirmationNumber,
         )
         PremiumSecondaryButton(
             text = "Voltar",
             onClick = onBackClick,
             icon = Icons.Outlined.ArrowBack,
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun EventDetailScreenPreview() {
-    UscTheme(darkTheme = true) {
-        EventDetailScreen(
-            state = EventDetailUiState(event = MockEventsRepository.mockEvents.first()),
-            onCheckoutClick = {},
-            onTicketsClick = {},
-            onBackClick = {},
         )
     }
 }

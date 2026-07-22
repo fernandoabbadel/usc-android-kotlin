@@ -9,4 +9,17 @@ data class SupabasePublicConfig(
             "O app Android não pode receber service_role."
         }
     }
+
+    val isConfigured: Boolean
+        get() = url.isNotBlank() && anonKey.isNotBlank()
+
+    fun requireConfigured(): SupabasePublicConfig {
+        require(isConfigured) {
+            "Configure SUPABASE_URL e SUPABASE_ANON_KEY em local.properties ou nas variáveis de ambiente."
+        }
+        require(url.startsWith("https://") && url.contains(".supabase.")) {
+            "SUPABASE_URL inválida para o projeto Android."
+        }
+        return this
+    }
 }

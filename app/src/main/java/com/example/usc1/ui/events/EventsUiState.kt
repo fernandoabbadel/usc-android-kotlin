@@ -15,7 +15,9 @@ data class EventsUiState(
     companion object {
         fun loading() = EventsUiState(isLoading = true)
         fun empty() = EventsUiState(events = emptyList())
-        fun error() = EventsUiState(errorMessage = "Não foi possível carregar os eventos mockados.")
+        fun error(message: String? = null) = EventsUiState(
+            errorMessage = message ?: "Não foi possível carregar os eventos.",
+        )
     }
 }
 
@@ -24,14 +26,3 @@ data class EventDetailUiState(
     val errorMessage: String? = null,
     val event: Event? = null,
 )
-
-data class EventCheckoutUiState(
-    val event: Event,
-    val selectedQuantity: Int = 1,
-) {
-    val totalLabel: String = when {
-        event.priceLabel.contains("R$ 45") && selectedQuantity == 1 -> "R$ 45,00"
-        event.priceLabel.contains("R$ 45") -> "R$ ${45 * selectedQuantity},00"
-        else -> event.priceLabel
-    }
-}

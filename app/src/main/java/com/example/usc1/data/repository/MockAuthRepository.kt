@@ -3,6 +3,7 @@ package com.example.usc1.data.repository
 import com.example.usc1.core.roles.UserRole
 import com.example.usc1.core.session.AuthStatus
 import com.example.usc1.core.session.AuthUser
+import com.example.usc1.core.session.GuestSessionPolicy
 import com.example.usc1.core.session.UserSession
 import com.example.usc1.core.session.UserStatus
 import com.example.usc1.core.tenant.TenantContext
@@ -28,6 +29,36 @@ class MockAuthRepository : AuthRepository {
         }
         _session.value = nextSession
         return nextSession
+    }
+
+    override suspend fun signInWithGoogle(): UserSession {
+        delay(MockDelayMillis)
+        val nextSession = authenticatedSession("google@usc.app")
+        _session.value = nextSession
+        return nextSession
+    }
+
+    override suspend fun loginAsGuest(): UserSession {
+        delay(MockDelayMillis / 2)
+        val nextSession = UserSession(
+            user = AuthUser(
+                id = "guest_virtual_mock",
+                name = "Visitante USC",
+                email = "visitante@usc.app",
+                role = UserRole.Guest,
+                status = UserStatus.Ativo,
+            ),
+            status = AuthStatus.Authenticated,
+        )
+        _session.value = nextSession
+        return nextSession
+    }
+
+    override suspend fun selectGuestTenant(tenant: TenantContext): UserSession {
+        delay(MockDelayMillis / 2)
+        return GuestSessionPolicy.attachTenant(_session.value, tenant).also { nextSession ->
+            _session.value = nextSession
+        }
     }
 
     override suspend fun register(

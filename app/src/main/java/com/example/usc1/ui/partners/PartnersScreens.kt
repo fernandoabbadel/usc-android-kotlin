@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.usc1.core.ui.PremiumAmber
@@ -26,21 +25,25 @@ import com.example.usc1.core.ui.PremiumCard
 import com.example.usc1.core.ui.PremiumChip
 import com.example.usc1.core.ui.PremiumEmptyState
 import com.example.usc1.core.ui.PremiumHeader
-import com.example.usc1.core.ui.PremiumImageCard
 import com.example.usc1.core.ui.PremiumInfoRow
+import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumScreen
-import com.example.usc1.core.ui.PremiumSecondaryButton
 import com.example.usc1.core.ui.PremiumZinc400
 import com.example.usc1.core.ui.PremiumZinc500
-import com.example.usc1.ui.theme.UscTheme
+import com.example.usc1.domain.model.PartnerRecord
 
 @Composable
 fun PartnersScreen(
     state: PartnerUiState,
-    onPartnerClick: (PartnerCompany) -> Unit,
+    onPartnerClick: (PartnerRecord) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (state.isLoading && state.partners.isEmpty()) {
+        PremiumLoadingState(text = "Carregando parceiros...", modifier = modifier)
+        return
+    }
+
     PremiumScreen(
         modifier = modifier,
         bottomPadding = 116.dp,
@@ -69,6 +72,15 @@ fun PartnersScreen(
             )
         }
 
+        state.errorMessage?.let { message ->
+            Text(
+                text = message,
+                color = Color(0xFFFCA5A5),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+
         Text(
             text = "EMPRESAS PARCEIRAS",
             color = PremiumZinc500,
@@ -76,22 +88,52 @@ fun PartnersScreen(
             fontWeight = FontWeight.Black,
             modifier = Modifier.padding(start = 2.dp),
         )
-        state.partners.forEach { partner ->
-            PartnerCard(
-                partner = partner,
-                onClick = { onPartnerClick(partner) },
+        if (state.partners.isEmpty()) {
+            PremiumEmptyState(
+                title = "Nenhum parceiro encontrado.",
+                subtitle = "A consulta do tenant ativo não retornou parceiros ativos.",
+                icon = Icons.Outlined.Storefront,
             )
+        } else {
+            state.partners.forEach { partner ->
+                PartnerCard(
+                    partner = partner,
+                    onClick = { onPartnerClick(partner) },
+                )
+            }
         }
     }
 }
 
 @Composable
 fun PartnerDetailScreen(
-    partner: PartnerCompany,
-    onBenefitsClick: (PartnerCompany) -> Unit,
+    state: PartnerDetailUiState,
+    onBenefitsClick: (PartnerRecord) -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val partner = state.partner
+    if (state.isLoading) {
+        PremiumLoadingState(text = "Carregando parceiro...", modifier = modifier)
+        return
+    }
+    if (partner == null) {
+        PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
+            PremiumHeader(
+                title = "Parceiro",
+                subtitle = "Registro não encontrado",
+                icon = Icons.Outlined.Storefront,
+                onBackClick = onBackClick,
+            )
+            PremiumEmptyState(
+                title = "Parceiro não encontrado.",
+                subtitle = state.errorMessage ?: "A consulta por id e tenant_id não retornou dados.",
+                icon = Icons.Outlined.Storefront,
+            )
+        }
+        return
+    }
+
     PremiumScreen(
         modifier = modifier,
         bottomPadding = 116.dp,
@@ -100,56 +142,41 @@ fun PartnerDetailScreen(
             title = partner.name,
             subtitle = partner.category,
             icon = Icons.Outlined.Storefront,
-            accent = partnerStatusColor(partner.status),
+            accent = partnerAccent(partner),
             onBackClick = onBackClick,
         )
 
-        PremiumImageCard(
-            imageRes = partner.imageRes,
-            height = 286.dp,
-            accent = partnerStatusColor(partner.status),
-            imageAlpha = 0.72f,
-        ) {
-            androidx.compose.foundation.layout.Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .align(androidx.compose.ui.Alignment.BottomStart),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                PartnerStatusChip(status = partner.status)
-                Text(
-                    text = partner.name.uppercase(),
-                    color = Color.White,
-                    fontSize = 30.sp,
-                    lineHeight = 31.sp,
-                    fontWeight = FontWeight.Black,
-                )
-                Text(
-                    text = partner.addressLabel,
-                    color = PremiumZinc400,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-
-        PremiumCard(accent = partnerStatusColor(partner.status)) {
+        PremiumCard(accent = partnerAccent(partner)) {
+            PartnerStatusChip(partner = partner)
             Text(
-                text = partner.description,
+                text = partner.name.uppercase(),
+                color = Color.White,
+                fontSize = 30.sp,
+                lineHeight = 31.sp,
+                fontWeight = FontWeight.Black,
+            )
+            Text(
+                text = partner.description.ifBlank { partner.category },
                 color = PremiumZinc400,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
                 fontWeight = FontWeight.Bold,
             )
-            PremiumInfoRow(label = "Categoria", value = partner.category, accent = partnerStatusColor(partner.status))
-            PremiumInfoRow(label = "Status", value = partner.status.label, accent = partnerStatusColor(partner.status))
+            PremiumInfoRow(label = "Categoria", value = partner.category, accent = partnerAccent(partner))
+            PremiumInfoRow(label = "Status", value = partner.publicStatusLabel, accent = partnerAccent(partner))
+            if (partner.address.isNotBlank()) {
+                PremiumInfoRow(label = "Endereço", value = partner.address, accent = partnerAccent(partner))
+            }
+            if (partner.businessHours.isNotBlank()) {
+                PremiumInfoRow(label = "Horário", value = partner.businessHours, accent = partnerAccent(partner))
+            }
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                partner.benefits.forEach { benefit ->
-                    PremiumChip(label = benefit.valueLabel, accent = PremiumAmber, filled = true)
+                partner.coupons.forEach { benefit ->
+                    PremiumChip(label = benefit.valueLabel.ifBlank { benefit.title }, accent = PremiumAmber, filled = true)
                 }
             }
         }
@@ -158,22 +185,40 @@ fun PartnerDetailScreen(
             text = "Ver benefícios",
             onClick = { onBenefitsClick(partner) },
             icon = Icons.Outlined.ReceiptLong,
-            accent = partnerStatusColor(partner.status),
-        )
-        PremiumSecondaryButton(
-            text = "Validar QR futuro",
-            onClick = {},
-            icon = Icons.Outlined.QrCodeScanner,
+            accent = partnerAccent(partner),
+            enabled = partner.coupons.isNotEmpty(),
         )
     }
 }
 
 @Composable
 fun PartnerBenefitsScreen(
-    partner: PartnerCompany,
+    state: PartnerDetailUiState,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val partner = state.partner
+    if (state.isLoading) {
+        PremiumLoadingState(text = "Carregando benefícios...", modifier = modifier)
+        return
+    }
+    if (partner == null) {
+        PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
+            PremiumHeader(
+                title = "Benefícios",
+                subtitle = "Parceiro não encontrado",
+                icon = Icons.Outlined.ReceiptLong,
+                onBackClick = onBackClick,
+            )
+            PremiumEmptyState(
+                title = "Sem parceiro.",
+                subtitle = state.errorMessage ?: "A consulta por id e tenant_id não retornou dados.",
+                icon = Icons.Outlined.ReceiptLong,
+            )
+        }
+        return
+    }
+
     PremiumScreen(
         modifier = modifier,
         bottomPadding = 116.dp,
@@ -182,65 +227,20 @@ fun PartnerBenefitsScreen(
             title = "Benefícios",
             subtitle = partner.name,
             icon = Icons.Outlined.ReceiptLong,
-            accent = partnerStatusColor(partner.status),
+            accent = partnerAccent(partner),
             onBackClick = onBackClick,
         )
 
-        partner.benefits.forEach { benefit ->
-            PartnerBenefitCard(benefit = benefit)
-        }
-
-        Text(
-            text = "HISTÓRICO",
-            color = PremiumZinc500,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier.padding(start = 2.dp),
-        )
-        if (partner.history.isEmpty()) {
+        if (partner.coupons.isEmpty()) {
             PremiumEmptyState(
-                title = "Sem histórico",
-                subtitle = "Nenhum benefício usado nesta empresa ainda.",
+                title = "Sem benefícios",
+                subtitle = "Nenhum cupom ativo foi retornado para esta empresa.",
                 icon = Icons.Outlined.ReceiptLong,
             )
         } else {
-            partner.history.forEach { entry ->
-                PartnerHistoryCard(entry = entry)
+            partner.coupons.filter { it.active }.forEach { benefit ->
+                PartnerBenefitCard(benefit = benefit)
             }
         }
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun PartnersScreenPreview() {
-    UscTheme(darkTheme = true) {
-        PartnersScreen(
-            state = PartnerUiState(),
-            onPartnerClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun PartnerDetailScreenPreview() {
-    UscTheme(darkTheme = true) {
-        PartnerDetailScreen(
-            partner = PartnersMockData.partners.first(),
-            onBenefitsClick = {},
-            onBackClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-private fun PartnerBenefitsScreenPreview() {
-    UscTheme(darkTheme = true) {
-        PartnerBenefitsScreen(
-            partner = PartnersMockData.partners.first(),
-            onBackClick = {},
-        )
     }
 }

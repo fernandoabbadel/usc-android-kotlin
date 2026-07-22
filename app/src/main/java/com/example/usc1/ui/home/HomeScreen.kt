@@ -1,64 +1,83 @@
 package com.example.usc1.ui.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.Handshake
+import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.usc1.R
 import com.example.usc1.navigation.AppRoute
-import com.example.usc1.ui.theme.UscTheme
 
 @Composable
 fun HomeScreen(
     state: HomeUiState,
-    onQuickActionClick: (QuickActionUiModel) -> Unit,
-    onModuleClick: (HomeModuleUiModel) -> Unit,
+    onNavigate: (String) -> Unit,
+    onSignOut: () -> Unit,
     onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = HomeBlack,
-    ) {
-        when {
-            state.isLoading -> HomeLoadingContent()
-            state.errorMessage != null -> HomeErrorContent(
-                message = state.errorMessage,
-                onRetryClick = onRetryClick,
-            )
-            else -> HomeLoadedContent(
+    HomeTenantTheme(tenantContext = state.tenantContext) {
+        var isDrawerOpen by rememberSaveable { mutableStateOf(false) }
+        BackHandler(enabled = isDrawerOpen) { isDrawerOpen = false }
+
+        Surface(
+            modifier = modifier.fillMaxSize(),
+            color = HomeBlack,
+        ) {
+            when {
+                state.isLoading -> HomeLoadingContent()
+                state.errorMessage != null -> HomeErrorContent(
+                    message = state.errorMessage,
+                    onRetryClick = onRetryClick,
+                )
+                else -> HomeLoadedContent(
+                    state = state,
+                    onNavigate = onNavigate,
+                    onOpenDrawer = { isDrawerOpen = true },
+                )
+            }
+
+            HomeSideDrawer(
+                visible = isDrawerOpen,
                 state = state,
-                onQuickActionClick = onQuickActionClick,
-                onModuleClick = onModuleClick,
+                onDismiss = { isDrawerOpen = false },
+                onNavigate = onNavigate,
+                onSignOut = onSignOut,
             )
         }
     }
@@ -67,233 +86,294 @@ fun HomeScreen(
 @Composable
 private fun HomeLoadedContent(
     state: HomeUiState,
-    onQuickActionClick: (QuickActionUiModel) -> Unit,
-    onModuleClick: (HomeModuleUiModel) -> Unit,
+    onNavigate: (String) -> Unit,
+    onOpenDrawer: () -> Unit,
 ) {
-    val membershipAction = state.actionOrFallback(
-        kind = QuickActionKind.MembershipCard,
-        title = "Carteirinha",
-        subtitle = "Status e QR",
-        route = AppRoute.MembershipCard,
-    )
-    val eventsAction = state.actionOrFallback(
-        kind = QuickActionKind.Events,
-        title = "Eventos",
-        subtitle = "Ingressos e festas",
-        route = AppRoute.Events,
-    )
-    val storeAction = state.actionOrFallback(
-        kind = QuickActionKind.Store,
-        title = "Loja",
-        subtitle = "Produtos da atlética",
-        route = AppRoute.Store,
-    )
-    val salesAction = QuickActionUiModel(
-        title = "Modo vendas",
-        subtitle = "Menu do evento",
-        route = AppRoute.SalesMode,
-        kind = QuickActionKind.Store,
-    )
-    val profileAction = state.actionOrFallback(
-        kind = QuickActionKind.Profile,
-        title = "Perfil",
-        subtitle = "Dados e histórico",
-        route = AppRoute.Profile,
-    )
-    val menuModule = HomeModuleUiModel(
-        title = "Menu",
-        description = "Configurações e atalhos do app.",
-        route = AppRoute.Settings,
-        kind = QuickActionKind.Profile,
-    )
-    val scannerModule = HomeModuleUiModel(
-        title = "Scanner",
-        description = "Leitura e validação de QR Codes.",
-        route = AppRoute.Scanner,
-        kind = QuickActionKind.Events,
-    )
-    val firstEvent = state.upcomingEvents.firstOrNull()
-    val leagueModule = state.mainModules.firstOrNull { it.kind == QuickActionKind.Leagues }
-    val trainingAction = state.actionOrFallback(
-        kind = QuickActionKind.Training,
-        title = "Treinos",
-        subtitle = "Agenda e presença",
-        route = AppRoute.Training,
-    )
-    val plansModule = state.mainModules.firstOrNull { it.route == AppRoute.Plans }
-        ?: HomeModuleUiModel(
-            title = "Planos",
-            description = "Plano ativo, adesões e benefícios.",
-            route = AppRoute.Plans,
-            kind = QuickActionKind.Profile,
-        )
-    val partnersModule = state.mainModules.firstOrNull { it.route == AppRoute.Partners }
-        ?: HomeModuleUiModel(
-            title = "Parceiros",
-            description = "Empresas, cupons e descontos.",
-            route = AppRoute.Partners,
-            kind = QuickActionKind.Community,
-        )
+    val dashboard = state.dashboard
+    val goldPartners = dashboard.partners.filter { it.tier == "ouro" }
+    val silverPartners = dashboard.partners.filter { it.tier == "prata" }
+    val standardPartners = dashboard.partners.filterNot { it.tier == "ouro" || it.tier == "prata" }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(
-                        HomeBlack,
-                        Color.Black,
-                    ),
+                    colors = listOf(HomeBlack, Color.Black),
                 ),
             ),
     ) {
-        Box(
+        LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            HomeBrand.copy(alpha = 0.18f),
-                            Color.Transparent,
-                        ),
-                        center = Offset(160f, 90f),
-                        radius = 460f,
-                    ),
-                ),
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 126.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+                .align(Alignment.TopCenter)
+                .widthIn(max = 448.dp)
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(
+                start = 20.dp,
+                top = 24.dp,
+                end = 20.dp,
+                bottom = 164.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
-            DashboardHeader(
-                firstName = state.userName.firstName(),
-                tenantName = state.tenantName,
-                onAvatarClick = { onQuickActionClick(profileAction) },
-            )
-
-            SalesModeCard(
-                eventTitle = firstEvent?.title ?: "Evento ativo",
-                onClick = { onQuickActionClick(salesAction) },
-            )
-
-            PremiumDashboardCard(
-                title = "Loja",
-                eyebrow = "Drop oficial",
-                body = "Produtos, carrinho e pedidos da atlética.",
-                icon = Icons.Outlined.Storefront,
-                accent = HomeBrandAccent,
-                backgroundImageRes = R.drawable.logo_usc_wide,
-                onClick = { onQuickActionClick(storeAction) },
-            )
-
-            MembershipHomeCard(
-                membershipCode = state.membershipCode,
-                planName = state.planName,
-                tenantName = state.tenantName,
-                onClick = { onQuickActionClick(membershipAction) },
-            )
-
-            PremiumDashboardCard(
-                title = plansModule.title,
-                eyebrow = state.planName,
-                body = plansModule.description,
-                icon = Icons.Outlined.CreditCard,
-                accent = HomeGold,
-                backgroundImageRes = R.drawable.carteirinha_bg,
-                onClick = { onModuleClick(plansModule) },
-            )
-
-            PremiumDashboardCard(
-                title = "BoardRound",
-                eyebrow = "Em breve",
-                body = "Ranking, jogos e rivalidade da base.",
-                icon = Icons.Outlined.Star,
-                accent = HomeBrand,
-                backgroundImageRes = R.drawable.logo_platform_web,
-                onClick = {
-                    onModuleClick(
-                        HomeModuleUiModel(
-                            title = "BoardRound",
-                            description = "Ranking, estatísticas e quizzes.",
-                            route = AppRoute.Boardround,
-                            kind = QuickActionKind.Community,
-                        ),
-                    )
-                },
-            )
-
-            PremiumDashboardCard(
-                title = trainingAction.title,
-                eyebrow = "Área do atleta",
-                body = trainingAction.subtitle,
-                icon = Icons.Outlined.FitnessCenter,
-                accent = HomeAmber,
-                onClick = { onQuickActionClick(trainingAction) },
-            )
-
-            PremiumDashboardCard(
-                title = partnersModule.title,
-                eyebrow = "Benefícios ativos",
-                body = partnersModule.description,
-                icon = Icons.Outlined.Groups,
-                accent = HomeBrand,
-                backgroundImageRes = R.drawable.logo_aaakn,
-                onClick = { onModuleClick(partnersModule) },
-            )
-
-            RadarAlbumCard(
-                foundCount = 42,
-                totalCount = 96,
-                onClick = { onModuleClick(scannerModule) },
-            )
-
-            DashboardSectionTitle(
-                title = "Eventos",
-                icon = Icons.Outlined.Event,
-            )
-
-            PremiumDashboardCard(
-                title = firstEvent?.title ?: "Intermed USC",
-                eyebrow = firstEvent?.status ?: "Vendas abertas",
-                body = firstEvent?.let { "${it.dateLabel} • ${it.location}" }
-                    ?: "Ginásio principal • Sábado, 18:00",
-                icon = Icons.Outlined.Event,
-                accent = HomeBrandAccent,
-                backgroundImageRes = R.drawable.battle_forest,
-                onClick = { onQuickActionClick(eventsAction) },
-            )
-
-            if (leagueModule != null) {
-                DashboardSectionTitle(
-                    title = "Central USC",
-                    icon = Icons.Outlined.Groups,
-                    accent = HomeGold,
-                )
-                PremiumDashboardCard(
-                    title = leagueModule.title,
-                    eyebrow = "Ligas acadêmicas",
-                    body = leagueModule.description,
-                    icon = iconFor(leagueModule.kind),
-                    accent = HomeGold,
-                    onClick = { onModuleClick(leagueModule) },
+            item(key = "header") {
+                DashboardHeader(
+                    firstName = state.userName.firstName(),
+                    avatarUrl = state.userAvatarUrl,
+                    onAvatarClick = { onNavigate(AppRoute.Profile) },
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            if (dashboard.isModuleVisible("parceiros") && (goldPartners.isNotEmpty() || silverPartners.isNotEmpty())) {
+                item(key = "premium-partners") {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        DashboardSectionHeader(
+                            title = "Parceiros Premium",
+                            icon = Icons.Outlined.Handshake,
+                            accent = HomeGold,
+                            onViewAll = { onNavigate(AppRoute.Partners) },
+                        )
+                        if (goldPartners.isNotEmpty()) {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                items(goldPartners, key = { it.id }) { partner ->
+                                    DashboardPartnerCard(
+                                        partner = partner,
+                                        modifier = Modifier.fillParentMaxWidth(),
+                                        premium = true,
+                                        onClick = { onNavigate(AppRoute.partnerDetail(partner.id)) },
+                                    )
+                                }
+                            }
+                        }
+                        if (silverPartners.isNotEmpty()) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(28.dp),
+                                color = HomeZinc900,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, HomeZinc800),
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(18.dp),
+                                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                                ) {
+                                    Text(
+                                        text = "PARCEIROS PRATA",
+                                        color = HomeZinc400,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = 1.sp,
+                                    )
+                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                        items(silverPartners, key = { it.id }) { partner ->
+                                            DashboardPartnerCard(
+                                                partner = partner,
+                                                onClick = { onNavigate(AppRoute.partnerDetail(partner.id)) },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            dashboard.activeSalesEvent?.let { salesEvent ->
+                item(key = "sales-mode") {
+                    SalesModeCard(
+                        eventTitle = salesEvent.title,
+                        menuTitle = salesEvent.menuTitle,
+                        imageUrl = salesEvent.imageUrl,
+                        onClick = { onNavigate(AppRoute.eventDetail(salesEvent.id)) },
+                    )
+                }
+            }
+
+            if (dashboard.isModuleVisible("carteirinha")) {
+                item(key = "membership") {
+                    MembershipHomeCard(
+                        membershipCode = state.membershipCode,
+                        planName = state.planName,
+                        className = state.className,
+                        memberStatus = state.accountStatus,
+                        backgroundImageRes = turmaDashboardImage(state.className),
+                        onClick = { onNavigate(AppRoute.MembershipCard) },
+                    )
+                }
+            }
+
+            if (dashboard.isModuleVisible("sharkround") || dashboard.isModuleVisible("treinos")) {
+                item(key = "boardround-training") {
+                    DashboardFeatureGrid(
+                        trainingImageUrls = dashboard.trainingImageUrls,
+                        showBoardround = dashboard.isModuleVisible("sharkround"),
+                        showTraining = dashboard.isModuleVisible("treinos"),
+                        onBoardroundClick = { onNavigate(AppRoute.Boardround) },
+                        onTrainingClick = { onNavigate(AppRoute.Training) },
+                    )
+                }
+            }
+
+            if (dashboard.isModuleVisible("album")) {
+                item(key = "freshmen-hunt") {
+                    RadarAlbumCard(
+                        foundCount = dashboard.capturedFreshmen,
+                        totalCount = dashboard.totalMembers,
+                        onClick = { onNavigate(AppRoute.Album) },
+                    )
+                }
+            }
+
+            if (dashboard.isModuleVisible("eventos") && dashboard.events.isNotEmpty()) {
+                item(key = "events") {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        DashboardSectionHeader(
+                            title = "Eventos",
+                            icon = Icons.Outlined.CalendarMonth,
+                            onViewAll = { onNavigate(AppRoute.Events) },
+                        )
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            items(dashboard.events, key = { it.id }) { event ->
+                                DashboardEventCard(
+                                    event = event,
+                                    modifier = Modifier.fillParentMaxWidth(),
+                                    onClick = { onNavigate(AppRoute.eventDetail(event.id)) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (dashboard.isModuleVisible("ligas") && dashboard.leagues.isNotEmpty()) {
+                item(key = "leagues") {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        DashboardSectionHeader(
+                            title = "Ligas Acadêmicas",
+                            icon = Icons.Outlined.Groups,
+                            accent = HomeGold,
+                            onViewAll = { onNavigate(AppRoute.Leagues) },
+                        )
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            items(dashboard.leagues, key = { it.id }) { league ->
+                                DashboardLeagueCard(
+                                    league = league,
+                                    onClick = { onNavigate(AppRoute.leagueDetail(league.id)) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (dashboard.isModuleVisible("loja")) {
+                item(key = "store") {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        DashboardSectionHeader(
+                            title = "Lojinha",
+                            icon = Icons.Outlined.ShoppingBag,
+                            accent = Color(0xFFA855F7),
+                            onViewAll = { onNavigate(AppRoute.Store) },
+                        )
+                        if (dashboard.products.isEmpty()) {
+                            DashboardEmptyStoreCard { onNavigate(AppRoute.Store) }
+                        } else {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                items(dashboard.products, key = { it.id }) { product ->
+                                    DashboardProductCard(
+                                        product = product,
+                                        modifier = Modifier.fillParentMaxWidth(),
+                                        onClick = { onNavigate(AppRoute.productDetail(product.id)) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (dashboard.isModuleVisible("parceiros") && standardPartners.isNotEmpty()) {
+                item(key = "standard-partners") {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(28.dp),
+                        color = HomeZinc900,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, HomeZinc800),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            DashboardSectionHeader(
+                                title = "Parceiros Standard",
+                                icon = Icons.Outlined.Groups,
+                                accent = HomeZinc500,
+                                onViewAll = { onNavigate(AppRoute.Partners) },
+                            )
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                items(standardPartners, key = { it.id }) { partner ->
+                                    DashboardPartnerCard(
+                                        partner = partner,
+                                        onClick = { onNavigate(AppRoute.partnerDetail(partner.id)) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (dashboard.isModuleVisible("comunidade")) {
+                item(key = "community") {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        DashboardSectionHeader(
+                            title = "Comunidade",
+                            icon = Icons.Outlined.Forum,
+                            accent = HomeZinc500,
+                            onViewAll = { onNavigate(AppRoute.Community) },
+                        )
+                        if (dashboard.posts.isEmpty()) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color.Transparent,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, HomeZinc800),
+                            ) {
+                                Text(
+                                    text = "Nenhuma mensagem recente.",
+                                    color = HomeZinc500,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(20.dp),
+                                )
+                            }
+                        } else {
+                            dashboard.posts.take(2).forEach { post ->
+                                DashboardPostCard(
+                                    post = post,
+                                    onClick = { onNavigate(AppRoute.communityPostDetail(post.id)) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item(key = "end-spacer") { Spacer(modifier = Modifier.height(8.dp)) }
         }
 
         FloatingBottomNavigation(
             modifier = Modifier.align(Alignment.BottomCenter),
             onHomeClick = {},
-            onEventsClick = { onQuickActionClick(eventsAction) },
-            onScannerClick = { onModuleClick(scannerModule) },
-            onWalletClick = { onQuickActionClick(membershipAction) },
-            onMenuClick = { onModuleClick(menuModule) },
+            onEventsClick = { onNavigate(AppRoute.Events) },
+            onScannerClick = {
+                onNavigate(
+                    if (state.canUseAdministrativeScanner) AppRoute.Scanner else AppRoute.CacaCalouro,
+                )
+            },
+            onWalletClick = { onNavigate(AppRoute.MembershipCard) },
+            onMenuClick = onOpenDrawer,
         )
     }
 }
@@ -346,72 +426,14 @@ private fun HomeErrorContent(
                 contentColor = Color.Black,
             ),
         ) {
-            Text(
-                text = "Tentar novamente",
-                fontWeight = FontWeight.Black,
-            )
+            Text(text = "Tentar novamente", fontWeight = FontWeight.Black)
         }
     }
 }
-
-private fun HomeUiState.actionOrFallback(
-    kind: QuickActionKind,
-    title: String,
-    subtitle: String,
-    route: String,
-): QuickActionUiModel =
-    quickActions.firstOrNull { it.kind == kind }
-        ?: QuickActionUiModel(
-            title = title,
-            subtitle = subtitle,
-            route = route,
-            kind = kind,
-        )
 
 private fun String.firstName(): String =
     trim()
         .split(" ")
-        .firstOrNull { it.isNotBlank() }
-        ?.replaceFirstChar { char ->
-            if (char.isLowerCase()) char.titlecase() else char.toString()
-        }
-        ?: "Fernando"
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun HomeScreenPreview() {
-    UscTheme(darkTheme = true) {
-        HomeScreen(
-            state = HomeUiState(),
-            onQuickActionClick = {},
-            onModuleClick = {},
-            onRetryClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun HomeScreenLoadingPreview() {
-    UscTheme(darkTheme = true) {
-        HomeScreen(
-            state = HomeUiState.loading(),
-            onQuickActionClick = {},
-            onModuleClick = {},
-            onRetryClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun HomeScreenErrorPreview() {
-    UscTheme(darkTheme = true) {
-        HomeScreen(
-            state = HomeUiState.error(),
-            onQuickActionClick = {},
-            onModuleClick = {},
-            onRetryClick = {},
-        )
-    }
-}
+        .firstOrNull(String::isNotBlank)
+        ?.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase() else char.toString() }
+        .orEmpty()

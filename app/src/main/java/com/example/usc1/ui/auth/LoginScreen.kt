@@ -1,124 +1,59 @@
 package com.example.usc1.ui.auth
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.Login
-import androidx.compose.material.icons.outlined.MarkEmailUnread
-import androidx.compose.material.icons.outlined.Password
-import androidx.compose.material.icons.outlined.PersonAdd
-import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumSecondaryButton
-import com.example.usc1.core.ui.PremiumTextField
-import com.example.usc1.ui.theme.UscTheme
+import com.example.usc1.core.ui.PremiumZinc500
 
 @Composable
 fun LoginScreen(
     state: AuthUiState,
-    onEmailChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onLoginClick: () -> Unit,
-    onRegisterClick: () -> Unit,
-    onSecurityClick: () -> Unit,
-    onMockWaitingClick: () -> Unit,
-    onMockInviteClick: () -> Unit,
-    onMockBannedClick: () -> Unit,
-    modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier,
+    onGoogleClick: () -> Unit,
+    onGuestClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     AuthScreenShell(
         modifier = modifier,
         icon = Icons.Outlined.Login,
-        title = "Acesso USC",
-        subtitle = "Entre para acessar eventos, carteirinha, loja, treinos e comunidade.",
+        title = "Acesso",
+        subtitle = "O login por email institucional foi pausado. Entre com Google para continuar.",
     ) {
-        PremiumTextField(
-            value = state.email,
-            onValueChange = onEmailChange,
-            label = "E-mail",
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            leadingIcon = Icons.Outlined.Email,
-        )
-        PremiumTextField(
-            value = state.password,
-            onValueChange = onPasswordChange,
-            label = "Senha",
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            leadingIcon = Icons.Outlined.Password,
-        )
-
         state.errorMessage?.let { message ->
+            AuthInlineMessage(text = message)
+        }
+        state.statusMessage?.let { message ->
             AuthInlineMessage(text = message)
         }
 
         PremiumPrimaryButton(
-            text = "Entrar",
-            onClick = onLoginClick,
-            enabled = state.canSubmitLogin,
+            text = "Entrar com Google",
+            onClick = onGoogleClick,
+            enabled = !state.isLoading && !state.isWaitingForOAuthRedirect,
             loading = state.isLoading,
             icon = Icons.Outlined.Login,
         )
 
         PremiumSecondaryButton(
-            text = "Criar conta",
-            onClick = onRegisterClick,
-            icon = Icons.Outlined.PersonAdd,
+            text = "Apenas dar uma espiadinha (Visitante)",
+            onClick = onGuestClick,
+            icon = Icons.Outlined.Visibility,
         )
 
-        PremiumSecondaryButton(
-            text = "Segurança da conta",
-            onClick = onSecurityClick,
-            icon = Icons.Outlined.Security,
-        )
-
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            AuthInlineMessage(text = "Cenários mockados para validar RouteGuard sem Supabase real.")
-            PremiumSecondaryButton(
-                text = "Usuário aguardando aprovação",
-                onClick = onMockWaitingClick,
-                icon = Icons.Outlined.HourglassTop,
-            )
-            PremiumSecondaryButton(
-                text = "Convite necessário",
-                onClick = onMockInviteClick,
-                icon = Icons.Outlined.MarkEmailUnread,
-            )
-            PremiumSecondaryButton(
-                text = "Usuário banido",
-                onClick = onMockBannedClick,
-                icon = Icons.Outlined.Block,
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF02050D)
-@Composable
-fun LoginScreenPreview() {
-    UscTheme(darkTheme = true) {
-        LoginScreen(
-            state = AuthUiState(
-                email = "membro@usc.app",
-                password = "123456",
-            ),
-            onEmailChange = {},
-            onPasswordChange = {},
-            onLoginClick = {},
-            onRegisterClick = {},
-            onSecurityClick = {},
-            onMockWaitingClick = {},
-            onMockInviteClick = {},
-            onMockBannedClick = {},
+        Text(
+            text = "Ao entrar, você concorda com nossos Termos de Serviço e Política de Privacidade",
+            color = PremiumZinc500,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
         )
     }
 }

@@ -15,7 +15,6 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.usc1.core.ui.PremiumChip
 import com.example.usc1.core.ui.PremiumEmptyState
@@ -25,10 +24,8 @@ import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.core.ui.PremiumSecondaryButton
 import com.example.usc1.core.ui.PremiumTextField
-import com.example.usc1.data.repository.MockEventsRepository
 import com.example.usc1.domain.model.Event
 import com.example.usc1.domain.model.EventStatus
-import com.example.usc1.ui.theme.UscTheme
 
 @Composable
 fun EventsScreen(
@@ -120,12 +117,14 @@ private fun EventsLoadedContent(
             PremiumSecondaryButton(
                 text = "Meus ingressos",
                 onClick = onTicketsClick,
+                enabled = false,
                 icon = Icons.Outlined.ConfirmationNumber,
                 modifier = Modifier.weight(1f),
             )
             PremiumSecondaryButton(
                 text = "Pedidos",
                 onClick = onOrdersClick,
+                enabled = false,
                 icon = Icons.Outlined.History,
                 modifier = Modifier.weight(1f),
             )
@@ -149,50 +148,5 @@ private fun EventsLoadedContent(
                 }
             }
         }
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun EventsScreenPreview() {
-    UscTheme(darkTheme = true) {
-        EventsScreen(
-            state = EventsUiState(events = MockEventsRepository.mockEvents),
-            onEventClick = {},
-            onStatusFilterClick = {},
-            onTicketsClick = {},
-            onOrdersClick = {},
-            onRetryClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun EventsScreenLoadingPreview() {
-    UscTheme(darkTheme = true) {
-        EventsScreen(
-            state = EventsUiState.loading(),
-            onEventClick = {},
-            onStatusFilterClick = {},
-            onTicketsClick = {},
-            onOrdersClick = {},
-            onRetryClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun EventsScreenEmptyPreview() {
-    UscTheme(darkTheme = true) {
-        EventsScreen(
-            state = EventsUiState.empty(),
-            onEventClick = {},
-            onStatusFilterClick = {},
-            onTicketsClick = {},
-            onOrdersClick = {},
-            onRetryClick = {},
-        )
     }
 }

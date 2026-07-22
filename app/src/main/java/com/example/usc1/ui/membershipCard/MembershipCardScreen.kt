@@ -6,21 +6,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.usc1.core.ui.PremiumCard
+import com.example.usc1.core.ui.PremiumEmptyState
 import com.example.usc1.core.ui.PremiumHeader
 import com.example.usc1.core.ui.PremiumInfoRow
 import com.example.usc1.core.ui.PremiumLoadingState
-import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.core.ui.PremiumSecondaryButton
 import com.example.usc1.core.ui.PremiumZinc500
-import com.example.usc1.ui.theme.UscTheme
 
 @Composable
 fun MembershipCardScreen(
@@ -42,6 +39,19 @@ fun MembershipCardScreen(
                 PremiumInfoRow("Erro", state.errorMessage)
             }
         }
+        state.card.userName.isBlank() -> PremiumScreen(modifier = modifier) {
+            PremiumHeader(
+                title = "Carteirinha",
+                subtitle = "Carteirinha digital oficial",
+                icon = Icons.Outlined.CreditCard,
+                onBackClick = onBackClick,
+            )
+            PremiumEmptyState(
+                title = "Carteirinha não carregada",
+                subtitle = "Entre com Google e aguarde a sessão real do Supabase.",
+                icon = Icons.Outlined.CreditCard,
+            )
+        }
         else -> PremiumScreen(
             modifier = modifier,
             bottomPadding = 92.dp,
@@ -60,18 +70,13 @@ fun MembershipCardScreen(
 
             PremiumCard {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PremiumInfoRow("Status", state.card.memberStatus)
-                    PremiumInfoRow("Plano", state.card.planName)
-                    PremiumInfoRow("Validade", state.card.validUntil)
-                    PremiumInfoRow("Documento", state.card.memberCode)
+                    CardInfoRowIfPresent("Status", state.card.memberStatus)
+                    CardInfoRowIfPresent("Plano", state.card.planName)
+                    CardInfoRowIfPresent("Validade", state.card.validUntil)
+                    CardInfoRowIfPresent("Documento", state.card.memberCode)
                 }
             }
 
-            PremiumPrimaryButton(
-                text = "Ampliar QR Code",
-                onClick = onRefreshClick,
-                icon = Icons.Outlined.QrCode,
-            )
             PremiumSecondaryButton(
                 text = "Atualizar validação",
                 onClick = onRefreshClick,
@@ -86,14 +91,9 @@ fun MembershipCardScreen(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
-fun MembershipCardScreenPreview() {
-    UscTheme(darkTheme = true) {
-        MembershipCardScreen(
-            state = MembershipCardUiState(),
-            onRefreshClick = {},
-            onBackClick = {},
-        )
+private fun CardInfoRowIfPresent(label: String, value: String) {
+    if (value.isNotBlank()) {
+        PremiumInfoRow(label, value)
     }
 }

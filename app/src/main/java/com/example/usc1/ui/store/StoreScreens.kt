@@ -42,7 +42,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.usc1.core.ui.PremiumAmber
@@ -63,7 +62,6 @@ import com.example.usc1.core.ui.PremiumZinc500
 import com.example.usc1.core.ui.PremiumZinc700
 import com.example.usc1.core.ui.PremiumZinc800
 import com.example.usc1.core.ui.PremiumZinc900
-import com.example.usc1.ui.theme.UscTheme
 
 @Composable
 fun StoreScreen(
@@ -121,13 +119,56 @@ fun StoreScreen(
                 }
             }
 
-            state.products.forEach { product ->
-                ProductCard(
-                    product = product,
-                    onClick = { onProductClick(product) },
+            if (state.products.isEmpty()) {
+                PremiumEmptyState(
+                    title = "Nenhum produto",
+                    subtitle = "Não há produtos publicados para este tenant e filtro.",
+                    icon = Icons.Outlined.Storefront,
                 )
+            } else {
+                state.products.forEach { product ->
+                    ProductCard(
+                        product = product,
+                        onClick = { onProductClick(product) },
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+fun ProductDetailStateScreen(
+    state: ProductDetailUiState,
+    onAddToCartClick: (StoreProduct) -> Unit,
+    onCartClick: () -> Unit,
+    onBackClick: () -> Unit,
+    onRetryClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when {
+        state.isLoading -> PremiumLoadingState(text = "Carregando produto", modifier = modifier)
+        state.errorMessage != null -> PremiumScreen(modifier = modifier) {
+            PremiumHeader(
+                title = "Produto",
+                subtitle = "Detalhe da loja",
+                icon = Icons.Outlined.ShoppingBag,
+                onBackClick = onBackClick,
+            )
+            PremiumEmptyState(
+                title = "Produto indisponível",
+                subtitle = state.errorMessage,
+                icon = Icons.Outlined.ShoppingBag,
+            )
+            PremiumPrimaryButton(text = "Tentar novamente", onClick = onRetryClick)
+        }
+        state.product != null -> ProductDetailScreen(
+            product = state.product,
+            onAddToCartClick = onAddToCartClick,
+            onCartClick = onCartClick,
+            onBackClick = onBackClick,
+            modifier = modifier,
+        )
     }
 }
 
@@ -195,6 +236,7 @@ fun ProductDetailScreen(
                 fontWeight = FontWeight.Bold,
             )
             PremiumInfoRow(label = "Categoria", value = product.category, accent = productStatusColor(product.status))
+            PremiumInfoRow(label = "Vendedor", value = product.sellerName.ifBlank { product.sellerType.label }, accent = PremiumBrandAccent)
             PremiumInfoRow(label = "Estoque", value = product.stockLabel, accent = productStatusColor(product.status))
             PremiumInfoRow(label = "Avaliações", value = product.reviewLabel, accent = PremiumAmber)
         }
@@ -271,7 +313,7 @@ fun CheckoutScreen(
     ) {
         PremiumHeader(
             title = "Checkout",
-            subtitle = "Pagamento visual mockado, sem integração real",
+            subtitle = "Checkout pendente de integração real",
             icon = Icons.Outlined.CreditCard,
             onBackClick = onBackClick,
         )
@@ -445,13 +487,36 @@ fun StoreOrderDetailScreen(
         PremiumCard(accent = PremiumZinc700) {
             PremiumChip(label = "Status visual", icon = Icons.Outlined.CheckCircle, accent = storeOrderColor(order.status))
             Text(
-                text = "Esta tela usa dados mockados e reproduz a área de pedidos da loja sem enviar pagamento, chave ou integração externa.",
+                text = "Detalhe de pedido pendente de integração com o fluxo real do web app.",
                 color = PremiumZinc400,
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
+    }
+}
+
+@Composable
+fun StoreOrderDetailUnavailableScreen(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PremiumScreen(
+        modifier = modifier,
+        bottomPadding = 116.dp,
+    ) {
+        PremiumHeader(
+            title = "Pedido",
+            subtitle = "Detalhe da loja",
+            icon = Icons.Outlined.ReceiptLong,
+            onBackClick = onBackClick,
+        )
+        PremiumEmptyState(
+            title = "Pedido não carregado",
+            subtitle = "O detalhe de pedidos da loja ainda precisa ser portado do web app com Supabase real.",
+            icon = Icons.Outlined.ReceiptLong,
+        )
     }
 }
 
@@ -593,82 +658,6 @@ private fun StoreTotalRow(
             color = if (highlight) PremiumBrandAccent else PremiumZinc400,
             fontSize = if (highlight) 24.sp else 14.sp,
             fontWeight = FontWeight.Black,
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun StoreScreenPreview() {
-    UscTheme(darkTheme = true) {
-        StoreScreen(
-            state = StoreUiState(),
-            onProductClick = {},
-            onCategoryClick = {},
-            onCartClick = {},
-            onOrdersClick = {},
-            onRetryClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun ProductDetailScreenPreview() {
-    UscTheme(darkTheme = true) {
-        ProductDetailScreen(
-            product = StoreMockData.products.first(),
-            onAddToCartClick = {},
-            onCartClick = {},
-            onBackClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun CartScreenPreview() {
-    UscTheme(darkTheme = true) {
-        CartScreen(
-            state = CartUiState(),
-            onCheckoutClick = {},
-            onBackClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun CheckoutScreenPreview() {
-    UscTheme(darkTheme = true) {
-        CheckoutScreen(
-            state = CartUiState(),
-            onConfirmClick = {},
-            onBackClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun StoreOrdersScreenPreview() {
-    UscTheme(darkTheme = true) {
-        StoreOrdersScreen(
-            state = StoreOrdersUiState(),
-            onStatusClick = {},
-            onOrderClick = {},
-            onBackClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun StoreOrderDetailScreenPreview() {
-    UscTheme(darkTheme = true) {
-        StoreOrderDetailScreen(
-            order = StoreMockData.orders.first(),
-            onBackClick = {},
         )
     }
 }

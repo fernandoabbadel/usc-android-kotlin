@@ -13,6 +13,8 @@ import androidx.navigation.navArgument
 import com.example.usc1.core.permissions.Permission
 import com.example.usc1.core.permissions.PermissionBlockReason
 import com.example.usc1.core.permissions.PermissionPolicy
+import com.example.usc1.core.roles.UserRole
+import com.example.usc1.core.tenant.TenantContext
 import com.example.usc1.core.ui.PermissionDeniedScreen
 import com.example.usc1.ui.album.AlbumMockData
 import com.example.usc1.ui.album.AlbumScreen
@@ -95,6 +97,7 @@ import com.example.usc1.ui.vendor.SalesModeScreen
 fun NavGraphBuilder.remainingNativeRoutes(
     navController: NavHostController,
     authState: AuthUiState,
+    onGuestTenantSelected: (TenantContext) -> Unit,
 ) {
     composable(AppRoute.Community) {
         val viewModel: CommunityViewModel = viewModel()
@@ -139,7 +142,17 @@ fun NavGraphBuilder.remainingNativeRoutes(
     composable(AppRoute.Tenant) {
         val viewModel: TenantViewModel = viewModel()
         val state by viewModel.uiState.collectAsState()
-        TenantSwitcherScreen(state = state, onTenantClick = viewModel::selectTenant)
+        TenantSwitcherScreen(
+            state = state,
+            onTenantClick = { tenant ->
+                viewModel.selectTenant(
+                    tenant = tenant,
+                    onResolved = onGuestTenantSelected,
+                )
+            },
+            onRetryClick = viewModel::loadDirectory,
+            selectionEnabled = authState.session.user?.role == UserRole.Guest,
+        )
     }
 
     miniVendorRoutes(navController, authState)

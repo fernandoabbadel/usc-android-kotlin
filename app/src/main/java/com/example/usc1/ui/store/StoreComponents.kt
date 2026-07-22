@@ -39,7 +39,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.usc1.core.ui.PremiumAmber
@@ -53,7 +52,6 @@ import com.example.usc1.core.ui.PremiumZinc400
 import com.example.usc1.core.ui.PremiumZinc500
 import com.example.usc1.core.ui.PremiumZinc800
 import com.example.usc1.core.ui.PremiumZinc900
-import com.example.usc1.ui.theme.UscTheme
 
 @Composable
 fun ProductCard(
@@ -391,39 +389,4 @@ fun storeOrderColor(status: StoreOrderStatus): Color = when (status) {
     StoreOrderStatus.Pending -> PremiumAmber
     StoreOrderStatus.Approved -> PremiumBrand
     StoreOrderStatus.Cancelled -> PremiumRed
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun ProductCardPreview() {
-    UscTheme(darkTheme = true) {
-        ProductCard(
-            product = StoreMockData.products.first(),
-            onClick = {},
-            modifier = Modifier.padding(16.dp),
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-private fun CartItemCardPreview() {
-    UscTheme(darkTheme = true) {
-        CartItemCard(
-            item = StoreMockData.cartItems.first(),
-            modifier = Modifier.padding(16.dp),
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-private fun StoreOrderCardPreview() {
-    UscTheme(darkTheme = true) {
-        StoreOrderCard(
-            order = StoreMockData.orders.first(),
-            onClick = {},
-            modifier = Modifier.padding(16.dp),
-        )
-    }
 }

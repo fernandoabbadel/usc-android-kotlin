@@ -2,6 +2,7 @@ package com.example.usc1.domain.model
 
 data class Event(
     val id: String,
+    val tenantId: String = "",
     val title: String,
     val description: String,
     val dateLabel: String,
@@ -9,11 +10,24 @@ data class Event(
     val location: String,
     val priceLabel: String,
     val status: EventStatus,
+    val saleStatus: String = "ativo",
+    val imageUrl: String? = null,
     val coverColorName: String,
     val lotName: String,
     val availableSpots: Int,
+    val ownerType: EventOwnerType = EventOwnerType.Tenant,
+    val ownerId: String = "",
+    val ownerName: String = "",
+    val likesCount: Int = 0,
     val products: List<EventProduct> = emptyList(),
 )
+
+enum class EventOwnerType(val remoteValue: String, val label: String) {
+    Tenant("tenant", "Atlética"),
+    Liga("liga", "Liga"),
+    Comissao("comissao", "Comissão"),
+    Diretorio("diretorio", "Diretório");
+}
 
 enum class EventStatus(val label: String) {
     Open("Aberto"),

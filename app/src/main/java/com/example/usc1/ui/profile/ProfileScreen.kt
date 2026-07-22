@@ -1,14 +1,12 @@
 package com.example.usc1.ui.profile
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,7 +18,6 @@ import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storefront
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,14 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.usc1.R
 import com.example.usc1.core.ui.PremiumBrand
 import com.example.usc1.core.ui.PremiumCard
 import com.example.usc1.core.ui.PremiumChip
@@ -49,7 +42,6 @@ import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.core.ui.PremiumZinc400
 import com.example.usc1.core.ui.PremiumZinc500
 import com.example.usc1.core.ui.PremiumZinc800
-import com.example.usc1.ui.theme.UscTheme
 
 @Composable
 fun ProfileScreen(
@@ -74,6 +66,18 @@ fun ProfileScreen(
             com.example.usc1.core.ui.PremiumPrimaryButton(
                 text = "Tentar novamente",
                 onClick = onRetryClick,
+            )
+        }
+        state.profile.name.isBlank() -> PremiumScreen(modifier = modifier) {
+            PremiumHeader(
+                title = "Perfil",
+                subtitle = "Dados do sócio USC",
+                icon = Icons.Outlined.Person,
+            )
+            PremiumEmptyState(
+                title = "Perfil não carregado",
+                subtitle = "Entre com Google e aguarde a sessão real do Supabase.",
+                icon = Icons.Outlined.Person,
             )
         }
         else -> ProfileLoadedContent(
@@ -105,28 +109,30 @@ private fun ProfileLoadedContent(
         ProfileHeroCard(profile = profile)
 
         PremiumCard {
-            PremiumInfoRow("Curso", profile.course)
-            PremiumInfoRow("Turma", profile.className)
-            PremiumInfoRow("Atlética", profile.tenantName)
-            PremiumInfoRow("Plano ativo", profile.activePlan)
-            PremiumInfoRow("Membro desde", profile.memberSince)
+            ProfileInfoRowIfPresent("Atlética", profile.tenantName)
+            ProfileInfoRowIfPresent("Curso", profile.course)
+            ProfileInfoRowIfPresent("Turma", profile.className)
+            ProfileInfoRowIfPresent("Plano ativo", profile.activePlan)
+            ProfileInfoRowIfPresent("Membro desde", profile.memberSince)
         }
 
-        Text(
-            text = "ATALHOS DO PERFIL",
-            color = PremiumZinc500,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp,
-            modifier = Modifier.padding(start = 2.dp),
-        )
-        state.shortcuts.forEach { shortcut ->
-            PremiumMenuRow(
-                title = shortcut.title,
-                subtitle = shortcut.description,
-                icon = shortcutIcon(shortcut),
-                onClick = { onShortcutClick(shortcut) },
+        if (state.shortcuts.isNotEmpty()) {
+            Text(
+                text = "ATALHOS DO PERFIL",
+                color = PremiumZinc500,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.sp,
+                modifier = Modifier.padding(start = 2.dp),
             )
+            state.shortcuts.forEach { shortcut ->
+                PremiumMenuRow(
+                    title = shortcut.title,
+                    subtitle = shortcut.description,
+                    icon = shortcutIcon(shortcut),
+                    onClick = { onShortcutClick(shortcut) },
+                )
+            }
         }
     }
 }
@@ -159,33 +165,18 @@ private fun ProfileHeroCard(profile: ProfileUserUiModel) {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box {
-                Surface(
-                    modifier = Modifier.size(86.dp),
-                    shape = CircleShape,
-                    color = Color.Black,
-                    border = BorderStroke(3.dp, PremiumBrand),
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_aaakn),
-                        contentDescription = "Avatar",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(30.dp),
-                    shape = CircleShape,
-                    color = Color.Black,
-                    border = BorderStroke(2.dp, Color.Black),
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_usc),
-                        contentDescription = "Turma",
-                        modifier = Modifier.padding(3.dp),
-                        contentScale = ContentScale.Fit,
+            Surface(
+                modifier = Modifier.size(86.dp),
+                shape = CircleShape,
+                color = Color.Black,
+                border = BorderStroke(3.dp, PremiumBrand),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = profile.initials,
+                        color = PremiumBrand,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Black,
                     )
                 }
             }
@@ -211,11 +202,22 @@ private fun ProfileHeroCard(profile: ProfileUserUiModel) {
                     overflow = TextOverflow.Ellipsis,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    PremiumChip(label = profile.role)
-                    PremiumChip(label = profile.accountStatus)
+                    if (profile.role.isNotBlank()) {
+                        PremiumChip(label = profile.role)
+                    }
+                    if (profile.accountStatus.isNotBlank()) {
+                        PremiumChip(label = profile.accountStatus)
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ProfileInfoRowIfPresent(label: String, value: String) {
+    if (value.isNotBlank()) {
+        PremiumInfoRow(label, value)
     }
 }
 
@@ -230,15 +232,3 @@ private fun shortcutIcon(shortcut: ProfileShortcutUiModel) =
         shortcut.title.contains("Config", ignoreCase = true) -> Icons.Outlined.Settings
         else -> Icons.Outlined.Person
     }
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun ProfileScreenPreview() {
-    UscTheme(darkTheme = true) {
-        ProfileScreen(
-            state = ProfileUiState(),
-            onShortcutClick = {},
-            onRetryClick = {},
-        )
-    }
-}

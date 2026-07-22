@@ -4,6 +4,8 @@ data class TenantContext(
     val id: String,
     val slug: String,
     val name: String,
+    val acronym: String = "",
+    val course: String = "",
     val logoUrl: String? = null,
     val palette: TenantPalette = TenantPalette.Green,
     val membershipStatus: TenantMembershipStatus = TenantMembershipStatus.Unlinked,

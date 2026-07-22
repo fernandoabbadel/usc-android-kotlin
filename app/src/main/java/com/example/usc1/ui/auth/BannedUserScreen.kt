@@ -6,15 +6,9 @@ import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.usc1.core.session.AuthStatus
-import com.example.usc1.core.session.AuthUser
-import com.example.usc1.core.session.UserSession
-import com.example.usc1.core.session.UserStatus
 import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumRed
 import com.example.usc1.core.ui.PremiumSecondaryButton
-import com.example.usc1.ui.theme.UscTheme
 
 @Composable
 fun BannedUserScreen(
@@ -43,28 +37,6 @@ fun BannedUserScreen(
             onClick = onSignOutClick,
             accent = PremiumRed,
             icon = Icons.Outlined.Logout,
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF02050D)
-@Composable
-fun BannedUserScreenPreview() {
-    UscTheme(darkTheme = true) {
-        BannedUserScreen(
-            state = AuthUiState(
-                session = UserSession(
-                    user = AuthUser(
-                        id = "preview",
-                        name = "Usuário bloqueado",
-                        email = "banido@usc.app",
-                        status = UserStatus.Banned,
-                    ),
-                    status = AuthStatus.Banned,
-                ),
-            ),
-            onSupportClick = {},
-            onSignOutClick = {},
         )
     }
 }
