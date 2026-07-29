@@ -83,7 +83,7 @@ fun CommunityPostCard(
                     border = BorderStroke(2.dp, accent),
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.logo_aaakn),
+                        painter = painterResource(id = post.imageRes),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,

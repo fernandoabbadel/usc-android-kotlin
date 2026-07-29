@@ -12,6 +12,8 @@ object AppRoute {
     const val Dashboard = "dashboard"
     const val Profile = "profile"
     const val Settings = "settings"
+    const val SettingsInvites = "settings/invites"
+    const val SettingsMentorship = "settings/mentorship"
     const val MembershipCard = "membership-card"
     const val Events = "events"
     const val EventDetail = "event-detail/{eventId}"

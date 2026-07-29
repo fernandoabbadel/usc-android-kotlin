@@ -110,7 +110,7 @@ object PlansMockData {
             priceLabel = "Sob consulta",
             status = PlanStatus.Locked,
             accentName = "Vermelho",
-            imageRes = R.drawable.logo_aaakn,
+            imageRes = R.drawable.logo_usc,
             benefits = listOf(
                 PlanBenefit("Campanhas fechadas"),
                 PlanBenefit("Acesso por convite"),

@@ -184,7 +184,7 @@ private fun StoreSellerType.fallbackImageRes(): Int {
         StoreSellerType.MiniVendor -> R.drawable.logo_platform_web
         StoreSellerType.Liga,
         StoreSellerType.Comissao,
-        StoreSellerType.Diretorio -> R.drawable.logo_aaakn
+        StoreSellerType.Diretorio -> R.drawable.logo_platform_web
         StoreSellerType.Unknown -> R.drawable.carteirinha_bg
     }
 }

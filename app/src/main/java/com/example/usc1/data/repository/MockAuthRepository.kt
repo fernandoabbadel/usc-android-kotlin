@@ -166,7 +166,7 @@ class MockAuthRepository : AuthRepository {
         val approvedTenant = TenantContext(
             id = "tenant-aaakn",
             slug = "aaakn",
-            name = "AAAKN USC",
+            name = "Atlética Demo USC",
             membershipStatus = TenantMembershipStatus.Approved,
         )
     }

@@ -51,7 +51,6 @@ import com.example.usc1.core.ui.PremiumCard
 import com.example.usc1.core.ui.PremiumChip
 import com.example.usc1.core.ui.PremiumEmptyState
 import com.example.usc1.core.ui.PremiumHeader
-import com.example.usc1.core.ui.PremiumImageCard
 import com.example.usc1.core.ui.PremiumInfoRow
 import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumPrimaryButton
@@ -192,8 +191,8 @@ fun ProductDetailScreen(
             onBackClick = onBackClick,
         )
 
-        PremiumImageCard(
-            imageRes = product.imageRes,
+        StoreProductImageCard(
+            product = product,
             height = 294.dp,
             accent = productStatusColor(product.status),
             imageAlpha = 0.78f,

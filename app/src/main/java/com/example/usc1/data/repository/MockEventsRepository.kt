@@ -44,7 +44,7 @@ class MockEventsRepository : EventsRepository {
             ),
             Event(
                 id = "calourada-2026",
-                title = "Calourada AAAKN",
+                title = "Calourada USC",
                 description = "Recepção dos calouros com música, jogos e ativações da atlética.",
                 dateLabel = "02 ago 2026",
                 timeLabel = "16:00",

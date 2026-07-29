@@ -70,7 +70,7 @@ object CollectiveMockData {
     private val defaultAgenda = listOf(
         CollectiveAgendaItem("Reunião de alinhamento", "Hoje • 19:00", "Sala USC"),
         CollectiveAgendaItem("Ação com calouros", "Qui • 18:30", "Bloco B"),
-        CollectiveAgendaItem("Entrega de materiais", "Sáb • 10:00", "Sede AAAKN"),
+        CollectiveAgendaItem("Entrega de materiais", "Sáb • 10:00", "Sede USC"),
     )
 
     private val defaultStore = listOf(
@@ -159,7 +159,7 @@ object CollectiveMockData {
             kind = CollectiveKind.Commission,
             status = "Ativa",
             memberCount = 16,
-            imageRes = R.drawable.logo_aaakn,
+            imageRes = R.drawable.logo_usc,
             accentName = "Neon",
             members = defaultMembers,
             agenda = defaultAgenda,

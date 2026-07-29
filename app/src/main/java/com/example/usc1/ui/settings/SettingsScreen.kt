@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.usc1.core.tenant.TenantPalette
+import com.example.usc1.ui.home.BottomNavDestination
+import com.example.usc1.ui.home.FloatingBottomNavigation
 
 @Composable
 fun SettingsScreen(
@@ -35,6 +37,11 @@ fun SettingsScreen(
     onToggleAccountClick: () -> Unit = {},
     onSignOutClick: (() -> Unit)? = null,
     onDeleteAccountClick: () -> Unit = {},
+    onHomeClick: () -> Unit = {},
+    onEventsClick: () -> Unit = {},
+    onScannerClick: () -> Unit = {},
+    onWalletClick: () -> Unit = {},
+    onMenuClick: () -> Unit = {},
 ) {
     var notificationsEnabled by rememberSaveable(state.notificationsEnabled) {
         mutableStateOf(state.notificationsEnabled)
@@ -137,6 +144,16 @@ fun SettingsScreen(
                 )
             }
         }
+
+        FloatingBottomNavigation(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            selectedDestination = BottomNavDestination.Menu,
+            onHomeClick = onHomeClick,
+            onEventsClick = onEventsClick,
+            onScannerClick = onScannerClick,
+            onWalletClick = onWalletClick,
+            onMenuClick = onMenuClick,
+        )
     }
 }
 

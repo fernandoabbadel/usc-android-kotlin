@@ -5,6 +5,8 @@ import com.example.usc1.core.session.UserSession
 import com.example.usc1.core.session.UserStatus
 import com.example.usc1.core.tenant.TenantMembershipStatus
 import com.example.usc1.core.tenant.TenantPalette
+import com.example.usc1.domain.model.SettingsInviteDashboard
+import com.example.usc1.domain.model.SettingsMentorshipHub
 import com.example.usc1.navigation.AppRoute
 
 data class SettingsUiState(
@@ -26,6 +28,12 @@ data class SettingsUiState(
     val userIdLabel: String = "",
     val notificationsEnabled: Boolean = true,
     val invitePanel: SettingsInviteUiModel = SettingsInviteUiModel(),
+    val inviteDashboard: SettingsInviteDashboard = SettingsInviteDashboard(),
+    val isInviteDashboardLoading: Boolean = false,
+    val inviteDashboardError: String = "",
+    val mentorshipHub: SettingsMentorshipHub = SettingsMentorshipHub(),
+    val isMentorshipLoading: Boolean = false,
+    val mentorshipError: String = "",
     val sections: List<SettingsSectionUiModel> = defaultSettingsSections,
 )
 
@@ -75,8 +83,8 @@ enum class SettingsAction(val route: String?) {
     SalesMode(AppRoute.SalesMode),
     Scanner(AppRoute.Scanner),
     Guide(AppRoute.Guide),
-    Invites(AppRoute.Register),
-    Mentorship(null),
+    Invites(AppRoute.SettingsInvites),
+    Mentorship(AppRoute.SettingsMentorship),
     Notifications(null),
     Support(AppRoute.Support),
     TermsPrivacy(AppRoute.Terms),

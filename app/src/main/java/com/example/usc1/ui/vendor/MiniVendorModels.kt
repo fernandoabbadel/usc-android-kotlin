@@ -59,7 +59,7 @@ object MiniVendorMockData {
             priceLabel = "R$ 18,00",
             stockLabel = "Esgotando",
             status = "Destaque",
-            imageRes = R.drawable.logo_aaakn,
+            imageRes = R.drawable.logo_platform_web,
         ),
     )
 

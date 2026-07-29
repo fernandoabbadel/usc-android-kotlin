@@ -1,9 +1,12 @@
 package com.example.usc1.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -16,6 +19,7 @@ import com.example.usc1.core.permissions.PermissionPolicy
 import com.example.usc1.core.roles.UserRole
 import com.example.usc1.core.tenant.TenantContext
 import com.example.usc1.core.ui.PermissionDeniedScreen
+import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.ui.album.AlbumMockData
 import com.example.usc1.ui.album.AlbumScreen
 import com.example.usc1.ui.album.AlbumTurmaScreen
@@ -61,7 +65,7 @@ import com.example.usc1.ui.games.GamesViewModel
 import com.example.usc1.ui.games.LoyaltyScreen
 import com.example.usc1.ui.generalorders.GeneralOrderDetailScreen
 import com.example.usc1.ui.generalorders.GeneralOrderType
-import com.example.usc1.ui.generalorders.GeneralOrdersMockData
+import com.example.usc1.ui.generalorders.GeneralOrderUnavailableScreen
 import com.example.usc1.ui.generalorders.GeneralOrdersViewModel
 import com.example.usc1.ui.generalorders.OrdersByTypeScreen
 import com.example.usc1.ui.generalorders.OrdersHubScreen
@@ -83,6 +87,10 @@ import com.example.usc1.ui.scanner.ScannerResultErrorScreen
 import com.example.usc1.ui.scanner.ScannerResultSuccessScreen
 import com.example.usc1.ui.scanner.ScannerScreen
 import com.example.usc1.ui.scanner.ScannerViewModel
+import com.example.usc1.ui.settings.SettingsInvitesScreen
+import com.example.usc1.ui.settings.SettingsMentorshipScreen
+import com.example.usc1.ui.settings.SettingsViewModel
+import com.example.usc1.ui.settings.withSession
 import com.example.usc1.ui.tenant.TenantSwitcherScreen
 import com.example.usc1.ui.tenant.TenantViewModel
 import com.example.usc1.ui.vendor.MiniVendorApprovedOrdersScreen
@@ -156,11 +164,53 @@ fun NavGraphBuilder.remainingNativeRoutes(
     }
 
     miniVendorRoutes(navController, authState)
+    settingsSubpageRoutes(navController, authState)
     scannerRoutes(navController, authState)
     guideRoutes(navController)
     albumRoutes(navController)
     gamesRoutes(navController)
-    generalOrderRoutes(navController)
+    generalOrderRoutes(navController, authState)
+}
+
+private fun NavGraphBuilder.settingsSubpageRoutes(
+    navController: NavHostController,
+    authState: AuthUiState,
+) {
+    composable(AppRoute.SettingsInvites) {
+        val viewModel: SettingsViewModel = viewModel()
+        val state by viewModel.uiState.collectAsState()
+        val clipboardManager = LocalClipboardManager.current
+
+        LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+            viewModel.loadInviteDashboard(authState.session)
+        }
+
+        SettingsInvitesScreen(
+            state = state.withSession(authState.session),
+            session = authState.session,
+            onBackClick = { navController.navigateUp() },
+            onRefreshClick = { viewModel.loadInviteDashboard(authState.session, forceRefresh = true) },
+            onCopyInviteClick = { link ->
+                clipboardManager.setText(AnnotatedString(link))
+            },
+        )
+    }
+
+    composable(AppRoute.SettingsMentorship) {
+        val viewModel: SettingsViewModel = viewModel()
+        val state by viewModel.uiState.collectAsState()
+
+        LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+            viewModel.loadMentorshipHub(authState.session)
+        }
+
+        SettingsMentorshipScreen(
+            state = state.withSession(authState.session),
+            session = authState.session,
+            onBackClick = { navController.navigateUp() },
+            onRefreshClick = { viewModel.loadMentorshipHub(authState.session, forceRefresh = true) },
+        )
+    }
 }
 
 private fun NavGraphBuilder.collectiveLeagueRoutes(navController: NavHostController) {
@@ -394,26 +444,55 @@ private fun gamesState(content: @androidx.compose.runtime.Composable (com.exampl
     content(state)
 }
 
-private fun NavGraphBuilder.generalOrderRoutes(navController: NavHostController) {
+private fun NavGraphBuilder.generalOrderRoutes(
+    navController: NavHostController,
+    authState: AuthUiState,
+) {
     composable(AppRoute.OrdersHub) {
         val viewModel: GeneralOrdersViewModel = viewModel()
         val state by viewModel.uiState.collectAsState()
-        OrdersHubScreen(state, { type -> navController.navigate(AppRoute.ordersByType(type.name)) }, { order -> navController.navigate(AppRoute.generalOrderDetail(order.id)) })
+        LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+            viewModel.load(authState.session)
+        }
+        OrdersHubScreen(
+            state = state,
+            onTypeClick = { type -> navController.navigate(AppRoute.ordersByType(type.name)) },
+            onOrderClick = { order -> navController.navigate(AppRoute.generalOrderDetail(order.id)) },
+        )
     }
     composable(AppRoute.OrdersByType, listOf(navArgument("type") { type = NavType.StringType })) { entry ->
         val viewModel: GeneralOrdersViewModel = viewModel()
         val state by viewModel.uiState.collectAsState()
         val type = generalOrderType(entry.arguments?.getString("type"))
-        OrdersByTypeScreen(state, type, viewModel::selectStatus, { order -> navController.navigate(AppRoute.generalOrderDetail(order.id)) }, { navController.navigateUp() })
+        LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+            viewModel.load(authState.session)
+        }
+        OrdersByTypeScreen(
+            state = state,
+            type = type,
+            onStatusClick = viewModel::selectStatus,
+            onOrderClick = { order -> navController.navigate(AppRoute.generalOrderDetail(order.id)) },
+            onBackClick = { navController.navigateUp() },
+        )
     }
     composable(AppRoute.GeneralOrderDetail, listOf(navArgument("orderId") { type = NavType.StringType })) { entry ->
         val id = entry.arguments?.getString("orderId").orEmpty()
-        GeneralOrderDetailScreen(GeneralOrdersMockData.orderById(id), { navController.navigateUp() })
+        val viewModel: GeneralOrdersViewModel = viewModel()
+        val state by viewModel.uiState.collectAsState()
+        LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id, id) {
+            viewModel.load(authState.session)
+        }
+        val order = state.orders.firstOrNull { it.id == id }
+        when {
+            state.isLoading -> PremiumLoadingState(text = "Carregando pedido")
+            order != null -> GeneralOrderDetailScreen(order, { navController.navigateUp() })
+            else -> GeneralOrderUnavailableScreen({ navController.navigateUp() })
+        }
     }
 }
 
 private fun generalOrderType(value: String?): GeneralOrderType? =
-    GeneralOrderType.values().firstOrNull { it.name == value }
+    GeneralOrderType.entries.firstOrNull { it.name == value }
 
 @Composable
 private fun PermissionGate(

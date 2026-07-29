@@ -378,69 +378,73 @@ private fun MembershipCardFooter(
     scale: Float,
     isConfigLoading: Boolean,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = 0.10f),
-                shape = RoundedCornerShape(1.dp),
-            )
-            .padding(top = 9.dp * scale),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp * scale)) {
-            Text(
-                text = "VALIDADE",
-                color = CardZinc500,
-                fontSize = (8f * scale).sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (1.4f * scale).sp,
-            )
-            if (isConfigLoading) {
-                Box(
-                    modifier = Modifier
-                        .width(48.dp * scale)
-                        .height(10.dp * scale)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Color.White.copy(alpha = 0.10f)),
-                )
-            } else {
-                Text(
-                    text = card.validity,
-                    color = CardEmerald,
-                    fontSize = (10f * scale).sp,
-                    lineHeight = (11f * scale).sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = (0.7f * scale).sp,
-                )
-            }
-        }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.10f)),
+        )
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(7.dp * scale),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 9.dp * scale),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
         ) {
-            Text(
-                text = "ESCANEIE PARA\nVALIDAR ACESSO",
-                color = CardZinc500,
-                fontSize = (7f * scale).sp,
-                lineHeight = (8f * scale).sp,
-                fontWeight = FontWeight.Medium,
-            )
-            Surface(
-                shape = RoundedCornerShape(3.dp * scale),
-                color = Color.White,
-                shadowElevation = 4.dp,
-            ) {
-                IdentityQrCode(
-                    payload = card.qrPayload.ifBlank { card.userId },
-                    modifier = Modifier
-                        .padding(3.dp * scale)
-                        .size(36.dp * scale),
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp * scale)) {
+                Text(
+                    text = "VALIDADE",
+                    color = CardZinc500,
+                    fontSize = (8f * scale).sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (1.4f * scale).sp,
                 )
+                if (isConfigLoading) {
+                    Box(
+                        modifier = Modifier
+                            .width(48.dp * scale)
+                            .height(10.dp * scale)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Color.White.copy(alpha = 0.10f)),
+                    )
+                } else {
+                    Text(
+                        text = card.validity,
+                        color = CardEmerald,
+                        fontSize = (10f * scale).sp,
+                        lineHeight = (11f * scale).sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = (0.7f * scale).sp,
+                    )
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(7.dp * scale),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "ESCANEIE PARA\nVALIDAR ACESSO",
+                    color = CardZinc500,
+                    fontSize = (7f * scale).sp,
+                    lineHeight = (8f * scale).sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Surface(
+                    shape = RoundedCornerShape(3.dp * scale),
+                    color = Color.White,
+                    shadowElevation = 4.dp,
+                ) {
+                    IdentityQrCode(
+                        payload = card.qrPayload.ifBlank { card.userId },
+                        modifier = Modifier
+                            .padding(3.dp * scale)
+                            .size(36.dp * scale),
+                    )
+                }
             }
         }
     }

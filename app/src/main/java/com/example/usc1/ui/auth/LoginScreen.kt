@@ -6,6 +6,7 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
@@ -37,6 +38,7 @@ fun LoginScreen(
             text = "Entrar com Google",
             onClick = onGoogleClick,
             enabled = !state.isLoading && !state.isWaitingForOAuthRedirect,
+            accent = Color.White,
             loading = state.isLoading,
             icon = Icons.AutoMirrored.Outlined.Login,
         )

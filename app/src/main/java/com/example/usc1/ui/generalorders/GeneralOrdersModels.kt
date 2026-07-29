@@ -25,7 +25,9 @@ data class GeneralOrder(
 data class GeneralOrdersUiState(
     val selectedType: GeneralOrderType? = null,
     val selectedStatus: GeneralOrderStatus? = null,
-    val orders: List<GeneralOrder> = GeneralOrdersMockData.orders,
+    val orders: List<GeneralOrder> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
 )
 
 object GeneralOrdersMockData {

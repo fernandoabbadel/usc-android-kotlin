@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +61,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.usc1.core.tenant.TenantPalette
+import com.example.usc1.ui.membershipCard.membershipClassBackgroundRes
 
 internal val SettingsBackground = Color(0xFF050505)
 internal val SettingsPanel = Color(0xFF18181B)
@@ -96,6 +100,7 @@ internal fun SettingsStickyHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
                 .heightIn(min = 56.dp)
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -251,6 +256,8 @@ private fun ProfileAvatar(
     classLabel: String,
     accent: Color,
 ) {
+    val localClassLogo = membershipClassBackgroundRes(classLabel)
+
     Box(modifier = Modifier.size(84.dp)) {
         Box(
             modifier = Modifier
@@ -282,7 +289,7 @@ private fun ProfileAvatar(
             }
         }
 
-        if (!classLogoUrl.isNullOrBlank() || classLabel.isNotBlank()) {
+        if (!classLogoUrl.isNullOrBlank() || localClassLogo != null || classLabel.isNotBlank()) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -302,12 +309,21 @@ private fun ProfileAvatar(
                         contentScale = ContentScale.Crop,
                     )
                 } else {
-                    Text(
-                        text = classLabel.take(2).uppercase(),
-                        color = accent,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Black,
-                    )
+                    if (localClassLogo != null) {
+                        Image(
+                            painter = painterResource(localClassLogo),
+                            contentDescription = "Logo da turma $classLabel",
+                            modifier = Modifier.matchParentSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                    } else {
+                        Text(
+                            text = classLabel.take(2).uppercase(),
+                            color = accent,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black,
+                        )
+                    }
                 }
             }
         }
@@ -325,6 +341,7 @@ internal fun SettingsInvitePanel(
 ) {
     if (!state.isVisible) return
 
+    val tenantInviteLabel = tenantName.ifBlank { "ATLÉTICA" }.uppercase()
     val shape = RoundedCornerShape(32.dp)
     Box(
         modifier = modifier
@@ -423,7 +440,11 @@ internal fun SettingsInvitePanel(
                     }
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (state.isLoading) "GERANDO CONVITE" else "TRAZER AMIGO PARA A ATLÉTICA",
+                        text = if (state.isLoading) {
+                            "GERANDO CONVITE"
+                        } else {
+                            "TRAZER AMIGO PARA A $tenantInviteLabel"
+                        },
                         color = Color(0xFF1B1300),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,

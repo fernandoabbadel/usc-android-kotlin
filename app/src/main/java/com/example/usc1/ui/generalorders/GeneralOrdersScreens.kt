@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,9 +12,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -32,8 +33,10 @@ import com.example.usc1.core.ui.PremiumAmber
 import com.example.usc1.core.ui.PremiumBrand
 import com.example.usc1.core.ui.PremiumCard
 import com.example.usc1.core.ui.PremiumChip
+import com.example.usc1.core.ui.PremiumEmptyState
 import com.example.usc1.core.ui.PremiumHeader
 import com.example.usc1.core.ui.PremiumInfoRow
+import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumRed
 import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.core.ui.PremiumZinc400
@@ -49,12 +52,45 @@ fun OrdersHubScreen(
     onOrderClick: (GeneralOrder) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (state.isLoading) {
+        PremiumLoadingState(text = "Carregando pedidos", modifier = modifier)
+        return
+    }
+
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        PremiumHeader(title = "Pedidos", subtitle = "Eventos, loja e planos", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
-        NativeActionCard(NativeAction("Pedidos Eventos", "Ingressos, status e QR.", Icons.Outlined.Event), { onTypeClick(GeneralOrderType.Events) })
-        NativeActionCard(NativeAction("Pedidos Loja", "Produtos, retirada e pagamento.", Icons.Outlined.Storefront), { onTypeClick(GeneralOrderType.Store) })
-        NativeActionCard(NativeAction("Pedidos Planos", "Adesões e renovações.", Icons.Outlined.CreditCard), { onTypeClick(GeneralOrderType.Plans) })
-        state.orders.forEach { order -> GeneralOrderCard(order = order, onClick = { onOrderClick(order) }) }
+        PremiumHeader(
+            title = "Pedidos",
+            subtitle = "Eventos, loja e planos",
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+        )
+        NativeActionCard(
+            NativeAction("Pedidos Eventos", "Ingressos, status e QR.", Icons.Outlined.Event),
+            { onTypeClick(GeneralOrderType.Events) },
+        )
+        NativeActionCard(
+            NativeAction("Pedidos Loja", "Produtos, retirada e pagamento.", Icons.Outlined.Storefront),
+            { onTypeClick(GeneralOrderType.Store) },
+        )
+        NativeActionCard(
+            NativeAction("Pedidos Planos", "Adesões e renovações.", Icons.Outlined.CreditCard),
+            { onTypeClick(GeneralOrderType.Plans) },
+        )
+
+        when {
+            state.errorMessage != null -> PremiumEmptyState(
+                title = "Pedidos indisponíveis",
+                subtitle = state.errorMessage,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+            )
+            state.orders.isEmpty() -> PremiumEmptyState(
+                title = "Nenhuma compra ainda",
+                subtitle = "Quando você comprar ingresso, produto ou plano, o histórico aparecerá aqui.",
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+            )
+            else -> state.orders.forEach { order ->
+                GeneralOrderCard(order = order, onClick = { onOrderClick(order) })
+            }
+        }
     }
 }
 
@@ -67,26 +103,92 @@ fun OrdersByTypeScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val orders = state.orders.filter { type == null || it.type == type }
+    if (state.isLoading) {
+        PremiumLoadingState(text = "Carregando pedidos", modifier = modifier)
+        return
+    }
+
+    val orders = state.orders
+        .filter { type == null || it.type == type }
         .filter { state.selectedStatus == null || it.status == state.selectedStatus }
+
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        PremiumHeader(title = type?.label ?: "Todos", subtitle = "Pedidos por tipo", icon = Icons.AutoMirrored.Outlined.ReceiptLong, onBackClick = onBackClick)
+        PremiumHeader(
+            title = type?.label ?: "Todos",
+            subtitle = "Pedidos por tipo",
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+            onBackClick = onBackClick,
+        )
         OrdersStatusTabs(selectedStatus = state.selectedStatus, onStatusClick = onStatusClick)
-        orders.forEach { order -> GeneralOrderCard(order = order, onClick = { onOrderClick(order) }) }
+        when {
+            state.errorMessage != null -> PremiumEmptyState(
+                title = "Pedidos indisponíveis",
+                subtitle = state.errorMessage,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+            )
+            orders.isEmpty() -> PremiumEmptyState(
+                title = "Nada encontrado",
+                subtitle = "Não há pedidos reais para este filtro.",
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+            )
+            else -> orders.forEach { order ->
+                GeneralOrderCard(order = order, onClick = { onOrderClick(order) })
+            }
+        }
     }
 }
 
 @Composable
-fun GeneralOrderDetailScreen(order: GeneralOrder, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
+fun GeneralOrderDetailScreen(
+    order: GeneralOrder,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        PremiumHeader(title = order.id, subtitle = order.type.label, icon = Icons.AutoMirrored.Outlined.ReceiptLong, accent = orderStatusColor(order.status), onBackClick = onBackClick)
+        PremiumHeader(
+            title = order.id,
+            subtitle = order.type.label,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+            accent = orderStatusColor(order.status),
+            onBackClick = onBackClick,
+        )
         PremiumCard(accent = orderStatusColor(order.status)) {
             PremiumChip(label = order.status.label, accent = orderStatusColor(order.status))
-            Text(text = order.title, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
-            Text(text = order.description, color = PremiumZinc400, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = order.title,
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+            )
+            Text(
+                text = order.description,
+                color = PremiumZinc400,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+            )
             PremiumInfoRow("Criado em", order.createdAtLabel, accent = orderStatusColor(order.status))
             PremiumInfoRow("Total", order.amountLabel, accent = orderStatusColor(order.status))
         }
+    }
+}
+
+@Composable
+fun GeneralOrderUnavailableScreen(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
+        PremiumHeader(
+            title = "Pedido",
+            subtitle = "Detalhe da compra",
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+            onBackClick = onBackClick,
+        )
+        PremiumEmptyState(
+            title = "Pedido não encontrado",
+            subtitle = "Não encontrei esse pedido no histórico real do usuário atual.",
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+        )
     }
 }
 
@@ -103,14 +205,20 @@ fun OrdersStatusTabs(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         OrderStatusPill("Todos", selectedStatus == null, PremiumBrand) { onStatusClick(null) }
-        GeneralOrderStatus.values().forEach { status ->
-            OrderStatusPill(status.label, selectedStatus == status, orderStatusColor(status)) { onStatusClick(status) }
+        GeneralOrderStatus.entries.forEach { status ->
+            OrderStatusPill(status.label, selectedStatus == status, orderStatusColor(status)) {
+                onStatusClick(status)
+            }
         }
     }
 }
 
 @Composable
-fun GeneralOrderCard(order: GeneralOrder, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun GeneralOrderCard(
+    order: GeneralOrder,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -119,27 +227,64 @@ fun GeneralOrderCard(order: GeneralOrder, onClick: () -> Unit, modifier: Modifie
         color = PremiumZinc900,
         border = BorderStroke(1.dp, orderStatusColor(order.status).copy(alpha = 0.26f)),
     ) {
-        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             PremiumChip(label = order.type.label, accent = orderStatusColor(order.status))
-            androidx.compose.foundation.layout.Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(text = order.id, color = PremiumZinc500, fontSize = 10.sp, fontWeight = FontWeight.Black)
-                Text(text = order.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                Text(text = "${order.createdAtLabel} • ${order.amountLabel}", color = PremiumZinc400, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = order.id,
+                    color = PremiumZinc500,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    text = order.title,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    text = "${order.createdAtLabel} • ${order.amountLabel}",
+                    color = PremiumZinc400,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
             }
-            Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null, tint = orderStatusColor(order.status))
+            Icon(
+                Icons.AutoMirrored.Outlined.ArrowForward,
+                contentDescription = null,
+                tint = orderStatusColor(order.status),
+            )
         }
     }
 }
 
 @Composable
-private fun OrderStatusPill(label: String, selected: Boolean, accent: Color, onClick: () -> Unit) {
+private fun OrderStatusPill(
+    label: String,
+    selected: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+) {
     Surface(
         modifier = Modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(999.dp),
         color = if (selected) accent else PremiumZinc900,
         border = BorderStroke(1.dp, if (selected) accent else PremiumZinc800),
     ) {
-        Text(text = label.uppercase(), color = if (selected) Color.Black else PremiumZinc400, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp))
+        Text(
+            text = label.uppercase(),
+            color = if (selected) Color.Black else PremiumZinc400,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+        )
     }
 }
 
@@ -153,7 +298,7 @@ fun orderStatusColor(status: GeneralOrderStatus): Color = when (status) {
 @Composable
 fun OrdersHubScreenPreview() {
     UscTheme(darkTheme = true) {
-        OrdersHubScreen(GeneralOrdersUiState(), {}, {})
+        OrdersHubScreen(GeneralOrdersUiState(orders = GeneralOrdersMockData.orders), {}, {})
     }
 }
 

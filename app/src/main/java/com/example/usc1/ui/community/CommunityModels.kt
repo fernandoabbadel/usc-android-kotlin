@@ -74,7 +74,7 @@ object CommunityMockData {
             likes = 4,
             comments = 0,
             reports = 3,
-            imageRes = R.drawable.logo_aaakn,
+            imageRes = R.drawable.logo_usc,
         ),
     )
 

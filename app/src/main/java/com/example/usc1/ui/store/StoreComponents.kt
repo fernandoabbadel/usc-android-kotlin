@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.example.usc1.core.ui.PremiumAmber
 import com.example.usc1.core.ui.PremiumBrand
 import com.example.usc1.core.ui.PremiumBrandAccent
@@ -52,6 +54,77 @@ import com.example.usc1.core.ui.PremiumZinc400
 import com.example.usc1.core.ui.PremiumZinc500
 import com.example.usc1.core.ui.PremiumZinc800
 import com.example.usc1.core.ui.PremiumZinc900
+
+@Composable
+fun StoreProductImage(
+    product: StoreProduct,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop,
+    alpha: Float = 1f,
+) {
+    val fallbackPainter = painterResource(id = product.imageRes)
+    val imageUrl = product.imageUrl?.trim()?.takeIf { it.isNotBlank() }
+    if (imageUrl != null) {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = contentScale,
+            alpha = alpha,
+            placeholder = fallbackPainter,
+            error = fallbackPainter,
+            fallback = fallbackPainter,
+        )
+    } else {
+        Image(
+            painter = fallbackPainter,
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = contentScale,
+            alpha = alpha,
+        )
+    }
+}
+
+@Composable
+fun StoreProductImageCard(
+    product: StoreProduct,
+    modifier: Modifier = Modifier,
+    height: androidx.compose.ui.unit.Dp = 294.dp,
+    accent: Color = productStatusColor(product.status),
+    imageAlpha: Float = 0.78f,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .clip(RoundedCornerShape(30.dp))
+            .background(PremiumZinc900)
+            .border(1.dp, accent.copy(alpha = 0.34f), RoundedCornerShape(30.dp)),
+    ) {
+        StoreProductImage(
+            product = product,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            alpha = imageAlpha,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.25f),
+                            Color.Black.copy(alpha = 0.72f),
+                            Color.Black,
+                        ),
+                    ),
+                ),
+        )
+        content()
+    }
+}
 
 @Composable
 fun ProductCard(
@@ -74,9 +147,8 @@ fun ProductCard(
                     .height(214.dp)
                     .background(Color.Black),
             ) {
-                Image(
-                    painter = painterResource(id = product.imageRes),
-                    contentDescription = null,
+                StoreProductImage(
+                    product = product,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                     alpha = 0.76f,
@@ -188,9 +260,8 @@ fun CartItemCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Image(
-                painter = painterResource(id = item.product.imageRes),
-                contentDescription = null,
+            StoreProductImage(
+                product = item.product,
                 modifier = Modifier
                     .size(76.dp)
                     .clip(RoundedCornerShape(18.dp))

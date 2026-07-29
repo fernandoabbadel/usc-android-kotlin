@@ -78,7 +78,7 @@ private fun EventOrderDetailLoaded(
         PremiumCard(accent = com.example.usc1.core.ui.PremiumAmber) {
             PremiumInfoRow("Chave PIX", "mock-pix-usc")
             PremiumInfoRow("Banco", "Banco da Atlética")
-            PremiumInfoRow("Titular", "AAAKN USC")
+            PremiumInfoRow("Titular", "USC Pagamentos")
         }
         PremiumPrimaryButton(
             text = "Copiar PIX",

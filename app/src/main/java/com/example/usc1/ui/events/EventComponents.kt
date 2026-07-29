@@ -310,7 +310,7 @@ private fun EventClassPresenceRow(confirmados: Int) {
                 ) {
                     Image(
                         painter = painterResource(
-                            id = if (index % 2 == 0) R.drawable.logo_aaakn else R.drawable.logo_usc
+                            id = R.drawable.logo_usc
                         ),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,

@@ -645,6 +645,7 @@ fun DashboardSectionTitle(
 @Composable
 fun FloatingBottomNavigation(
     modifier: Modifier = Modifier,
+    selectedDestination: BottomNavDestination = BottomNavDestination.Home,
     onHomeClick: () -> Unit,
     onEventsClick: () -> Unit,
     onScannerClick: () -> Unit,
@@ -676,13 +677,14 @@ fun FloatingBottomNavigation(
                 BottomNavItem(
                     label = "Início",
                     icon = Icons.Outlined.Home,
-                    selected = true,
+                    selected = selectedDestination == BottomNavDestination.Home,
                     onClick = onHomeClick,
                     modifier = Modifier.weight(1f),
                 )
                 BottomNavItem(
                     label = "Eventos",
                     icon = Icons.Outlined.Event,
+                    selected = selectedDestination == BottomNavDestination.Events,
                     onClick = onEventsClick,
                     modifier = Modifier.weight(1f),
                 )
@@ -690,12 +692,14 @@ fun FloatingBottomNavigation(
                 BottomNavItem(
                     label = "Carteira",
                     icon = Icons.Outlined.AccountBalanceWallet,
+                    selected = selectedDestination == BottomNavDestination.Wallet,
                     onClick = onWalletClick,
                     modifier = Modifier.weight(1f),
                 )
                 BottomNavItem(
                     label = "Menu",
                     icon = Icons.Outlined.Menu,
+                    selected = selectedDestination == BottomNavDestination.Menu,
                     onClick = onMenuClick,
                     modifier = Modifier.weight(1f),
                 )
@@ -709,6 +713,13 @@ fun FloatingBottomNavigation(
             onClick = onScannerClick,
         )
     }
+}
+
+enum class BottomNavDestination {
+    Home,
+    Events,
+    Wallet,
+    Menu,
 }
 
 @Composable

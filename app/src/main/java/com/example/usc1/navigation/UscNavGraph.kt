@@ -262,6 +262,7 @@ fun UscNavGraph() {
 
             SettingsScreen(
                 state = settingsState.withSession(authState.session),
+                onBackClick = { navController.navigateUp() },
                 onItemClick = { item ->
                     if (item.action == SettingsAction.SignOut) {
                         authViewModel.signOut()
@@ -273,17 +274,92 @@ fun UscNavGraph() {
                         }
                     }
                 },
+                onSignOutClick = authViewModel::signOut,
+                onHomeClick = {
+                    navController.navigate(AppRoute.Dashboard) {
+                        launchSingleTop = true
+                    }
+                },
+                onEventsClick = {
+                    navController.navigate(AppRoute.Events) {
+                        launchSingleTop = true
+                    }
+                },
+                onScannerClick = {
+                    navController.navigate(
+                        if (authState.session.user?.role?.canManageTenant == true) {
+                            AppRoute.Scanner
+                        } else {
+                            AppRoute.CacaCalouro
+                        },
+                    ) {
+                        launchSingleTop = true
+                    }
+                },
+                onWalletClick = {
+                    navController.navigate(AppRoute.MembershipCard) {
+                        launchSingleTop = true
+                    }
+                },
+                onMenuClick = {
+                    navController.navigate(AppRoute.Settings) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
 
         composable(AppRoute.MembershipCard) {
             val membershipCardViewModel: MembershipCardViewModel = viewModel()
             val membershipCardState by membershipCardViewModel.uiState.collectAsState()
+            val tenantId = authState.session.tenant?.id.orEmpty()
+
+            LaunchedEffect(tenantId) {
+                membershipCardViewModel.load(tenantId)
+            }
 
             MembershipCardScreen(
                 state = membershipCardState.withSession(authState.session),
-                onRefreshClick = membershipCardViewModel::refresh,
+                onRefreshClick = {
+                    membershipCardViewModel.load(tenantId, forceRefresh = true)
+                },
                 onBackClick = { navController.navigateUp() },
+                onPlansClick = {
+                    navController.navigate(AppRoute.Plans) {
+                        launchSingleTop = true
+                    }
+                },
+                onHomeClick = {
+                    navController.navigate(AppRoute.Dashboard) {
+                        launchSingleTop = true
+                    }
+                },
+                onEventsClick = {
+                    navController.navigate(AppRoute.Events) {
+                        launchSingleTop = true
+                    }
+                },
+                onScannerClick = {
+                    navController.navigate(
+                        if (authState.session.user?.role?.canManageTenant == true) {
+                            AppRoute.Scanner
+                        } else {
+                            AppRoute.CacaCalouro
+                        },
+                    ) {
+                        launchSingleTop = true
+                    }
+                },
+                onWalletClick = {
+                    navController.navigate(AppRoute.MembershipCard) {
+                        launchSingleTop = true
+                    }
+                },
+                onMenuClick = {
+                    navController.navigate(AppRoute.Settings) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
 
