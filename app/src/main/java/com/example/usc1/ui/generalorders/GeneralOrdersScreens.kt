@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -50,7 +50,7 @@ fun OrdersHubScreen(
     modifier: Modifier = Modifier,
 ) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        PremiumHeader(title = "Pedidos", subtitle = "Eventos, loja e planos", icon = Icons.Outlined.ReceiptLong)
+        PremiumHeader(title = "Pedidos", subtitle = "Eventos, loja e planos", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
         NativeActionCard(NativeAction("Pedidos Eventos", "Ingressos, status e QR.", Icons.Outlined.Event), { onTypeClick(GeneralOrderType.Events) })
         NativeActionCard(NativeAction("Pedidos Loja", "Produtos, retirada e pagamento.", Icons.Outlined.Storefront), { onTypeClick(GeneralOrderType.Store) })
         NativeActionCard(NativeAction("Pedidos Planos", "Adesões e renovações.", Icons.Outlined.CreditCard), { onTypeClick(GeneralOrderType.Plans) })
@@ -70,7 +70,7 @@ fun OrdersByTypeScreen(
     val orders = state.orders.filter { type == null || it.type == type }
         .filter { state.selectedStatus == null || it.status == state.selectedStatus }
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        PremiumHeader(title = type?.label ?: "Todos", subtitle = "Pedidos por tipo", icon = Icons.Outlined.ReceiptLong, onBackClick = onBackClick)
+        PremiumHeader(title = type?.label ?: "Todos", subtitle = "Pedidos por tipo", icon = Icons.AutoMirrored.Outlined.ReceiptLong, onBackClick = onBackClick)
         OrdersStatusTabs(selectedStatus = state.selectedStatus, onStatusClick = onStatusClick)
         orders.forEach { order -> GeneralOrderCard(order = order, onClick = { onOrderClick(order) }) }
     }
@@ -79,7 +79,7 @@ fun OrdersByTypeScreen(
 @Composable
 fun GeneralOrderDetailScreen(order: GeneralOrder, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        PremiumHeader(title = order.id, subtitle = order.type.label, icon = Icons.Outlined.ReceiptLong, accent = orderStatusColor(order.status), onBackClick = onBackClick)
+        PremiumHeader(title = order.id, subtitle = order.type.label, icon = Icons.AutoMirrored.Outlined.ReceiptLong, accent = orderStatusColor(order.status), onBackClick = onBackClick)
         PremiumCard(accent = orderStatusColor(order.status)) {
             PremiumChip(label = order.status.label, accent = orderStatusColor(order.status))
             Text(text = order.title, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
@@ -126,7 +126,7 @@ fun GeneralOrderCard(order: GeneralOrder, onClick: () -> Unit, modifier: Modifie
                 Text(text = order.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
                 Text(text = "${order.createdAtLabel} • ${order.amountLabel}", color = PremiumZinc400, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
-            Icon(Icons.Outlined.ArrowForward, contentDescription = null, tint = orderStatusColor(order.status))
+            Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null, tint = orderStatusColor(order.status))
         }
     }
 }

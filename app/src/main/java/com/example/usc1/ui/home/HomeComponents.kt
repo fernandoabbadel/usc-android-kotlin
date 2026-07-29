@@ -24,7 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Event
@@ -448,7 +448,7 @@ fun PremiumDashboardCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Icon(
-                        imageVector = Icons.Outlined.ArrowForward,
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
                         contentDescription = null,
                         modifier = Modifier.size(17.dp),
                         tint = accent,
@@ -564,7 +564,7 @@ fun RadarAlbumCard(
                 }
                 NeonStatusChip(
                     label = "ABRIR ÁLBUM",
-                    icon = Icons.Outlined.ArrowForward,
+                    icon = Icons.AutoMirrored.Outlined.ArrowForward,
                 )
             }
         }

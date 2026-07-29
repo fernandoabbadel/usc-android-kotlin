@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.QrCodeScanner
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -184,7 +184,7 @@ fun PartnerDetailScreen(
         PremiumPrimaryButton(
             text = "Ver benefícios",
             onClick = { onBenefitsClick(partner) },
-            icon = Icons.Outlined.ReceiptLong,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             accent = partnerAccent(partner),
             enabled = partner.coupons.isNotEmpty(),
         )
@@ -207,13 +207,13 @@ fun PartnerBenefitsScreen(
             PremiumHeader(
                 title = "Benefícios",
                 subtitle = "Parceiro não encontrado",
-                icon = Icons.Outlined.ReceiptLong,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
                 onBackClick = onBackClick,
             )
             PremiumEmptyState(
                 title = "Sem parceiro.",
                 subtitle = state.errorMessage ?: "A consulta por id e tenant_id não retornou dados.",
-                icon = Icons.Outlined.ReceiptLong,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             )
         }
         return
@@ -226,7 +226,7 @@ fun PartnerBenefitsScreen(
         PremiumHeader(
             title = "Benefícios",
             subtitle = partner.name,
-            icon = Icons.Outlined.ReceiptLong,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             accent = partnerAccent(partner),
             onBackClick = onBackClick,
         )
@@ -235,7 +235,7 @@ fun PartnerBenefitsScreen(
             PremiumEmptyState(
                 title = "Sem benefícios",
                 subtitle = "Nenhum cupom ativo foi retornado para esta empresa.",
-                icon = Icons.Outlined.ReceiptLong,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             )
         } else {
             partner.coupons.filter { it.active }.forEach { benefit ->

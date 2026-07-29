@@ -18,7 +18,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.WorkspacePremium
@@ -90,7 +90,7 @@ fun AdminPlansHubScreen(
             PremiumSecondaryButton(
                 text = "Catálogo de planos",
                 onClick = onEditCatalogClick,
-                icon = Icons.Outlined.ReceiptLong,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
                 modifier = Modifier.weight(1f),
             )
             PremiumSecondaryButton(
@@ -119,7 +119,7 @@ fun AdminManagementHubScreen(
     modifier: Modifier = Modifier,
 ) {
     val cards = listOf(
-        AdminHubItem("Eventos", "BI comercial, operacional, portaria, estratégico e modo vendas.", Icons.Outlined.ReceiptLong, onClick = onEventsClick),
+        AdminHubItem("Eventos", "BI comercial, operacional, portaria, estratégico e modo vendas.", Icons.AutoMirrored.Outlined.ReceiptLong, onClick = onEventsClick),
         AdminHubItem("BI Loja", "Produtos oficiais da atlética, sem misturar mini vendors ou entidades.", Icons.Outlined.ShoppingBag, onClick = onStoreClick),
         AdminHubItem("Treinos", "Presenças, confirmações, modalidades e frequência por data.", Icons.Outlined.FitnessCenter, onClick = onTrainingClick),
         AdminHubItem("Financeiro", "Extrato completo com pedidos, aprovações, QR, transferências, custo e CSV.", Icons.Outlined.BarChart, onClick = onFinanceClick),
@@ -159,14 +159,14 @@ fun AdminPendingRouteScreen(
         PremiumHeader(
             title = title,
             subtitle = "Pendente de tradução a partir do web-reference",
-            icon = Icons.Outlined.ReceiptLong,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             accent = PremiumAmber,
             onBackClick = onBackClick,
         )
         PremiumEmptyState(
             title = "Rota ainda não traduzida.",
             subtitle = "Fonte web: $source. Não há mock nem dado fake nesta tela.",
-            icon = Icons.Outlined.ReceiptLong,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             accent = PremiumAmber,
         )
     }

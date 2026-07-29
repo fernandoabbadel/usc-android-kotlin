@@ -11,7 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
@@ -171,7 +171,7 @@ private fun AdminStoreReviewCard(
             onClick = onProductClick,
             enabled = review.productId.isNotBlank(),
             accent = PremiumZinc400,
-            icon = Icons.Outlined.OpenInNew,
+            icon = Icons.AutoMirrored.Outlined.OpenInNew,
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

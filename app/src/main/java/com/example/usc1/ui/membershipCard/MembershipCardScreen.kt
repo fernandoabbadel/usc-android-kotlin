@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.runtime.Composable
@@ -27,7 +27,7 @@ fun MembershipCardScreen(
     modifier: Modifier = Modifier,
 ) {
     when {
-        state.isLoading -> PremiumLoadingState(text = "Carregando identidade", modifier = modifier)
+        state.isConfigLoading -> PremiumLoadingState(text = "Carregando identidade", modifier = modifier)
         state.errorMessage != null -> PremiumScreen(modifier = modifier) {
             PremiumHeader(
                 title = "Carteirinha",
@@ -65,15 +65,16 @@ fun MembershipCardScreen(
 
             MembershipCard(
                 card = state.card,
+                isConfigLoading = state.isConfigLoading,
                 modifier = Modifier.fillMaxWidth(),
             )
 
             PremiumCard {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CardInfoRowIfPresent("Status", state.card.memberStatus)
+                    CardInfoRowIfPresent("Turma", state.card.classCode)
                     CardInfoRowIfPresent("Plano", state.card.planName)
-                    CardInfoRowIfPresent("Validade", state.card.validUntil)
-                    CardInfoRowIfPresent("Documento", state.card.memberCode)
+                    CardInfoRowIfPresent("Validade", state.card.validity)
+                    CardInfoRowIfPresent("Matrícula", state.card.registrationNumber)
                 }
             }
 
@@ -85,7 +86,7 @@ fun MembershipCardScreen(
             PremiumSecondaryButton(
                 text = "Voltar",
                 onClick = onBackClick,
-                icon = Icons.Outlined.ArrowBack,
+                icon = Icons.AutoMirrored.Outlined.ArrowBack,
             )
         }
     }

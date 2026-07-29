@@ -1,7 +1,7 @@
 package com.example.usc1.ui.auth
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Login
+import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,7 +22,7 @@ fun LoginScreen(
 ) {
     AuthScreenShell(
         modifier = modifier,
-        icon = Icons.Outlined.Login,
+        icon = Icons.AutoMirrored.Outlined.Login,
         title = "Acesso",
         subtitle = "O login por email institucional foi pausado. Entre com Google para continuar.",
     ) {
@@ -38,7 +38,7 @@ fun LoginScreen(
             onClick = onGoogleClick,
             enabled = !state.isLoading && !state.isWaitingForOAuthRedirect,
             loading = state.isLoading,
-            icon = Icons.Outlined.Login,
+            icon = Icons.AutoMirrored.Outlined.Login,
         )
 
         PremiumSecondaryButton(

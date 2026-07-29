@@ -17,7 +17,7 @@ import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Save
@@ -544,8 +544,8 @@ private fun AdminStoreCategoryCard(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (category.categoryId != null || category.sellerType != AdminStoreSellerType.Tenant) {
-                    CategorySmallAction("Pendentes", Icons.Outlined.OpenInNew, PremiumAmber, onClick = onPendingOrdersClick)
-                    CategorySmallAction("Aprovados", Icons.Outlined.OpenInNew, Color(0xFF22D3EE), onClick = onApprovedOrdersClick)
+                    CategorySmallAction("Pendentes", Icons.AutoMirrored.Outlined.OpenInNew, PremiumAmber, onClick = onPendingOrdersClick)
+                    CategorySmallAction("Aprovados", Icons.AutoMirrored.Outlined.OpenInNew, Color(0xFF22D3EE), onClick = onApprovedOrdersClick)
                 }
                 if (category.categoryId != null || category.sellerType == AdminStoreSellerType.MiniVendor) {
                     CategorySmallAction(
@@ -566,7 +566,7 @@ private fun AdminStoreCategoryCard(
                 } else {
                     CategorySmallAction(
                         text = if (category.sellerType == AdminStoreSellerType.League) "Abrir ligas" else "Abrir mini vendor",
-                        icon = Icons.Outlined.OpenInNew,
+                        icon = Icons.AutoMirrored.Outlined.OpenInNew,
                         accent = if (category.sellerType == AdminStoreSellerType.League) Color(0xFFA5B4FC) else Color(0xFF60A5FA),
                         enabled = false,
                         onClick = {},

@@ -13,9 +13,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FitnessCenter
-import androidx.compose.material.icons.outlined.Message
+import androidx.compose.material.icons.automirrored.outlined.Message
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.SupportAgent
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
@@ -85,7 +85,7 @@ fun AdminReportsHubScreen(
             ReportHubCard(
                 title = "Comunidade",
                 description = "Mensagens denunciadas",
-                icon = Icons.Outlined.Message,
+                icon = Icons.AutoMirrored.Outlined.Message,
                 accent = Color(0xFF60A5FA),
                 onClick = { onSectionClick(AdminReportsSection.Community) },
             )
@@ -326,7 +326,7 @@ private fun AdminReportCard(
         if (report.reporterId.isNotBlank()) {
             ReportSmallAction(
                 text = "Usuário",
-                icon = Icons.Outlined.Message,
+                icon = Icons.AutoMirrored.Outlined.Message,
                 accent = PremiumBrandAccent,
                 onClick = onUserClick,
             )
@@ -376,7 +376,7 @@ private fun AdminReportCard(
                 )
                 ReportSmallAction(
                     text = "Responder e concluir",
-                    icon = Icons.Outlined.Send,
+                    icon = Icons.AutoMirrored.Outlined.Send,
                     accent = PremiumBrandAccent,
                     enabled = !isBusy && response.trim().isNotBlank(),
                     onClick = onResolveClick,
@@ -441,7 +441,7 @@ private fun ReportMessage(
 private fun sectionIcon(section: AdminReportsSection): ImageVector {
     return when (section) {
         AdminReportsSection.Banned -> Icons.Outlined.Warning
-        AdminReportsSection.Community -> Icons.Outlined.Message
+        AdminReportsSection.Community -> Icons.AutoMirrored.Outlined.Message
         AdminReportsSection.Gym -> Icons.Outlined.FitnessCenter
         AdminReportsSection.Support -> Icons.Outlined.SupportAgent
     }

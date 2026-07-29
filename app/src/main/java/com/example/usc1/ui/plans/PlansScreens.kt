@@ -12,7 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -228,7 +228,7 @@ fun PlanOrdersScreen(
         PremiumHeader(
             title = "Pedidos Planos",
             subtitle = "Histórico de adesões mockadas",
-            icon = Icons.Outlined.ReceiptLong,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             onBackClick = onBackClick,
         )
 
@@ -282,7 +282,7 @@ private fun ActivePlanCard(
                 text = "Pedidos",
                 onClick = onOrdersClick,
                 modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.ReceiptLong,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             )
         }
     }

@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -31,7 +31,7 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonAdd
@@ -102,7 +102,7 @@ internal fun SettingsStickyHeader(
         ) {
             IconButton(onClick = onBackClick) {
                 Icon(
-                    imageVector = Icons.Outlined.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Voltar",
                     tint = SettingsTextMuted,
                     modifier = Modifier.size(22.dp),
@@ -776,7 +776,7 @@ internal fun SettingsRiskZone(
         )
         SettingsRiskButton(
             label = "Sair da Conta",
-            icon = Icons.Outlined.Logout,
+            icon = Icons.AutoMirrored.Outlined.Logout,
             color = Color(0xFFD4D4D8),
             onClick = onSignOutClick,
         )
@@ -886,7 +886,7 @@ internal fun iconFor(action: SettingsAction): ImageVector = when (action) {
     SettingsAction.SalesMode,
     -> Icons.Outlined.Storefront
     SettingsAction.Scanner -> Icons.Outlined.QrCodeScanner
-    SettingsAction.SignOut -> Icons.Outlined.Logout
+    SettingsAction.SignOut -> Icons.AutoMirrored.Outlined.Logout
     SettingsAction.Invites -> Icons.Outlined.PersonAdd
     SettingsAction.Mentorship -> Icons.Outlined.FavoriteBorder
     SettingsAction.Notifications -> Icons.Outlined.Notifications

@@ -1,7 +1,7 @@
 package com.example.usc1.ui.events
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Payment
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.runtime.Composable
@@ -35,7 +35,7 @@ fun EventCheckoutUnavailableScreen(
         PremiumSecondaryButton(
             text = "Voltar",
             onClick = onBackClick,
-            icon = Icons.Outlined.ArrowBack,
+            icon = Icons.AutoMirrored.Outlined.ArrowBack,
         )
     }
 }
@@ -65,7 +65,7 @@ fun EventFlowUnavailableScreen(
         PremiumSecondaryButton(
             text = "Voltar",
             onClick = onBackClick,
-            icon = Icons.Outlined.ArrowBack,
+            icon = Icons.AutoMirrored.Outlined.ArrowBack,
         )
     }
 }

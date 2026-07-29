@@ -1,9 +1,9 @@
 package com.example.usc1.ui.tickets
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ConfirmationNumber
-import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,12 +86,12 @@ private fun TicketDetailLoadedContent(
             text = "Transferir ingresso",
             onClick = onTransferClick,
             enabled = ticket.transferAvailable,
-            icon = Icons.Outlined.Send,
+            icon = Icons.AutoMirrored.Outlined.Send,
         )
         PremiumSecondaryButton(
             text = "Voltar",
             onClick = onBackClick,
-            icon = Icons.Outlined.ArrowBack,
+            icon = Icons.AutoMirrored.Outlined.ArrowBack,
         )
     }
 }

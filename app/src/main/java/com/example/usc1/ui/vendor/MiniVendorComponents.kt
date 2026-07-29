@@ -17,7 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -109,7 +109,7 @@ fun MiniVendorOrderCard(
                 color = accent.copy(alpha = 0.12f),
                 border = BorderStroke(1.dp, accent.copy(alpha = 0.32f)),
             ) {
-                Icon(Icons.Outlined.ReceiptLong, contentDescription = null, modifier = Modifier.padding(11.dp), tint = accent)
+                Icon(Icons.AutoMirrored.Outlined.ReceiptLong, contentDescription = null, modifier = Modifier.padding(11.dp), tint = accent)
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(text = order.id, color = PremiumZinc500, fontSize = 10.sp, fontWeight = FontWeight.Black)

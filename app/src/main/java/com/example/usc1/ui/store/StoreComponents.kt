@@ -17,10 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.RemoveShoppingCart
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.Star
@@ -115,7 +115,7 @@ fun ProductCard(
                     color = Color.White,
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.ArrowForward,
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
                         contentDescription = null,
                         modifier = Modifier.padding(10.dp).size(20.dp),
                         tint = Color.Black,
@@ -296,7 +296,7 @@ fun StoreOrderCard(
                 color = Color.White,
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.ArrowForward,
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
                     contentDescription = null,
                     modifier = Modifier.padding(10.dp),
                     tint = Color.Black,
@@ -331,7 +331,7 @@ fun StoreOrderStatusChip(
 ) {
     PremiumChip(
         label = status.label,
-        icon = Icons.Outlined.ReceiptLong,
+        icon = Icons.AutoMirrored.Outlined.ReceiptLong,
         accent = storeOrderColor(status),
         modifier = modifier,
     )

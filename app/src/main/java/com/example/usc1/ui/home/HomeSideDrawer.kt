@@ -40,9 +40,9 @@ import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Games
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Handshake
-import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Settings
@@ -150,7 +150,7 @@ fun HomeSideDrawer(
                     HomeDrawerLink("Área das Ligas", AppRoute.Leagues, Icons.Outlined.Groups, "ligas"),
                     HomeDrawerLink("Comissões", AppRoute.Commissions, Icons.Outlined.Groups, "comissoes"),
                     HomeDrawerLink("Diretório", AppRoute.Directory, Icons.Outlined.School, "diretorio"),
-                    HomeDrawerLink("Guia", AppRoute.Guide, Icons.Outlined.HelpOutline, "guia"),
+                    HomeDrawerLink("Guia", AppRoute.Guide, Icons.AutoMirrored.Outlined.HelpOutline, "guia"),
                 ).filter { it.moduleKey == null || state.dashboard.isModuleVisible(it.moduleKey) }
 
                 LazyColumn(
@@ -505,7 +505,7 @@ private fun DrawerFooter(
             )
             DrawerFooterButton(
                 label = "SAIR",
-                icon = Icons.Outlined.Logout,
+                icon = Icons.AutoMirrored.Outlined.Logout,
                 modifier = Modifier.weight(1f),
                 onClick = onSignOut,
             )

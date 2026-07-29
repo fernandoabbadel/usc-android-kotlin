@@ -29,7 +29,7 @@ data class StoreProduct(
     val priceLabel: String,
     val status: StoreProductStatus,
     val badge: String,
-    @DrawableRes val imageRes: Int,
+    @param:DrawableRes val imageRes: Int,
     val imageUrl: String? = null,
     val stockLabel: String,
     val reviewLabel: String,

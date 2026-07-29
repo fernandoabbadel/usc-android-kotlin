@@ -41,6 +41,7 @@ private val DarkColorScheme = darkColorScheme(
     onSurfaceVariant = androidx.compose.ui.graphics.Color(0xFFB9C8C1),
 )
 
+@Suppress("DEPRECATION")
 @Composable
 fun UscTheme(
     darkTheme: Boolean = true,

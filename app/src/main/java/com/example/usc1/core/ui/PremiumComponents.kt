@@ -23,8 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Waves
 import androidx.compose.material3.Button
@@ -166,7 +166,7 @@ fun PremiumHeader(
                 border = BorderStroke(1.dp, PremiumZinc800),
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Voltar",
                     modifier = Modifier.padding(11.dp),
                     tint = PremiumZinc400,
@@ -592,7 +592,7 @@ fun PremiumMenuRow(
             PremiumChip(label = badge, accent = accent)
         } else {
             Icon(
-                imageVector = Icons.Outlined.ArrowForward,
+                imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
                 tint = PremiumZinc600,

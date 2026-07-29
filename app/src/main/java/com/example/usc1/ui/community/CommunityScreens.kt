@@ -17,7 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -108,7 +108,7 @@ fun CommunityScreen(
                         )
                     }
                 }
-                PremiumPrimaryButton(text = "Nova publicação", onClick = {}, icon = Icons.Outlined.Send)
+                PremiumPrimaryButton(text = "Nova publicação", onClick = {}, icon = Icons.AutoMirrored.Outlined.Send)
             }
         }
 

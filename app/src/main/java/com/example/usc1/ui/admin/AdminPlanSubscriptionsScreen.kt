@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Groups
@@ -75,7 +75,7 @@ fun AdminPlanSubscriptionsScreen(
             PremiumSecondaryButton(
                 text = "Voltar",
                 onClick = onBackClick,
-                icon = Icons.Outlined.ArrowBack,
+                icon = Icons.AutoMirrored.Outlined.ArrowBack,
                 modifier = Modifier.weight(1f),
             )
             PremiumSecondaryButton(

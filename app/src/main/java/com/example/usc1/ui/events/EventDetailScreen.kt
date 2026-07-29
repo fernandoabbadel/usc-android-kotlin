@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.ShoppingBag
@@ -135,7 +135,7 @@ private fun EventDetailLoadedContent(
         PremiumSecondaryButton(
             text = "Voltar",
             onClick = onBackClick,
-            icon = Icons.Outlined.ArrowBack,
+            icon = Icons.AutoMirrored.Outlined.ArrowBack,
         )
     }
 }

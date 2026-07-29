@@ -6,7 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Payment
 import androidx.compose.material.icons.outlined.QrCodeScanner
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -48,8 +48,8 @@ fun MiniVendorScreen(
             NativeStatCard("Pendente", state.pendingAmountLabel, icon = Icons.Outlined.Payment, accent = PremiumAmber, modifier = Modifier.weight(1f))
         }
         NativeActionCard(NativeAction("Produtos", "Catálogo, estoque e status.", Icons.Outlined.Storefront), onProductsClick)
-        NativeActionCard(NativeAction("Pedidos pendentes", "Aprovar e validar retiradas.", Icons.Outlined.ReceiptLong, PremiumAmber), onPendingOrdersClick)
-        NativeActionCard(NativeAction("Pedidos aprovados", "Histórico liberado para retirada.", Icons.Outlined.ReceiptLong), onApprovedOrdersClick)
+        NativeActionCard(NativeAction("Pedidos pendentes", "Aprovar e validar retiradas.", Icons.AutoMirrored.Outlined.ReceiptLong, PremiumAmber), onPendingOrdersClick)
+        NativeActionCard(NativeAction("Pedidos aprovados", "Histórico liberado para retirada.", Icons.AutoMirrored.Outlined.ReceiptLong), onApprovedOrdersClick)
         NativeActionCard(NativeAction("Financeiro", "Receita simplificada e saldo futuro.", Icons.Outlined.AccountBalanceWallet), onFinanceClick)
     }
 }
@@ -65,7 +65,7 @@ fun MiniVendorProductsScreen(state: MiniVendorUiState, onBackClick: () -> Unit, 
 @Composable
 fun MiniVendorPendingOrdersScreen(state: MiniVendorUiState, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        PremiumHeader(title = "Pendentes", subtitle = state.storeName, icon = Icons.Outlined.ReceiptLong, accent = PremiumAmber, onBackClick = onBackClick)
+        PremiumHeader(title = "Pendentes", subtitle = state.storeName, icon = Icons.AutoMirrored.Outlined.ReceiptLong, accent = PremiumAmber, onBackClick = onBackClick)
         state.pendingOrders.forEach { order -> MiniVendorOrderCard(order = order) }
     }
 }
@@ -73,7 +73,7 @@ fun MiniVendorPendingOrdersScreen(state: MiniVendorUiState, onBackClick: () -> U
 @Composable
 fun MiniVendorApprovedOrdersScreen(state: MiniVendorUiState, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        PremiumHeader(title = "Aprovados", subtitle = state.storeName, icon = Icons.Outlined.ReceiptLong, onBackClick = onBackClick)
+        PremiumHeader(title = "Aprovados", subtitle = state.storeName, icon = Icons.AutoMirrored.Outlined.ReceiptLong, onBackClick = onBackClick)
         state.approvedOrders.forEach { order -> MiniVendorOrderCard(order = order) }
     }
 }

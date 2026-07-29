@@ -3,7 +3,7 @@ package com.example.usc1.ui.orders
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -28,12 +28,12 @@ fun EventOrdersScreen(
             PremiumHeader(
                 title = "Pedidos de eventos",
                 subtitle = "Erro ao carregar histórico",
-                icon = Icons.Outlined.ReceiptLong,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             )
             PremiumEmptyState(
                 title = "Pedidos indisponíveis",
                 subtitle = state.errorMessage,
-                icon = Icons.Outlined.ReceiptLong,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             )
         }
         else -> PremiumScreen(
@@ -43,13 +43,13 @@ fun EventOrdersScreen(
             PremiumHeader(
                 title = "Pedidos de eventos",
                 subtitle = "Pendentes, aprovados e cancelados",
-                icon = Icons.Outlined.ReceiptLong,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             )
             if (state.isEmpty) {
                 PremiumEmptyState(
                     title = "Sem pedidos",
                     subtitle = "Nenhum pedido de evento encontrado.",
-                    icon = Icons.Outlined.ReceiptLong,
+                    icon = Icons.AutoMirrored.Outlined.ReceiptLong,
                 )
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {

@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.Message
+import androidx.compose.material.icons.automirrored.outlined.Message
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.ShoppingBag
@@ -260,6 +260,6 @@ private fun menuIcon(kind: AdminStoreMenuKind): ImageVector {
         AdminStoreMenuKind.Disabled -> Icons.Outlined.Inventory2
         AdminStoreMenuKind.PendingOrders,
         AdminStoreMenuKind.ApprovedOrders -> Icons.Outlined.ShoppingBag
-        AdminStoreMenuKind.Reviews -> Icons.Outlined.Message
+        AdminStoreMenuKind.Reviews -> Icons.AutoMirrored.Outlined.Message
     }
 }

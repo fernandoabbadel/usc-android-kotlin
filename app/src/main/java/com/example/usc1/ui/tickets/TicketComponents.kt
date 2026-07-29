@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -84,7 +84,7 @@ fun TicketCard(
                 PremiumSecondaryButton(
                     text = "Detalhes",
                     onClick = onDetailsClick,
-                    icon = Icons.Outlined.ArrowForward,
+                    icon = Icons.AutoMirrored.Outlined.ArrowForward,
                 )
             }
         }

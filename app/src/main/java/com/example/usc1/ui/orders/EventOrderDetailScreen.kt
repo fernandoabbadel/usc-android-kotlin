@@ -1,9 +1,9 @@
 package com.example.usc1.ui.orders
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,13 +32,13 @@ fun EventOrderDetailScreen(
             PremiumHeader(
                 title = "Pedido",
                 subtitle = "Erro ao carregar detalhe",
-                icon = Icons.Outlined.ReceiptLong,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
                 onBackClick = onBackClick,
             )
             PremiumEmptyState(
                 title = "Pedido indisponível",
                 subtitle = state.errorMessage,
-                icon = Icons.Outlined.ReceiptLong,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             )
         }
         state.order != null -> EventOrderDetailLoaded(
@@ -62,7 +62,7 @@ private fun EventOrderDetailLoaded(
         PremiumHeader(
             title = "Detalhe do pedido",
             subtitle = "Pedido #${order.id.take(8).uppercase()}",
-            icon = Icons.Outlined.ReceiptLong,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             onBackClick = onBackClick,
         )
         EventOrderCard(order = order, onDetailsClick = {})
@@ -89,7 +89,7 @@ private fun EventOrderDetailLoaded(
         PremiumSecondaryButton(
             text = "Voltar",
             onClick = onBackClick,
-            icon = Icons.Outlined.ArrowBack,
+            icon = Icons.AutoMirrored.Outlined.ArrowBack,
         )
     }
 }

@@ -5,7 +5,7 @@ import com.example.usc1.data.supabase.SupabaseClientProvider
 import com.example.usc1.domain.model.MembershipCardConfig
 import com.example.usc1.domain.repository.MembershipCardRepository
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.from
+import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement

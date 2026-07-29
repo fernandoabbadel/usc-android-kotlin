@@ -1,7 +1,7 @@
 package com.example.usc1.ui.auth
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Login
+import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.outlined.MarkEmailUnread
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.runtime.Composable
@@ -33,7 +33,7 @@ fun InviteRequiredScreen(
         PremiumSecondaryButton(
             text = "Voltar para login",
             onClick = onSignOutClick,
-            icon = Icons.Outlined.Login,
+            icon = Icons.AutoMirrored.Outlined.Login,
         )
     }
 }

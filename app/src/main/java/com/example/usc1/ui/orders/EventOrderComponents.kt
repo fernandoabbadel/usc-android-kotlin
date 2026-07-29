@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -111,7 +111,7 @@ fun EventOrderCard(
                 PremiumSecondaryButton(
                     text = "Detalhes",
                     onClick = onDetailsClick,
-                    icon = Icons.Outlined.ArrowForward,
+                    icon = Icons.AutoMirrored.Outlined.ArrowForward,
                     modifier = Modifier.weight(0.9f),
                     accent = orderStatusColor(order.status),
                 )
@@ -128,7 +128,7 @@ fun OrderStatusChip(
     PremiumChip(
         label = status.label,
         modifier = modifier,
-        icon = Icons.Outlined.ReceiptLong,
+        icon = Icons.AutoMirrored.Outlined.ReceiptLong,
         accent = orderStatusColor(status),
     )
 }

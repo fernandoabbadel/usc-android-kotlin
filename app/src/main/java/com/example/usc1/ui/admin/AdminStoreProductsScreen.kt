@@ -16,8 +16,8 @@ import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.Message
-import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.Message
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.Refresh
@@ -159,7 +159,7 @@ fun AdminStoreProductsScreen(
             ProductModuleShortcut(
                 title = "Reviews",
                 subtitle = "Avaliações continuam moderadas após compra.",
-                icon = Icons.Outlined.Message,
+                icon = Icons.AutoMirrored.Outlined.Message,
                 accent = PremiumBrandAccent,
                 onClick = onReviewsClick,
                 modifier = Modifier.weight(1f),
@@ -628,7 +628,7 @@ private fun AdminStoreProductCard(
                 enabled = !isBusy,
                 onClick = onToggleProductActiveClick,
             )
-            ProductSmallAction("Abrir produto", Icons.Outlined.OpenInNew, PremiumZinc400, onClick = onOpenProductClick)
+            ProductSmallAction("Abrir produto", Icons.AutoMirrored.Outlined.OpenInNew, PremiumZinc400, onClick = onOpenProductClick)
         }
     }
 }

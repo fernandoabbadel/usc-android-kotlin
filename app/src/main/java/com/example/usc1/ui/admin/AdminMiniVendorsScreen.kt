@@ -15,7 +15,7 @@ import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Store
 import androidx.compose.material.icons.outlined.Visibility
@@ -249,11 +249,11 @@ private fun AdminMiniVendorCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (mode == AdminMiniVendorDirectoryMode.Vendors) {
-                MiniVendorDisabledAction("Pagina do mini vendor", Icons.Outlined.OpenInNew)
+                MiniVendorDisabledAction("Pagina do mini vendor", Icons.AutoMirrored.Outlined.OpenInNew)
                 MiniVendorDisabledAction("Editar dados", Icons.Outlined.Edit)
                 MiniVendorDisabledAction("Editar produtos", Icons.Outlined.Inventory2)
-                MiniVendorDisabledAction("Pedidos pendentes", Icons.Outlined.OpenInNew)
-                MiniVendorDisabledAction("Pedidos aprovados", Icons.Outlined.OpenInNew)
+                MiniVendorDisabledAction("Pedidos pendentes", Icons.AutoMirrored.Outlined.OpenInNew)
+                MiniVendorDisabledAction("Pedidos aprovados", Icons.AutoMirrored.Outlined.OpenInNew)
                 MiniVendorAction(
                     text = if (row.categoryVisible) "Ocultar categoria" else "Exibir categoria",
                     accent = if (row.categoryVisible) Color(0xFFF87171) else PremiumBrandAccent,

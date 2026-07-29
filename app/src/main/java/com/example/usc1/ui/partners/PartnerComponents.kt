@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
@@ -107,7 +107,7 @@ fun PartnerCard(
                     color = Color.White,
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.ArrowForward,
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
                         contentDescription = null,
                         modifier = Modifier.padding(10.dp),
                         tint = Color.Black,
@@ -154,7 +154,7 @@ fun PartnerStatusChip(
     val icon = when {
         partner.tier == PartnerTier.Ouro && partner.status == PartnerStatus.Active -> Icons.Outlined.Star
         partner.status == PartnerStatus.Active -> Icons.Outlined.CheckCircle
-        else -> Icons.Outlined.ReceiptLong
+        else -> Icons.AutoMirrored.Outlined.ReceiptLong
     }
     PremiumChip(
         label = partner.publicStatusLabel,

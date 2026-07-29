@@ -2,8 +2,8 @@ package com.example.usc1.ui.auth
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.Chat
-import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.example.usc1.core.ui.PremiumPrimaryButton
@@ -30,13 +30,13 @@ fun BannedUserScreen(
             text = "Falar com suporte",
             onClick = onSupportClick,
             accent = PremiumRed,
-            icon = Icons.Outlined.Chat,
+            icon = Icons.AutoMirrored.Outlined.Chat,
         )
         PremiumSecondaryButton(
             text = "Sair da conta",
             onClick = onSignOutClick,
             accent = PremiumRed,
-            icon = Icons.Outlined.Logout,
+            icon = Icons.AutoMirrored.Outlined.Logout,
         )
     }
 }

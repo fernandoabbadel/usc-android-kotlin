@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -29,8 +29,8 @@ import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Message
-import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.Message
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -113,7 +113,7 @@ fun DashboardSectionHeader(
                     fontWeight = FontWeight.Black,
                 )
                 Icon(
-                    imageVector = Icons.Outlined.OpenInNew,
+                    imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
                     contentDescription = null,
                     modifier = Modifier.size(10.dp),
                     tint = accent.copy(alpha = 0.78f),
@@ -378,7 +378,7 @@ fun DashboardEventCard(
                     }
                     NeonStatusChip(
                         label = if (event.viewerIsInterested) "CONFIRMADO" else "VER DETALHES",
-                        icon = if (event.viewerIsInterested) Icons.Outlined.CheckCircle else Icons.Outlined.ArrowForward,
+                        icon = if (event.viewerIsInterested) Icons.Outlined.CheckCircle else Icons.AutoMirrored.Outlined.ArrowForward,
                         color = if (event.viewerIsInterested) HomeBrandAccent else HomeZinc400,
                     )
                 }
@@ -731,7 +731,7 @@ fun DashboardPostCard(
                     )
                 }
                 Icon(
-                    imageVector = Icons.Outlined.Message,
+                    imageVector = Icons.AutoMirrored.Outlined.Message,
                     contentDescription = null,
                     modifier = Modifier.size(15.dp),
                     tint = HomeZinc500,

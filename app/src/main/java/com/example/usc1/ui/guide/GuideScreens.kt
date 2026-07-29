@@ -1,10 +1,10 @@
 package com.example.usc1.ui.guide
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContactSupport
+import androidx.compose.material.icons.automirrored.outlined.ContactSupport
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Gavel
-import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Mail
 import androidx.compose.runtime.Composable
@@ -23,7 +23,7 @@ import com.example.usc1.ui.theme.UscTheme
 @Composable
 fun GuideScreen(state: GuideUiState, onFaqClick: () -> Unit, onSupportClick: () -> Unit, modifier: Modifier = Modifier) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        PremiumHeader(title = "Guia USC", subtitle = "Como navegar pelo app", icon = Icons.Outlined.HelpOutline)
+        PremiumHeader(title = "Guia USC", subtitle = "Como navegar pelo app", icon = Icons.AutoMirrored.Outlined.HelpOutline)
         NativeModuleHeroCard("GUIA DO CARDUME", "Central de ajuda", "Fluxos principais do app nativo, sem WebView e sem rede real.", R.drawable.logo_platform_web)
         state.guideItems.forEach { item ->
             PremiumMenuRow(item.title, item.description, Icons.Outlined.Description, badge = item.badge, onClick = if (item.badge == "FAQ") onFaqClick else onSupportClick)
@@ -33,7 +33,7 @@ fun GuideScreen(state: GuideUiState, onFaqClick: () -> Unit, onSupportClick: () 
 
 @Composable
 fun FaqScreen(state: GuideUiState, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
-    InfoListScreen("FAQ", "Dúvidas frequentes", Icons.Outlined.HelpOutline, state.faqItems, onBackClick, modifier)
+    InfoListScreen("FAQ", "Dúvidas frequentes", Icons.AutoMirrored.Outlined.HelpOutline, state.faqItems, onBackClick, modifier)
 }
 
 @Composable
@@ -56,7 +56,7 @@ fun SupportScreen(onBackClick: () -> Unit, modifier: Modifier = Modifier) {
     InfoListScreen(
         "Suporte",
         "Atendimento e solicitações",
-        Icons.Outlined.ContactSupport,
+        Icons.AutoMirrored.Outlined.ContactSupport,
         listOf(
             GuideItem("Pedido com problema", "Abra solicitação para loja, eventos ou planos.", "Pedido"),
             GuideItem("Conta e acesso", "Convite, aprovação, banimento e segurança.", "Conta"),

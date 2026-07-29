@@ -2,7 +2,7 @@ package com.example.usc1.ui.auth
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.HourglassTop
-import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -40,7 +40,7 @@ fun WaitingApprovalScreen(
             text = "Sair da conta",
             onClick = onSignOutClick,
             accent = PremiumAmber,
-            icon = Icons.Outlined.Logout,
+            icon = Icons.AutoMirrored.Outlined.Logout,
         )
     }
 }

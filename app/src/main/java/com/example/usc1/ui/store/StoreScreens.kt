@@ -19,12 +19,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.Payment
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Storefront
@@ -393,7 +393,7 @@ fun StoreOrdersScreen(
         PremiumHeader(
             title = "Pedidos Loja",
             subtitle = "Pendentes, aprovados e cancelados",
-            icon = Icons.Outlined.ReceiptLong,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             onBackClick = onBackClick,
         )
 
@@ -422,7 +422,7 @@ fun StoreOrdersScreen(
             PremiumEmptyState(
                 title = "Sem pedidos",
                 subtitle = "Nenhum pedido encontrado para esse filtro.",
-                icon = Icons.Outlined.ReceiptLong,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             )
         } else {
             state.orders.forEach { order ->
@@ -448,7 +448,7 @@ fun StoreOrderDetailScreen(
         PremiumHeader(
             title = "Pedido ${order.id}",
             subtitle = order.createdAtLabel,
-            icon = Icons.Outlined.ReceiptLong,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             accent = storeOrderColor(order.status),
             onBackClick = onBackClick,
         )
@@ -509,13 +509,13 @@ fun StoreOrderDetailUnavailableScreen(
         PremiumHeader(
             title = "Pedido",
             subtitle = "Detalhe da loja",
-            icon = Icons.Outlined.ReceiptLong,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             onBackClick = onBackClick,
         )
         PremiumEmptyState(
             title = "Pedido não carregado",
             subtitle = "O detalhe de pedidos da loja ainda precisa ser portado do web app com Supabase real.",
-            icon = Icons.Outlined.ReceiptLong,
+            icon = Icons.AutoMirrored.Outlined.ReceiptLong,
         )
     }
 }
@@ -578,7 +578,7 @@ private fun StoreHeroCard(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     StoreHeroButton(text = "Carrinho", icon = Icons.Outlined.ShoppingCart, onClick = onCartClick)
-                    StoreHeroButton(text = "Pedidos", icon = Icons.Outlined.ReceiptLong, onClick = onOrdersClick)
+                    StoreHeroButton(text = "Pedidos", icon = Icons.AutoMirrored.Outlined.ReceiptLong, onClick = onOrdersClick)
                 }
             }
         }
