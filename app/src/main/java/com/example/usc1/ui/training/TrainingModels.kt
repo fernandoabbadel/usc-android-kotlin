@@ -18,7 +18,8 @@ data class TrainingSession(
     val location: String,
     val status: TrainingStatus,
     val presenceLabel: String,
-    val imageRes: Int,
+    val imageUrl: String? = null,
+    val imageRes: Int = R.drawable.battle_forest,
 )
 
 data class TrainingCheckIn(
@@ -38,13 +39,27 @@ data class TrainingFrequency(
 )
 
 data class TrainingUiState(
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
     val activeChallengeTitle: String = "Desafio Cardume",
     val activeChallengeSubtitle: String = "Validado por check-in",
     val activeChallengeDescription: String = "Some presenças, mantenha sequência e suba no ranking da atlética.",
-    val sessions: List<TrainingSession> = TrainingMockData.sessions,
-    val checkIn: TrainingCheckIn = TrainingMockData.checkIn,
-    val frequency: TrainingFrequency = TrainingMockData.frequency,
-    val history: List<TrainingCheckIn> = TrainingMockData.history,
+    val sessions: List<TrainingSession> = emptyList(),
+    val checkIn: TrainingCheckIn = TrainingCheckIn(
+        id = "",
+        sessionTitle = "Nenhum treino aberto",
+        userName = "",
+        status = TrainingStatus.Closed,
+        qrPayload = "",
+        createdAtLabel = "",
+    ),
+    val frequency: TrainingFrequency = TrainingFrequency(
+        monthLabel = "",
+        attended = 0,
+        total = 0,
+        streakLabel = "Sem presenças registradas",
+    ),
+    val history: List<TrainingCheckIn> = emptyList(),
 )
 
 object TrainingMockData {
@@ -111,4 +126,14 @@ object TrainingMockData {
 
     fun sessionById(id: String): TrainingSession =
         sessions.firstOrNull { it.id == id } ?: sessions.first()
+
+    val previewState = TrainingUiState(
+        activeChallengeTitle = "Desafio Cardume",
+        activeChallengeSubtitle = "Validado por check-in",
+        activeChallengeDescription = "Some presenças, mantenha sequência e suba no ranking da atlética.",
+        sessions = sessions,
+        checkIn = checkIn,
+        frequency = frequency,
+        history = history,
+    )
 }

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.example.usc1.core.ui.PremiumAmber
 import com.example.usc1.core.ui.PremiumBrand
 import com.example.usc1.core.ui.PremiumBrandAccent
@@ -72,13 +73,26 @@ fun TrainingCard(
                     .height(210.dp)
                     .background(Color.Black),
             ) {
-                Image(
-                    painter = painterResource(id = session.imageRes),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    alpha = 0.72f,
-                )
+                if (!session.imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = session.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.72f,
+                        placeholder = painterResource(id = session.imageRes),
+                        fallback = painterResource(id = session.imageRes),
+                        error = painterResource(id = session.imageRes),
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = session.imageRes),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.72f,
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

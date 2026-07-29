@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 
 data class NativeAction(
     val title: String,
@@ -54,6 +55,7 @@ fun NativeModuleHeroCard(
     subtitle: String,
     body: String,
     @DrawableRes imageRes: Int,
+    imageUrl: String? = null,
     modifier: Modifier = Modifier,
     accent: Color = PremiumBrand,
     status: String? = null,
@@ -68,13 +70,25 @@ fun NativeModuleHeroCard(
             .border(1.dp, accent.copy(alpha = 0.32f), RoundedCornerShape(30.dp))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
     ) {
-        Image(
-            painter = painterResource(id = imageRes),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            alpha = 0.64f,
-        )
+        if (imageUrl.isNullOrBlank()) {
+            Image(
+                painter = painterResource(id = imageRes),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alpha = 0.64f,
+            )
+        } else {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alpha = 0.64f,
+                fallback = painterResource(id = imageRes),
+                error = painterResource(id = imageRes),
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()

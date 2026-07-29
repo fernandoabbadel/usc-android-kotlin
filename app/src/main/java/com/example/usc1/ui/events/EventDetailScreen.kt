@@ -19,8 +19,10 @@ import com.example.usc1.core.ui.PremiumHeader
 import com.example.usc1.core.ui.PremiumInfoRow
 import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumPrimaryButton
+import com.example.usc1.core.ui.PremiumPurple
 import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.core.ui.PremiumSecondaryButton
+import com.example.usc1.core.ui.PremiumZinc300
 import com.example.usc1.domain.model.Event
 
 @Composable
@@ -86,7 +88,7 @@ private fun EventDetailLoadedContent(
             EventStatusChip(status = event.status)
             androidx.compose.material3.Text(
                 text = event.description,
-                color = com.example.usc1.core.ui.PremiumZinc300,
+                color = PremiumZinc300,
                 fontSize = 13.sp,
             )
             EventMetaLine(event = event)
@@ -113,23 +115,22 @@ private fun EventDetailLoadedContent(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 event.products.forEach { product ->
-                    PremiumCard(accent = com.example.usc1.core.ui.PremiumPurple) {
-                        PremiumInfoRow(product.name, "${product.priceLabel} • ${product.status}", accent = com.example.usc1.core.ui.PremiumPurple)
+                    PremiumCard(accent = PremiumPurple) {
+                        PremiumInfoRow(product.name, "${product.priceLabel} • ${product.status}", accent = PremiumPurple)
                     }
                 }
             }
         }
 
         PremiumPrimaryButton(
-            text = "Compra em integração",
+            text = "Comprar ingresso",
             onClick = { onCheckoutClick(event) },
-            enabled = false,
+            enabled = event.availableSpots > 0,
             icon = Icons.Outlined.ConfirmationNumber,
         )
         PremiumSecondaryButton(
             text = "Ver meus ingressos",
             onClick = onTicketsClick,
-            enabled = false,
             icon = Icons.Outlined.ConfirmationNumber,
         )
         PremiumSecondaryButton(

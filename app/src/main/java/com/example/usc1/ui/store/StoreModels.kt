@@ -76,4 +76,9 @@ data class CartUiState(
 data class StoreOrdersUiState(
     val selectedStatus: StoreOrderStatus? = null,
     val orders: List<StoreOrder> = emptyList(),
-)
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+) {
+    val filteredOrders: List<StoreOrder>
+        get() = selectedStatus?.let { status -> orders.filter { it.status == status } } ?: orders
+}

@@ -20,18 +20,23 @@ data class LoyaltyReward(
 )
 
 data class GamesUiState(
-    val xpLabel: String = "7.420 XP",
-    val levelLabel: String = "Barracuda",
+    val xpLabel: String = "0 XP",
+    val levelLabel: String = "Cardume",
     val rankings: List<RankingEntry> = GamesMockData.rankings,
     val achievements: List<Achievement> = GamesMockData.achievements,
     val rewards: List<LoyaltyReward> = GamesMockData.rewards,
+    val matchesLabel: String = "0",
+    val winsLabel: String = "0",
+    val streakLabel: String = "0 dias",
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
 )
 
 object GamesMockData {
     val rankings = listOf(
-        RankingEntry("Fernando USC", "9.840", "1º no Boardround"),
-        RankingEntry("Ana Costa", "8.720", "Sequência de 12 dias"),
-        RankingEntry("Lívia Martins", "7.410", "Top comunidade"),
+        RankingEntry("Fernando USC", "9.840 XP", "1º no Boardround"),
+        RankingEntry("Ana Costa", "8.720 XP", "Sequência de 12 dias"),
+        RankingEntry("Lívia Martins", "7.410 XP", "Top comunidade"),
     )
 
     val achievements = listOf(

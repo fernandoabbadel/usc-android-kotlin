@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material3.Surface
@@ -32,12 +33,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.example.usc1.R
 import com.example.usc1.core.ui.NativeSectionTitle
 import com.example.usc1.core.ui.PremiumBrand
 import com.example.usc1.core.ui.PremiumCard
 import com.example.usc1.core.ui.PremiumChip
+import com.example.usc1.core.ui.PremiumEmptyState
 import com.example.usc1.core.ui.PremiumHeader
+import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.core.ui.PremiumZinc400
@@ -50,9 +54,15 @@ import com.example.usc1.ui.theme.UscTheme
 fun CommunityScreen(
     state: CommunityUiState,
     onTabClick: (String) -> Unit,
+    onFilterClick: (CommunityFeedFilter) -> Unit,
     onPostClick: (CommunityPost) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (state.isLoading) {
+        PremiumLoadingState(text = "Carregando comunidade", modifier = modifier)
+        return
+    }
+
     PremiumScreen(
         modifier = modifier,
         horizontalPadding = 16.dp,
@@ -71,6 +81,20 @@ fun CommunityScreen(
                     label = tab,
                     selected = state.activeTab == tab,
                     onClick = { onTabClick(tab) },
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CommunityFeedFilter.entries.forEach { filter ->
+                CommunityFilterPill(
+                    filter = filter,
+                    selected = state.activeFilter == filter,
+                    onClick = { onFilterClick(filter) },
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -101,7 +125,11 @@ fun CommunityScreen(
                             fontWeight = FontWeight.Black,
                         )
                         Text(
-                            text = "Entrada mockada para manter visual da comunidade.",
+                            text = if (state.currentUserName.isBlank()) {
+                                "Entre com sua conta para postar, comentar e reagir."
+                            } else {
+                                "Mandar um salve na aba ${state.activeTab}."
+                            },
                             color = PremiumZinc500,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -113,15 +141,54 @@ fun CommunityScreen(
         }
 
         NativeSectionTitle(title = "Feed")
-        state.posts.forEach { post ->
-            CommunityPostCard(
-                post = post,
-                onClick = { onPostClick(post) },
-            )
+        when {
+            state.errorMessage != null && state.allPosts.isEmpty() -> {
+                PremiumEmptyState(
+                    title = "Erro ao carregar feed",
+                    subtitle = state.errorMessage,
+                    icon = Icons.Outlined.Block,
+                    accent = Color(0xFFEF4444),
+                )
+            }
+            state.posts.isEmpty() -> {
+                PremiumEmptyState(
+                    title = "Nenhum post em ${state.activeTab}",
+                    subtitle = "Seja o primeiro a postar nessa categoria quando o fluxo de publicação nativo for liberado.",
+                    icon = Icons.Outlined.ChatBubbleOutline,
+                )
+            }
+            else -> state.posts.forEach { post ->
+                CommunityPostCard(
+                    post = post,
+                    onClick = { onPostClick(post) },
+                )
+            }
         }
     }
 }
 
+@Composable
+fun CommunityPostUnavailableScreen(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PremiumScreen(
+        modifier = modifier,
+        bottomPadding = 116.dp,
+    ) {
+        PremiumHeader(
+            title = "Publicação",
+            subtitle = "Post não encontrado no feed carregado",
+            icon = Icons.Outlined.Groups,
+            onBackClick = onBackClick,
+        )
+        PremiumEmptyState(
+            title = "Post indisponível",
+            subtitle = "Volte para a comunidade e tente abrir a publicação novamente.",
+            icon = Icons.Outlined.ChatBubbleOutline,
+        )
+    }
+}
 @Composable
 fun CommunityPostDetailScreen(
     post: CommunityPost,
@@ -154,7 +221,11 @@ fun CommunityPostDetailScreen(
                 fontWeight = FontWeight.Black,
             )
             Text(
-                text = "Comentários e denúncias estão mockados neste bloco, sem rede e sem moderação real.",
+                text = if (post.commentsDisabled) {
+                    "Comentários trancados pela moderação desta publicação."
+                } else {
+                    "Interações carregadas da tabela posts. Comentários detalhados entram no próximo bloco nativo."
+                },
                 color = PremiumZinc400,
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
@@ -171,15 +242,30 @@ private fun CommunityHero(state: CommunityUiState) {
             .fillMaxWidth()
             .height(230.dp),
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.battle_forest),
-            contentDescription = null,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 2.dp),
-            contentScale = ContentScale.Crop,
-            alpha = 0.70f,
-        )
+        if (!state.coverImageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = state.coverImageUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 2.dp),
+                contentScale = ContentScale.Crop,
+                alpha = 0.70f,
+                placeholder = painterResource(id = R.drawable.battle_forest),
+                fallback = painterResource(id = R.drawable.battle_forest),
+                error = painterResource(id = R.drawable.battle_forest),
+            )
+        } else {
+            Image(
+                painter = painterResource(id = R.drawable.battle_forest),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 2.dp),
+                contentScale = ContentScale.Crop,
+                alpha = 0.70f,
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -257,6 +343,35 @@ private fun Modifier.backgroundOverlay(): Modifier =
     )
 
 @Composable
+private fun CommunityFilterPill(
+    filter: CommunityFeedFilter,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = when (filter) {
+        CommunityFeedFilter.Recent -> PremiumBrand
+        CommunityFeedFilter.Likes -> Color(0xFFEF4444)
+        CommunityFeedFilter.Comments -> Color(0xFF3B82F6)
+        CommunityFeedFilter.Hype -> Color(0xFFF97316)
+    }
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) accent.copy(alpha = 0.16f) else PremiumZinc900.copy(alpha = 0.58f),
+        border = BorderStroke(1.dp, if (selected) accent else PremiumZinc800),
+    ) {
+        Text(
+            text = filter.label.uppercase(),
+            color = if (selected) accent else PremiumZinc500,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
+        )
+    }
+}
+
+@Composable
 private fun CommunityTabPill(
     label: String,
     selected: Boolean,
@@ -283,8 +398,9 @@ private fun CommunityTabPill(
 fun CommunityScreenPreview() {
     UscTheme(darkTheme = true) {
         CommunityScreen(
-            state = CommunityUiState(),
+            state = CommunityMockData.previewState,
             onTabClick = {},
+            onFilterClick = {},
             onPostClick = {},
         )
     }

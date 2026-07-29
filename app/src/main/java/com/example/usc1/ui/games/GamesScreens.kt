@@ -19,15 +19,42 @@ import com.example.usc1.core.ui.NativeModuleHeroCard
 import com.example.usc1.core.ui.NativeSectionTitle
 import com.example.usc1.core.ui.NativeStatCard
 import com.example.usc1.core.ui.PremiumAmber
+import com.example.usc1.core.ui.PremiumEmptyState
 import com.example.usc1.core.ui.PremiumHeader
+import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.ui.theme.UscTheme
 
 @Composable
-fun GamesScreen(state: GamesUiState, onBoardroundClick: () -> Unit, onAchievementsClick: () -> Unit, onLoyaltyClick: () -> Unit, modifier: Modifier = Modifier) {
+fun GamesScreen(
+    state: GamesUiState,
+    onBoardroundClick: () -> Unit,
+    onAchievementsClick: () -> Unit,
+    onLoyaltyClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
         PremiumHeader(title = "Games", subtitle = "XP, ranking e progresso", icon = Icons.Outlined.Games)
-        NativeModuleHeroCard("ARENA USC", state.levelLabel, "Gamificação, boardround, conquistas e fidelidade.", R.drawable.battle_forest)
+
+        if (state.isLoading) {
+            PremiumLoadingState(text = "Carregando arena")
+            return@PremiumScreen
+        }
+
+        state.errorMessage?.takeIf(String::isNotBlank)?.let { message ->
+            PremiumEmptyState(
+                title = "Arena em fallback",
+                subtitle = message,
+                icon = Icons.Outlined.Games,
+            )
+        }
+
+        NativeModuleHeroCard(
+            title = "ARENA USC",
+            subtitle = state.levelLabel,
+            body = "Gamificação, Boardround, conquistas e fidelidade conectados ao tenant.",
+            imageRes = R.drawable.battle_forest,
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             NativeStatCard("XP", state.xpLabel, icon = Icons.Outlined.Star, modifier = Modifier.weight(1f))
             NativeStatCard("Patente", state.levelLabel, icon = Icons.Outlined.EmojiEvents, accent = PremiumAmber, modifier = Modifier.weight(1f))
@@ -39,9 +66,21 @@ fun GamesScreen(state: GamesUiState, onBoardroundClick: () -> Unit, onAchievemen
 }
 
 @Composable
-fun BoardroundScreen(state: GamesUiState, onRankingClick: () -> Unit, onStatsClick: () -> Unit, onRulesClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BoardroundScreen(
+    state: GamesUiState,
+    onRankingClick: () -> Unit,
+    onStatsClick: () -> Unit,
+    onRulesClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
         PremiumHeader(title = "Boardround", subtitle = "Ranking e estatísticas", icon = Icons.Outlined.Leaderboard)
+
+        if (state.isLoading) {
+            PremiumLoadingState(text = "Carregando Boardround")
+            return@PremiumScreen
+        }
+
         state.rankings.forEachIndexed { index, entry -> RankingCard(entry = entry, index = index) }
         NativeActionCard(NativeAction("Ranking completo", "Classificação geral.", Icons.Outlined.Leaderboard), onRankingClick)
         NativeActionCard(NativeAction("Estatísticas", "Vitórias, sequência e taxa.", Icons.Outlined.BarChart), onStatsClick)
@@ -50,35 +89,67 @@ fun BoardroundScreen(state: GamesUiState, onRankingClick: () -> Unit, onStatsCli
 }
 
 @Composable
-fun BoardroundRankingScreen(state: GamesUiState, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BoardroundRankingScreen(
+    state: GamesUiState,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
         PremiumHeader(title = "Ranking", subtitle = "Boardround", icon = Icons.Outlined.Leaderboard, onBackClick = onBackClick)
+        if (state.isLoading) {
+            PremiumLoadingState(text = "Carregando ranking")
+            return@PremiumScreen
+        }
         state.rankings.forEachIndexed { index, entry -> RankingCard(entry = entry, index = index) }
     }
 }
 
 @Composable
-fun BoardroundStatsScreen(state: GamesUiState, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BoardroundStatsScreen(
+    state: GamesUiState,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        PremiumHeader(title = "Estatísticas", subtitle = "Performance mockada", icon = Icons.Outlined.BarChart, onBackClick = onBackClick)
-        NativeStatCard("Partidas", "48", icon = Icons.Outlined.Games)
-        NativeStatCard("Vitórias", "31", icon = Icons.Outlined.EmojiEvents)
-        NativeStatCard("Sequência", "7 dias", icon = Icons.Outlined.Star, accent = PremiumAmber)
+        PremiumHeader(title = "Estatísticas", subtitle = "Performance do jogador", icon = Icons.Outlined.BarChart, onBackClick = onBackClick)
+        if (state.isLoading) {
+            PremiumLoadingState(text = "Carregando estatísticas")
+            return@PremiumScreen
+        }
+        NativeStatCard("Partidas", state.matchesLabel, icon = Icons.Outlined.Games)
+        NativeStatCard("Vitórias", state.winsLabel, icon = Icons.Outlined.EmojiEvents)
+        NativeStatCard("Sequência", state.streakLabel, icon = Icons.Outlined.Star, accent = PremiumAmber)
     }
 }
 
 @Composable
-fun AchievementsScreen(state: GamesUiState, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
+fun AchievementsScreen(
+    state: GamesUiState,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
         PremiumHeader(title = "Conquistas", subtitle = state.levelLabel, icon = Icons.Outlined.EmojiEvents, onBackClick = onBackClick)
+        if (state.isLoading) {
+            PremiumLoadingState(text = "Carregando conquistas")
+            return@PremiumScreen
+        }
         state.achievements.forEach { achievement -> AchievementCard(achievement = achievement) }
     }
 }
 
 @Composable
-fun LoyaltyScreen(state: GamesUiState, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
+fun LoyaltyScreen(
+    state: GamesUiState,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
         PremiumHeader(title = "Fidelidade", subtitle = "Selos e prêmios", icon = Icons.Outlined.Star, onBackClick = onBackClick)
+        if (state.isLoading) {
+            PremiumLoadingState(text = "Carregando fidelidade")
+            return@PremiumScreen
+        }
         state.rewards.forEach { reward -> LoyaltyCard(reward = reward) }
     }
 }
@@ -86,7 +157,7 @@ fun LoyaltyScreen(state: GamesUiState, onBackClick: () -> Unit, modifier: Modifi
 @Composable
 fun GameRulesScreen(onBackClick: () -> Unit, modifier: Modifier = Modifier) {
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        PremiumHeader(title = "Regras", subtitle = "GAME_RULES.md resumido", icon = Icons.Outlined.Games, onBackClick = onBackClick)
+        PremiumHeader(title = "Regras", subtitle = "Pontuação do jogo", icon = Icons.Outlined.Games, onBackClick = onBackClick)
         NativeSectionTitle(title = "Pontuação")
         NativeStatCard("Vitória", "+120 XP", icon = Icons.Outlined.EmojiEvents)
         NativeStatCard("Participação", "+30 XP", icon = Icons.Outlined.Games)

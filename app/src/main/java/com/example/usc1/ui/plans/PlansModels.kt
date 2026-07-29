@@ -50,6 +50,8 @@ data class PlanUiState(
     val activePlan: UserPlanStatus = PlansMockData.activePlan,
     val plans: List<UscPlan> = PlansMockData.plans,
     val orders: List<PlanOrder> = PlansMockData.orders,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
 )
 
 object PlansMockData {
@@ -102,27 +104,12 @@ object PlansMockData {
                 PlanBenefit("Cupom mensal"),
             ),
         ),
-        UscPlan(
-            id = "bicho-solto",
-            name = "Bicho Solto",
-            subtitle = "Acesso por convite",
-            description = "Plano especial para campanhas e turmas com aprovação interna.",
-            priceLabel = "Sob consulta",
-            status = PlanStatus.Locked,
-            accentName = "Vermelho",
-            imageRes = R.drawable.logo_usc,
-            benefits = listOf(
-                PlanBenefit("Campanhas fechadas"),
-                PlanBenefit("Acesso por convite"),
-                PlanBenefit("Benefícios temporários"),
-            ),
-        ),
     )
 
     val activePlan = UserPlanStatus(
         planName = "Cardume Livre",
         memberSince = "Membro desde 2026",
-        renewalLabel = "Renovação mockada em 18 AGO",
+        renewalLabel = "Renovação conforme assinatura",
         statusLabel = "Ativo e aprovado",
     )
 
@@ -133,20 +120,6 @@ object PlansMockData {
             createdAtLabel = "Hoje • 10:18",
             amountLabel = "R$ 19,90",
             status = PlanOrderStatus.Pending,
-        ),
-        PlanOrder(
-            id = "PLAN-8830",
-            planName = "Cardume Livre",
-            createdAtLabel = "18 JUN • 13:22",
-            amountLabel = "R$ 19,90",
-            status = PlanOrderStatus.Approved,
-        ),
-        PlanOrder(
-            id = "PLAN-8120",
-            planName = "Atleta",
-            createdAtLabel = "06 MAI • 08:41",
-            amountLabel = "R$ 29,90",
-            status = PlanOrderStatus.Cancelled,
         ),
     )
 

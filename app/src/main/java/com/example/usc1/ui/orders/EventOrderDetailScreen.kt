@@ -2,7 +2,6 @@ package com.example.usc1.ui.orders
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -13,7 +12,6 @@ import com.example.usc1.core.ui.PremiumEmptyState
 import com.example.usc1.core.ui.PremiumHeader
 import com.example.usc1.core.ui.PremiumInfoRow
 import com.example.usc1.core.ui.PremiumLoadingState
-import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.core.ui.PremiumSecondaryButton
 import com.example.usc1.data.repository.MockEventOrdersRepository
@@ -75,17 +73,6 @@ private fun EventOrderDetailLoaded(
             PremiumInfoRow("Aprovação", order.approvalStatus)
             PremiumInfoRow("Criado em", order.createdAtLabel)
         }
-        PremiumCard(accent = com.example.usc1.core.ui.PremiumAmber) {
-            PremiumInfoRow("Chave PIX", "mock-pix-usc")
-            PremiumInfoRow("Banco", "Banco da Atlética")
-            PremiumInfoRow("Titular", "USC Pagamentos")
-        }
-        PremiumPrimaryButton(
-            text = "Copiar PIX",
-            onClick = {},
-            icon = Icons.Outlined.ContentCopy,
-            accent = com.example.usc1.core.ui.PremiumAmber,
-        )
         PremiumSecondaryButton(
             text = "Voltar",
             onClick = onBackClick,

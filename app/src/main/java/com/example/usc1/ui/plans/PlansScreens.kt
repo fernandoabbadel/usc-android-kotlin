@@ -3,16 +3,17 @@
 package com.example.usc1.ui.plans
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,9 +27,11 @@ import androidx.compose.ui.unit.sp
 import com.example.usc1.core.ui.PremiumBrand
 import com.example.usc1.core.ui.PremiumCard
 import com.example.usc1.core.ui.PremiumChip
+import com.example.usc1.core.ui.PremiumEmptyState
 import com.example.usc1.core.ui.PremiumHeader
 import com.example.usc1.core.ui.PremiumImageCard
 import com.example.usc1.core.ui.PremiumInfoRow
+import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.core.ui.PremiumSecondaryButton
@@ -54,6 +57,19 @@ fun PlansScreen(
             icon = Icons.Outlined.CreditCard,
         )
 
+        if (state.isLoading) {
+            PremiumLoadingState(text = "Carregando planos")
+            return@PremiumScreen
+        }
+
+        state.errorMessage?.takeIf(String::isNotBlank)?.let { message ->
+            PremiumEmptyState(
+                title = "Planos indisponíveis",
+                subtitle = message,
+                icon = Icons.Outlined.CreditCard,
+            )
+        }
+
         ActivePlanCard(
             status = state.activePlan,
             onStatusClick = onStatusClick,
@@ -67,12 +83,44 @@ fun PlansScreen(
             fontWeight = FontWeight.Black,
             modifier = Modifier.padding(start = 2.dp),
         )
-        state.plans.forEach { plan ->
-            PlanCard(
-                plan = plan,
-                onClick = { onPlanClick(plan) },
+
+        if (state.plans.isEmpty()) {
+            PremiumEmptyState(
+                title = "Nenhum plano publicado",
+                subtitle = "Assim que a atlética publicar planos no catálogo, eles aparecerão aqui.",
+                icon = Icons.Outlined.Star,
             )
+        } else {
+            state.plans.forEach { plan ->
+                PlanCard(
+                    plan = plan,
+                    onClick = { onPlanClick(plan) },
+                )
+            }
         }
+    }
+}
+
+@Composable
+fun PlanUnavailableScreen(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PremiumScreen(
+        modifier = modifier,
+        bottomPadding = 116.dp,
+    ) {
+        PremiumHeader(
+            title = "Plano",
+            subtitle = "Catálogo da atlética",
+            icon = Icons.Outlined.CreditCard,
+            onBackClick = onBackClick,
+        )
+        PremiumEmptyState(
+            title = "Plano não encontrado",
+            subtitle = "Esse plano não está disponível no catálogo atual da atlética.",
+            icon = Icons.Outlined.CreditCard,
+        )
     }
 }
 
@@ -102,7 +150,7 @@ fun PlanDetailScreen(
             accent = accent,
             imageAlpha = 0.70f,
         ) {
-            androidx.compose.foundation.layout.Column(
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(20.dp),
@@ -173,6 +221,19 @@ fun UserPlanStatusScreen(
             onBackClick = onBackClick,
         )
 
+        if (state.isLoading) {
+            PremiumLoadingState(text = "Carregando assinatura")
+            return@PremiumScreen
+        }
+
+        state.errorMessage?.takeIf(String::isNotBlank)?.let { message ->
+            PremiumEmptyState(
+                title = "Status indisponível",
+                subtitle = message,
+                icon = Icons.Outlined.AccountBalanceWallet,
+            )
+        }
+
         PremiumCard(accent = PremiumBrand) {
             PremiumChip(label = state.activePlan.statusLabel, icon = Icons.Outlined.CheckCircle, accent = PremiumBrand, filled = true)
             Text(
@@ -227,13 +288,34 @@ fun PlanOrdersScreen(
     ) {
         PremiumHeader(
             title = "Pedidos Planos",
-            subtitle = "Histórico de adesões mockadas",
+            subtitle = "Histórico de adesões",
             icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             onBackClick = onBackClick,
         )
 
-        state.orders.forEach { order ->
-            PlanOrderCard(order = order)
+        if (state.isLoading) {
+            PremiumLoadingState(text = "Carregando histórico")
+            return@PremiumScreen
+        }
+
+        state.errorMessage?.takeIf(String::isNotBlank)?.let { message ->
+            PremiumEmptyState(
+                title = "Histórico indisponível",
+                subtitle = message,
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+            )
+        }
+
+        if (state.orders.isEmpty()) {
+            PremiumEmptyState(
+                title = "Nenhuma adesão encontrada",
+                subtitle = "Quando houver assinatura ou solicitação de plano, o histórico aparecerá aqui.",
+                icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+            )
+        } else {
+            state.orders.forEach { order ->
+                PlanOrderCard(order = order)
+            }
         }
     }
 }
@@ -250,7 +332,7 @@ private fun ActivePlanCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top,
         ) {
-            androidx.compose.foundation.layout.Column(
+            Column(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.weight(1f),
             ) {

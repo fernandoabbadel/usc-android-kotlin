@@ -26,7 +26,7 @@ enum class EventOwnerType(val remoteValue: String, val label: String) {
     Tenant("tenant", "Atlética"),
     Liga("liga", "Liga"),
     Comissao("comissao", "Comissão"),
-    Diretorio("diretorio", "Diretório");
+    Diretorio("diretorio", "Diretório"),
 }
 
 enum class EventStatus(val label: String) {

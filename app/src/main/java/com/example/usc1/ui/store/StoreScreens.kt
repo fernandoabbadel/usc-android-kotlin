@@ -417,14 +417,21 @@ fun StoreOrdersScreen(
             }
         }
 
-        if (state.orders.isEmpty()) {
-            PremiumEmptyState(
-                title = "Sem pedidos",
-                subtitle = "Nenhum pedido encontrado para esse filtro.",
+        when {
+            state.isLoading -> PremiumLoadingState(text = "Carregando pedidos")
+            state.errorMessage != null -> PremiumEmptyState(
+                title = "Pedidos indisponíveis",
+                subtitle = state.errorMessage,
                 icon = Icons.AutoMirrored.Outlined.ReceiptLong,
             )
-        } else {
-            state.orders.forEach { order ->
+            state.filteredOrders.isEmpty() -> {
+                PremiumEmptyState(
+                    title = "Sem pedidos",
+                    subtitle = "Nenhum pedido encontrado para esse filtro.",
+                    icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+                )
+            }
+            else -> state.filteredOrders.forEach { order ->
                 StoreOrderCard(
                     order = order,
                     onClick = { onOrderClick(order) },

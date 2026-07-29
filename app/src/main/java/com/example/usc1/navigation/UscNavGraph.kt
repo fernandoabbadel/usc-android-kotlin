@@ -17,6 +17,7 @@ import androidx.navigation.navArgument
 import com.example.usc1.core.roles.UserRole
 import com.example.usc1.core.ui.PermissionDeniedScreen
 import com.example.usc1.core.ui.ModulePlaceholderScreen
+import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.domain.model.AppModules
 import com.example.usc1.domain.model.AdminMiniVendorDirectoryMode
 import com.example.usc1.domain.model.AdminPlanSubscriptionListKind
@@ -25,6 +26,8 @@ import com.example.usc1.domain.model.AdminStoreOrdersMode
 import com.example.usc1.core.tenant.TenantPalette
 import com.example.usc1.ui.admin.AdminAlbumScreen
 import com.example.usc1.ui.admin.AdminAlbumViewModel
+import com.example.usc1.ui.admin.AdminBiSnapshotFocus
+import com.example.usc1.ui.admin.AdminBiSnapshotScreen
 import com.example.usc1.ui.admin.AdminPartnersActiveScreen
 import com.example.usc1.ui.admin.AdminPartnersBiScreen
 import com.example.usc1.ui.admin.AdminPartnersCompaniesScreen
@@ -82,12 +85,16 @@ import com.example.usc1.ui.auth.InviteRequiredScreen
 import com.example.usc1.ui.auth.LoginScreen
 import com.example.usc1.ui.auth.RegisterScreen
 import com.example.usc1.ui.auth.WaitingApprovalScreen
-import com.example.usc1.ui.events.EventCheckoutUnavailableScreen
+import com.example.usc1.ui.events.EventCheckoutScreen
 import com.example.usc1.ui.events.EventDetailScreen
 import com.example.usc1.ui.events.EventDetailViewModel
 import com.example.usc1.ui.events.EventFlowUnavailableScreen
 import com.example.usc1.ui.events.EventsScreen
 import com.example.usc1.ui.events.EventsViewModel
+import com.example.usc1.ui.orders.EventOrderDetailScreen
+import com.example.usc1.ui.orders.EventOrderDetailViewModel
+import com.example.usc1.ui.orders.EventOrdersScreen
+import com.example.usc1.ui.orders.EventOrdersViewModel
 import com.example.usc1.ui.home.HomeScreen
 import com.example.usc1.ui.home.HomeViewModel
 import com.example.usc1.ui.home.withSession
@@ -100,7 +107,7 @@ import com.example.usc1.ui.partners.PartnersScreen
 import com.example.usc1.ui.partners.PartnersViewModel
 import com.example.usc1.ui.plans.PlanDetailScreen
 import com.example.usc1.ui.plans.PlanOrdersScreen
-import com.example.usc1.ui.plans.PlansMockData
+import com.example.usc1.ui.plans.PlanUnavailableScreen
 import com.example.usc1.ui.plans.PlansScreen
 import com.example.usc1.ui.plans.PlansViewModel
 import com.example.usc1.ui.plans.UserPlanStatusScreen
@@ -116,16 +123,20 @@ import com.example.usc1.ui.store.CartViewModel
 import com.example.usc1.ui.store.CheckoutScreen
 import com.example.usc1.ui.store.ProductDetailStateScreen
 import com.example.usc1.ui.store.ProductDetailViewModel
+import com.example.usc1.ui.store.StoreOrderDetailScreen
 import com.example.usc1.ui.store.StoreOrderDetailUnavailableScreen
 import com.example.usc1.ui.store.StoreOrdersScreen
 import com.example.usc1.ui.store.StoreOrdersViewModel
 import com.example.usc1.ui.store.StoreScreen
 import com.example.usc1.ui.store.StoreViewModel
+import com.example.usc1.ui.tickets.EventTicketDetailScreen
+import com.example.usc1.ui.tickets.EventTicketDetailViewModel
+import com.example.usc1.ui.tickets.EventTicketsScreen
+import com.example.usc1.ui.tickets.EventTicketsViewModel
 import com.example.usc1.ui.training.TrainingCheckInDetailScreen
 import com.example.usc1.ui.training.TrainingCheckInScreen
 import com.example.usc1.ui.training.TrainingFrequencyScreen
 import com.example.usc1.ui.training.TrainingHistoryScreen
-import com.example.usc1.ui.training.TrainingMockData
 import com.example.usc1.ui.training.TrainingScreen
 import com.example.usc1.ui.training.TrainingViewModel
 
@@ -1522,9 +1533,15 @@ fun UscNavGraph() {
             if (user?.role?.canManageTenant != true) {
                 PermissionDeniedScreen(title = "Eventos", subtitle = "Use uma conta com permissão administrativa neste tenant.")
             } else {
-                AdminPendingRouteScreen(
-                    title = "Eventos",
-                    source = "web-reference/src/app/admin/gestao/eventos/page.tsx",
+                val dashboardViewModel: AdminDashboardViewModel = viewModel()
+                val dashboardState by dashboardViewModel.uiState.collectAsState()
+                LaunchedEffect(authState.session.tenant?.id) {
+                    dashboardViewModel.load(authState.session, forceRefresh = true)
+                }
+                AdminBiSnapshotScreen(
+                    state = dashboardState,
+                    focus = AdminBiSnapshotFocus.Events,
+                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
                     onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
                 )
             }
@@ -1535,9 +1552,15 @@ fun UscNavGraph() {
             if (user?.role?.canManageTenant != true) {
                 PermissionDeniedScreen(title = "BI Loja", subtitle = "Use uma conta com permissão administrativa neste tenant.")
             } else {
-                AdminPendingRouteScreen(
-                    title = "BI Loja",
-                    source = "web-reference/src/app/admin/gestao/loja/page.tsx",
+                val dashboardViewModel: AdminDashboardViewModel = viewModel()
+                val dashboardState by dashboardViewModel.uiState.collectAsState()
+                LaunchedEffect(authState.session.tenant?.id) {
+                    dashboardViewModel.load(authState.session, forceRefresh = true)
+                }
+                AdminBiSnapshotScreen(
+                    state = dashboardState,
+                    focus = AdminBiSnapshotFocus.Store,
+                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
                     onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
                 )
             }
@@ -1548,9 +1571,15 @@ fun UscNavGraph() {
             if (user?.role?.canManageTenant != true) {
                 PermissionDeniedScreen(title = "Treinos", subtitle = "Use uma conta com permissão administrativa neste tenant.")
             } else {
-                AdminPendingRouteScreen(
-                    title = "Treinos",
-                    source = "web-reference/src/app/admin/gestao/treinos/page.tsx",
+                val dashboardViewModel: AdminDashboardViewModel = viewModel()
+                val dashboardState by dashboardViewModel.uiState.collectAsState()
+                LaunchedEffect(authState.session.tenant?.id) {
+                    dashboardViewModel.load(authState.session, forceRefresh = true)
+                }
+                AdminBiSnapshotScreen(
+                    state = dashboardState,
+                    focus = AdminBiSnapshotFocus.Training,
+                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
                     onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
                 )
             }
@@ -1561,9 +1590,15 @@ fun UscNavGraph() {
             if (user?.role?.canManageTenant != true) {
                 PermissionDeniedScreen(title = "Financeiro", subtitle = "Use uma conta com permissão administrativa neste tenant.")
             } else {
-                AdminPendingRouteScreen(
-                    title = "Financeiro",
-                    source = "web-reference/src/app/admin/gestao/financeiro/page.tsx",
+                val dashboardViewModel: AdminDashboardViewModel = viewModel()
+                val dashboardState by dashboardViewModel.uiState.collectAsState()
+                LaunchedEffect(authState.session.tenant?.id) {
+                    dashboardViewModel.load(authState.session, forceRefresh = true)
+                }
+                AdminBiSnapshotScreen(
+                    state = dashboardState,
+                    focus = AdminBiSnapshotFocus.Finance,
+                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
                     onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
                 )
             }
@@ -1574,9 +1609,15 @@ fun UscNavGraph() {
             if (user?.role?.canManageTenant != true) {
                 PermissionDeniedScreen(title = "BI Comercial", subtitle = "Use uma conta com permissão administrativa neste tenant.")
             } else {
-                AdminPendingRouteScreen(
-                    title = "BI Comercial",
-                    source = "web-reference/src/app/admin/bi/comercial/page.tsx",
+                val dashboardViewModel: AdminDashboardViewModel = viewModel()
+                val dashboardState by dashboardViewModel.uiState.collectAsState()
+                LaunchedEffect(authState.session.tenant?.id) {
+                    dashboardViewModel.load(authState.session, forceRefresh = true)
+                }
+                AdminBiSnapshotScreen(
+                    state = dashboardState,
+                    focus = AdminBiSnapshotFocus.Commercial,
+                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
                     onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
                 )
             }
@@ -1587,9 +1628,15 @@ fun UscNavGraph() {
             if (user?.role?.canManageTenant != true) {
                 PermissionDeniedScreen(title = "BI Operacional", subtitle = "Use uma conta com permissão administrativa neste tenant.")
             } else {
-                AdminPendingRouteScreen(
-                    title = "BI Operacional",
-                    source = "web-reference/src/app/admin/bi/operacional/page.tsx",
+                val dashboardViewModel: AdminDashboardViewModel = viewModel()
+                val dashboardState by dashboardViewModel.uiState.collectAsState()
+                LaunchedEffect(authState.session.tenant?.id) {
+                    dashboardViewModel.load(authState.session, forceRefresh = true)
+                }
+                AdminBiSnapshotScreen(
+                    state = dashboardState,
+                    focus = AdminBiSnapshotFocus.Operational,
+                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
                     onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
                 )
             }
@@ -1600,9 +1647,15 @@ fun UscNavGraph() {
             if (user?.role?.canManageTenant != true) {
                 PermissionDeniedScreen(title = "BI Portaria", subtitle = "Use uma conta com permissão administrativa neste tenant.")
             } else {
-                AdminPendingRouteScreen(
-                    title = "BI Portaria",
-                    source = "web-reference/src/app/admin/bi/portaria/page.tsx",
+                val dashboardViewModel: AdminDashboardViewModel = viewModel()
+                val dashboardState by dashboardViewModel.uiState.collectAsState()
+                LaunchedEffect(authState.session.tenant?.id) {
+                    dashboardViewModel.load(authState.session, forceRefresh = true)
+                }
+                AdminBiSnapshotScreen(
+                    state = dashboardState,
+                    focus = AdminBiSnapshotFocus.Gate,
+                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
                     onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
                 )
             }
@@ -1928,13 +1981,45 @@ fun UscNavGraph() {
         composable(
             route = AppRoute.EventCheckout,
             arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
-        ) {
-            EventCheckoutUnavailableScreen(
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
+            val eventCheckoutViewModel: EventDetailViewModel = viewModel()
+            val eventCheckoutState by eventCheckoutViewModel.uiState.collectAsState()
+            LaunchedEffect(eventId) {
+                eventCheckoutViewModel.loadEvent(eventId)
+            }
+
+            EventCheckoutScreen(
+                state = eventCheckoutState,
+                onOrdersClick = {
+                    navController.navigate(AppRoute.EventOrders) {
+                        launchSingleTop = true
+                    }
+                },
+                onTicketsClick = {
+                    navController.navigate(AppRoute.EventTickets) {
+                        launchSingleTop = true
+                    }
+                },
                 onBackClick = { navController.navigateUp() },
             )
         }
 
         composable(AppRoute.EventTickets) {
+            val ticketsViewModel: EventTicketsViewModel = viewModel()
+            val ticketsState by ticketsViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                ticketsViewModel.loadTickets(authState.session)
+            }
+            EventTicketsScreen(
+                state = ticketsState,
+                onTicketClick = { ticket ->
+                    navController.navigate(AppRoute.eventTicketDetail(ticket.id)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+            return@composable
             EventFlowUnavailableScreen(
                 title = "Meus ingressos",
                 subtitle = "Ingressos não carregados",
@@ -1945,7 +2030,19 @@ fun UscNavGraph() {
         composable(
             route = AppRoute.EventTicketDetail,
             arguments = listOf(navArgument("ticketId") { type = NavType.StringType }),
-        ) {
+        ) { backStackEntry ->
+            val ticketId = backStackEntry.arguments?.getString("ticketId").orEmpty()
+            val ticketDetailViewModel: EventTicketDetailViewModel = viewModel()
+            val ticketDetailState by ticketDetailViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id, ticketId) {
+                ticketDetailViewModel.loadTicket(authState.session, ticketId)
+            }
+            EventTicketDetailScreen(
+                state = ticketDetailState,
+                onTransferClick = {},
+                onBackClick = { navController.navigateUp() },
+            )
+            return@composable
             EventFlowUnavailableScreen(
                 title = "Ingresso",
                 subtitle = "Detalhe de ingresso não carregado",
@@ -1954,6 +2051,20 @@ fun UscNavGraph() {
         }
 
         composable(AppRoute.EventOrders) {
+            val eventOrdersViewModel: EventOrdersViewModel = viewModel()
+            val eventOrdersState by eventOrdersViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                eventOrdersViewModel.loadOrders(authState.session)
+            }
+            EventOrdersScreen(
+                state = eventOrdersState,
+                onOrderClick = { order ->
+                    navController.navigate(AppRoute.eventOrderDetail(order.id)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+            return@composable
             EventFlowUnavailableScreen(
                 title = "Pedidos de evento",
                 subtitle = "Pedidos não carregados",
@@ -1964,7 +2075,18 @@ fun UscNavGraph() {
         composable(
             route = AppRoute.EventOrderDetail,
             arguments = listOf(navArgument("orderId") { type = NavType.StringType }),
-        ) {
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId").orEmpty()
+            val eventOrderDetailViewModel: EventOrderDetailViewModel = viewModel()
+            val eventOrderDetailState by eventOrderDetailViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id, orderId) {
+                eventOrderDetailViewModel.loadOrder(authState.session, orderId)
+            }
+            EventOrderDetailScreen(
+                state = eventOrderDetailState,
+                onBackClick = { navController.navigateUp() },
+            )
+            return@composable
             EventFlowUnavailableScreen(
                 title = "Pedido de evento",
                 subtitle = "Detalhe de pedido não carregado",
@@ -2060,6 +2182,9 @@ fun UscNavGraph() {
         composable(AppRoute.StoreOrders) {
             val storeOrdersViewModel: StoreOrdersViewModel = viewModel()
             val storeOrdersState by storeOrdersViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                storeOrdersViewModel.load(authState.session)
+            }
 
             StoreOrdersScreen(
                 state = storeOrdersState,
@@ -2076,15 +2201,33 @@ fun UscNavGraph() {
         composable(
             route = AppRoute.StoreOrderDetail,
             arguments = listOf(navArgument("orderId") { type = NavType.StringType }),
-        ) {
-            StoreOrderDetailUnavailableScreen(
-                onBackClick = { navController.navigateUp() },
-            )
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId").orEmpty()
+            val storeOrdersViewModel: StoreOrdersViewModel = viewModel()
+            val storeOrdersState by storeOrdersViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id, orderId) {
+                storeOrdersViewModel.load(authState.session)
+            }
+            val order = storeOrdersViewModel.findOrder(orderId)
+
+            when {
+                storeOrdersState.isLoading -> PremiumLoadingState(text = "Carregando pedido")
+                order != null -> StoreOrderDetailScreen(
+                    order = order,
+                    onBackClick = { navController.navigateUp() },
+                )
+                else -> StoreOrderDetailUnavailableScreen(
+                    onBackClick = { navController.navigateUp() },
+                )
+            }
         }
 
         composable(AppRoute.Plans) {
             val plansViewModel: PlansViewModel = viewModel()
             val planState by plansViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                plansViewModel.load(authState.session)
+            }
 
             PlansScreen(
                 state = planState,
@@ -2111,22 +2254,36 @@ fun UscNavGraph() {
             arguments = listOf(navArgument("planId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val planId = backStackEntry.arguments?.getString("planId").orEmpty()
-            val plan = remember(planId) { PlansMockData.planById(planId) }
+            val plansViewModel: PlansViewModel = viewModel()
+            val planState by plansViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                plansViewModel.load(authState.session)
+            }
+            val plan = plansViewModel.findPlan(planId)
 
-            PlanDetailScreen(
-                plan = plan,
-                onSubscribeClick = {
-                    navController.navigate(AppRoute.PlanOrders) {
-                        launchSingleTop = true
-                    }
-                },
-                onBackClick = { navController.navigateUp() },
-            )
+            when {
+                planState.isLoading && plan == null -> PremiumLoadingState(text = "Carregando plano")
+                plan != null -> PlanDetailScreen(
+                    plan = plan,
+                    onSubscribeClick = {
+                        navController.navigate(AppRoute.PlanOrders) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onBackClick = { navController.navigateUp() },
+                )
+                else -> PlanUnavailableScreen(
+                    onBackClick = { navController.navigateUp() },
+                )
+            }
         }
 
         composable(AppRoute.UserPlanStatus) {
             val plansViewModel: PlansViewModel = viewModel()
             val planState by plansViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                plansViewModel.load(authState.session)
+            }
 
             UserPlanStatusScreen(
                 state = planState,
@@ -2137,6 +2294,9 @@ fun UscNavGraph() {
         composable(AppRoute.PlanOrders) {
             val plansViewModel: PlansViewModel = viewModel()
             val planState by plansViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                plansViewModel.load(authState.session)
+            }
 
             PlanOrdersScreen(
                 state = planState,
@@ -2147,6 +2307,9 @@ fun UscNavGraph() {
         composable(AppRoute.Training) {
             val trainingViewModel: TrainingViewModel = viewModel()
             val trainingState by trainingViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                trainingViewModel.load(authState.session)
+            }
 
             TrainingScreen(
                 state = trainingState,
@@ -2176,6 +2339,9 @@ fun UscNavGraph() {
         composable(AppRoute.Gym) {
             val trainingViewModel: TrainingViewModel = viewModel()
             val trainingState by trainingViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                trainingViewModel.load(authState.session)
+            }
 
             TrainingScreen(
                 state = trainingState,
@@ -2205,6 +2371,9 @@ fun UscNavGraph() {
         composable(AppRoute.TrainingCheckIn) {
             val trainingViewModel: TrainingViewModel = viewModel()
             val trainingState by trainingViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                trainingViewModel.load(authState.session)
+            }
 
             TrainingCheckInScreen(
                 state = trainingState,
@@ -2222,8 +2391,13 @@ fun UscNavGraph() {
             arguments = listOf(navArgument("checkInId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val checkInId = backStackEntry.arguments?.getString("checkInId").orEmpty()
-            val checkIn = remember(checkInId) {
-                TrainingMockData.history.firstOrNull { it.id == checkInId } ?: TrainingMockData.checkIn
+            val trainingViewModel: TrainingViewModel = viewModel()
+            val trainingState by trainingViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                trainingViewModel.load(authState.session)
+            }
+            val checkIn = remember(checkInId, trainingState.history, trainingState.checkIn) {
+                trainingState.history.firstOrNull { it.id == checkInId } ?: trainingState.checkIn
             }
 
             TrainingCheckInDetailScreen(
@@ -2235,6 +2409,9 @@ fun UscNavGraph() {
         composable(AppRoute.TrainingFrequency) {
             val trainingViewModel: TrainingViewModel = viewModel()
             val trainingState by trainingViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                trainingViewModel.load(authState.session)
+            }
 
             TrainingFrequencyScreen(
                 state = trainingState,
@@ -2245,6 +2422,9 @@ fun UscNavGraph() {
         composable(AppRoute.TrainingHistory) {
             val trainingViewModel: TrainingViewModel = viewModel()
             val trainingState by trainingViewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                trainingViewModel.load(authState.session)
+            }
 
             TrainingHistoryScreen(
                 state = trainingState,

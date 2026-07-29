@@ -7,12 +7,20 @@ import com.example.usc1.domain.repository.EventOrdersRepository
 import kotlinx.coroutines.delay
 
 class MockEventOrdersRepository : EventOrdersRepository {
-    override suspend fun getOrders(): List<EventOrder> {
+    override suspend fun getOrders(
+        tenantId: String,
+        userId: String,
+        limit: Int,
+    ): List<EventOrder> {
         delay(MockDelayMillis)
-        return mockOrders
+        return mockOrders.take(limit)
     }
 
-    override suspend fun getOrderById(orderId: String): EventOrder? {
+    override suspend fun getOrderById(
+        tenantId: String,
+        userId: String,
+        orderId: String,
+    ): EventOrder? {
         delay(MockDelayMillis)
         return mockOrders.firstOrNull { it.id == orderId }
     }

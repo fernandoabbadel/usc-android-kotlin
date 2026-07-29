@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.example.usc1.core.ui.PremiumAmber
 import com.example.usc1.core.ui.PremiumBrand
 import com.example.usc1.core.ui.PremiumChip
@@ -59,16 +60,32 @@ fun MiniVendorProductCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Image(
-                painter = painterResource(id = product.imageRes),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(78.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color.Black)
-                    .border(1.dp, PremiumZinc800, RoundedCornerShape(18.dp)),
-                contentScale = ContentScale.Crop,
-            )
+            if (!product.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = product.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(78.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color.Black)
+                        .border(1.dp, PremiumZinc800, RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = product.imageRes),
+                    fallback = painterResource(id = product.imageRes),
+                    error = painterResource(id = product.imageRes),
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = product.imageRes),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(78.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color.Black)
+                        .border(1.dp, PremiumZinc800, RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+            }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
                     text = product.name,

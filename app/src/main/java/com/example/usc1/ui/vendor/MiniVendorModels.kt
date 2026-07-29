@@ -13,7 +13,8 @@ data class MiniVendorProduct(
     val priceLabel: String,
     val stockLabel: String,
     val status: String,
-    val imageRes: Int,
+    val imageUrl: String? = null,
+    val imageRes: Int = R.drawable.logo_usc_wide,
 )
 
 data class MiniVendorOrder(
@@ -26,14 +27,26 @@ data class MiniVendorOrder(
 )
 
 data class MiniVendorUiState(
-    val storeName: String = "Mini Vendor USC",
-    val statusLabel: String = "Aguardando aprovação mockada",
-    val totalRevenueLabel: String = "R$ 1.284,70",
-    val pendingAmountLabel: String = "R$ 342,90",
-    val products: List<MiniVendorProduct> = MiniVendorMockData.products,
-    val pendingOrders: List<MiniVendorOrder> = MiniVendorMockData.orders.filter { it.status == MiniVendorOrderStatus.Pending },
-    val approvedOrders: List<MiniVendorOrder> = MiniVendorMockData.orders.filter { it.status == MiniVendorOrderStatus.Approved },
-)
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val profileId: String = "",
+    val storeName: String = "Mini Vendor",
+    val statusLabel: String = "Carregando dados reais",
+    val description: String = "",
+    val logoUrl: String? = null,
+    val coverUrl: String? = null,
+    val totalRevenueLabel: String = "R$ 0,00",
+    val pendingAmountLabel: String = "R$ 0,00",
+    val products: List<MiniVendorProduct> = emptyList(),
+    val pendingOrders: List<MiniVendorOrder> = emptyList(),
+    val approvedOrders: List<MiniVendorOrder> = emptyList(),
+) {
+    val hasProfile: Boolean
+        get() = profileId.isNotBlank()
+
+    val ordersCount: Int
+        get() = pendingOrders.size + approvedOrders.size
+}
 
 object MiniVendorMockData {
     val products = listOf(
@@ -68,5 +81,17 @@ object MiniVendorMockData {
         MiniVendorOrder("MV-899", "Ana Costa", "Ficha Bebida", "R$ 24,00", "Hoje • 14:41", MiniVendorOrderStatus.Pending),
         MiniVendorOrder("MV-812", "Lívia Martins", "Copo USC", "R$ 18,00", "Ontem • 21:10", MiniVendorOrderStatus.Approved),
         MiniVendorOrder("MV-780", "Lucas T9", "Kit Pós-Evento", "R$ 39,90", "30 JUN • 19:33", MiniVendorOrderStatus.Approved),
+    )
+
+    val previewState = MiniVendorUiState(
+        profileId = "preview-mini-vendor",
+        storeName = "Mini Vendor USC",
+        statusLabel = "Aprovado para vender",
+        description = "Produtos, pedidos e financeiro da lojinha do aluno.",
+        totalRevenueLabel = "R$ 1.284,70",
+        pendingAmountLabel = "R$ 342,90",
+        products = products,
+        pendingOrders = orders.filter { it.status == MiniVendorOrderStatus.Pending },
+        approvedOrders = orders.filter { it.status == MiniVendorOrderStatus.Approved },
     )
 }

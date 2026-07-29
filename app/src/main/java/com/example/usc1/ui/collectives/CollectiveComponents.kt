@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.example.usc1.core.ui.PremiumAmber
 import com.example.usc1.core.ui.PremiumBrand
 import com.example.usc1.core.ui.PremiumChip
@@ -98,13 +99,25 @@ fun CollectiveCard(
                     .height(202.dp)
                     .background(Color.Black),
             ) {
-                Image(
-                    painter = painterResource(id = group.imageRes),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    alpha = 0.70f,
-                )
+                if (group.imageUrl.isNullOrBlank()) {
+                    Image(
+                        painter = painterResource(id = group.imageRes),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.70f,
+                    )
+                } else {
+                    AsyncImage(
+                        model = group.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.70f,
+                        fallback = painterResource(id = group.imageRes),
+                        error = painterResource(id = group.imageRes),
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

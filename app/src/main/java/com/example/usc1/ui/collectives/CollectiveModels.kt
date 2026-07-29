@@ -41,6 +41,7 @@ data class CollectiveGroup(
     val status: String,
     val memberCount: Int,
     val imageRes: Int,
+    val imageUrl: String? = null,
     val accentName: String,
     val members: List<CollectiveMember>,
     val agenda: List<CollectiveAgendaItem>,
@@ -49,15 +50,21 @@ data class CollectiveGroup(
 )
 
 data class LeagueUiState(
-    val leagues: List<CollectiveGroup> = CollectiveMockData.leagues,
+    val leagues: List<CollectiveGroup> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
 )
 
 data class DirectoryUiState(
-    val directories: List<CollectiveGroup> = CollectiveMockData.directories,
+    val directories: List<CollectiveGroup> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
 )
 
 data class CommissionUiState(
-    val commissions: List<CollectiveGroup> = CollectiveMockData.commissions,
+    val commissions: List<CollectiveGroup> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
 )
 
 object CollectiveMockData {

@@ -29,8 +29,10 @@ import com.example.usc1.core.ui.PremiumAmber
 import com.example.usc1.core.ui.PremiumBrand
 import com.example.usc1.core.ui.PremiumCard
 import com.example.usc1.core.ui.PremiumChip
+import com.example.usc1.core.ui.PremiumEmptyState
 import com.example.usc1.core.ui.PremiumHeader
 import com.example.usc1.core.ui.PremiumInfoRow
+import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumQrCode
 import com.example.usc1.core.ui.PremiumScreen
@@ -48,6 +50,11 @@ fun TrainingScreen(
     onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (state.isLoading) {
+        PremiumLoadingState(text = "Carregando treinos", modifier = modifier)
+        return
+    }
+
     PremiumScreen(
         modifier = modifier,
         bottomPadding = 116.dp,
@@ -63,6 +70,15 @@ fun TrainingScreen(
             onCheckInClick = onCheckInClick,
             onFrequencyClick = onFrequencyClick,
         )
+
+        state.errorMessage?.let { message ->
+            PremiumEmptyState(
+                title = "Treinos indisponíveis",
+                subtitle = message,
+                icon = Icons.Outlined.FitnessCenter,
+            )
+            return@PremiumScreen
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PremiumSecondaryButton(
@@ -87,11 +103,19 @@ fun TrainingScreen(
             fontWeight = FontWeight.Black,
             modifier = Modifier.padding(start = 2.dp),
         )
-        state.sessions.forEach { session ->
-            TrainingCard(
-                session = session,
-                onClick = { onSessionClick(session) },
+        if (state.sessions.isEmpty()) {
+            PremiumEmptyState(
+                title = "Nenhum treino aberto",
+                subtitle = "Os próximos treinos cadastrados pela atlética aparecerão aqui.",
+                icon = Icons.Outlined.FitnessCenter,
             )
+        } else {
+            state.sessions.forEach { session ->
+                TrainingCard(
+                    session = session,
+                    onClick = { onSessionClick(session) },
+                )
+            }
         }
     }
 }
@@ -103,6 +127,11 @@ fun TrainingCheckInScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (state.isLoading) {
+        PremiumLoadingState(text = "Carregando check-in", modifier = modifier)
+        return
+    }
+
     PremiumScreen(
         modifier = modifier,
         bottomPadding = 116.dp,
@@ -113,6 +142,15 @@ fun TrainingCheckInScreen(
             icon = Icons.Outlined.QrCodeScanner,
             onBackClick = onBackClick,
         )
+
+        if (state.errorMessage != null || state.checkIn.qrPayload.isBlank()) {
+            PremiumEmptyState(
+                title = "Check-in indisponível",
+                subtitle = state.errorMessage ?: "Abra um treino disponível para gerar o QR Code de presença.",
+                icon = Icons.Outlined.QrCodeScanner,
+            )
+            return@PremiumScreen
+        }
 
         PremiumCard(accent = PremiumBrand) {
             PremiumChip(label = state.checkIn.status.label, icon = Icons.Outlined.CheckCircle, accent = PremiumBrand, filled = true)
@@ -188,6 +226,11 @@ fun TrainingFrequencyScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (state.isLoading) {
+        PremiumLoadingState(text = "Carregando frequência", modifier = modifier)
+        return
+    }
+
     PremiumScreen(
         modifier = modifier,
         bottomPadding = 116.dp,
@@ -198,6 +241,15 @@ fun TrainingFrequencyScreen(
             icon = Icons.Outlined.Star,
             onBackClick = onBackClick,
         )
+
+        state.errorMessage?.let { message ->
+            PremiumEmptyState(
+                title = "Frequência indisponível",
+                subtitle = message,
+                icon = Icons.Outlined.Star,
+            )
+            return@PremiumScreen
+        }
 
         PremiumCard(accent = PremiumBrand) {
             Text(
@@ -232,6 +284,11 @@ fun TrainingHistoryScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (state.isLoading) {
+        PremiumLoadingState(text = "Carregando histórico", modifier = modifier)
+        return
+    }
+
     PremiumScreen(
         modifier = modifier,
         bottomPadding = 116.dp,
@@ -242,8 +299,20 @@ fun TrainingHistoryScreen(
             icon = Icons.Outlined.History,
             onBackClick = onBackClick,
         )
-        state.history.forEach { checkIn ->
-            TrainingHistoryRow(checkIn = checkIn)
+        when {
+            state.errorMessage != null -> PremiumEmptyState(
+                title = "Histórico indisponível",
+                subtitle = state.errorMessage,
+                icon = Icons.Outlined.History,
+            )
+            state.history.isEmpty() -> PremiumEmptyState(
+                title = "Sem histórico",
+                subtitle = "Quando sua presença for validada, ela aparecerá aqui.",
+                icon = Icons.Outlined.History,
+            )
+            else -> state.history.forEach { checkIn ->
+                TrainingHistoryRow(checkIn = checkIn)
+            }
         }
     }
 }
@@ -318,7 +387,7 @@ private fun FrequencyBar(
 fun TrainingScreenPreview() {
     UscTheme(darkTheme = true) {
         TrainingScreen(
-            state = TrainingUiState(),
+            state = TrainingMockData.previewState,
             onSessionClick = {},
             onCheckInClick = {},
             onFrequencyClick = {},
@@ -332,7 +401,7 @@ fun TrainingScreenPreview() {
 fun TrainingCheckInScreenPreview() {
     UscTheme(darkTheme = true) {
         TrainingCheckInScreen(
-            state = TrainingUiState(),
+            state = TrainingMockData.previewState,
             onConfirmClick = {},
             onBackClick = {},
         )
@@ -344,7 +413,7 @@ fun TrainingCheckInScreenPreview() {
 fun TrainingFrequencyScreenPreview() {
     UscTheme(darkTheme = true) {
         TrainingFrequencyScreen(
-            state = TrainingUiState(),
+            state = TrainingMockData.previewState,
             onBackClick = {},
         )
     }

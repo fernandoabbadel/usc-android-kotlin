@@ -3,12 +3,16 @@ package com.example.usc1.ui.store
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.usc1.R
+import com.example.usc1.core.session.UserSession
 import com.example.usc1.data.repository.SupabaseStoreCatalogRepository
+import com.example.usc1.data.repository.SupabaseStoreOrdersRepository
 import com.example.usc1.domain.model.StoreCatalogProduct
 import com.example.usc1.domain.model.StoreSellerType
 import com.example.usc1.domain.repository.StoreCatalogRepository
+import com.example.usc1.domain.repository.StoreOrdersRepository
 import java.text.NumberFormat
 import java.util.Locale
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -122,17 +126,66 @@ class CartViewModel : ViewModel() {
     val uiState: StateFlow<CartUiState> = _uiState.asStateFlow()
 }
 
-class StoreOrdersViewModel : ViewModel() {
-    private val _uiState = MutableStateFlow(StoreOrdersUiState())
+class StoreOrdersViewModel(
+    private val ordersRepository: StoreOrdersRepository = SupabaseStoreOrdersRepository(),
+) : ViewModel() {
+    private val _uiState = MutableStateFlow(StoreOrdersUiState(isLoading = true))
     val uiState: StateFlow<StoreOrdersUiState> = _uiState.asStateFlow()
+
+    private var loadJob: Job? = null
+    private var loadedKey: String? = null
+
+    fun load(
+        session: UserSession,
+        forceRefresh: Boolean = false,
+    ) {
+        val tenantId = session.tenant?.id.orEmpty()
+        val userId = session.user?.id.orEmpty()
+        val key = "$tenantId:$userId"
+        if (!forceRefresh && loadedKey == key && !_uiState.value.isLoading) return
+        if (tenantId.isBlank() || userId.isBlank()) {
+            _uiState.value = StoreOrdersUiState(
+                isLoading = false,
+                errorMessage = "Entre na atlética para ver seus pedidos da loja.",
+            )
+            return
+        }
+
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            try {
+                val orders = ordersRepository.getOrders(
+                    tenantId = tenantId,
+                    userId = userId,
+                )
+                loadedKey = key
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        orders = orders,
+                        errorMessage = null,
+                    )
+                }
+            } catch (error: Throwable) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "Não foi possível carregar os pedidos da loja.",
+                    )
+                }
+            }
+        }
+    }
 
     fun selectStatus(status: StoreOrderStatus?) {
         _uiState.update { current ->
-            current.copy(
-                selectedStatus = status,
-                orders = emptyList(),
-            )
+            current.copy(selectedStatus = status)
         }
+    }
+
+    fun findOrder(orderId: String): StoreOrder? {
+        return _uiState.value.orders.firstOrNull { it.id == orderId }
     }
 }
 

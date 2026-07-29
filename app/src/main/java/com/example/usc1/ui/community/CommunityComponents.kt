@@ -21,7 +21,6 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -39,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.example.usc1.R
 import com.example.usc1.core.ui.PremiumAmber
 import com.example.usc1.core.ui.PremiumBrand
@@ -61,13 +61,13 @@ fun CommunityPostCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(26.dp),
-        color = PremiumZinc900.copy(alpha = if (post.status == CommunityPostStatus.Blocked) 0.62f else 0.94f),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.25f)),
+        shape = RoundedCornerShape(0.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, PremiumZinc800.copy(alpha = 0.42f)),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(13.dp),
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 15.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
         ) {
             if (post.status == CommunityPostStatus.Blocked) {
                 PremiumChip(label = "Post bloqueado", icon = Icons.Outlined.Flag, accent = PremiumRed)
@@ -82,12 +82,24 @@ fun CommunityPostCard(
                     color = Color.Black,
                     border = BorderStroke(2.dp, accent),
                 ) {
-                    Image(
-                        painter = painterResource(id = post.imageRes),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
+                    if (!post.authorAvatarUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = post.authorAvatarUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                            placeholder = painterResource(id = post.imageRes),
+                            fallback = painterResource(id = post.imageRes),
+                            error = painterResource(id = post.imageRes),
+                        )
+                    } else {
+                        Image(
+                            painter = painterResource(id = post.imageRes),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -99,66 +111,67 @@ fun CommunityPostCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = "${post.authorRole} • ${post.timeLabel}",
+                        text = listOf(post.handle, post.authorRole, post.timeLabel)
+                            .filter(String::isNotBlank)
+                            .joinToString(" • "),
                         color = PremiumZinc500,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                PremiumChip(
-                    label = if (post.status == CommunityPostStatus.Pinned) "Fixado" else post.category,
-                    icon = if (post.status == CommunityPostStatus.Pinned) Icons.Outlined.PushPin else Icons.Outlined.Groups,
-                    accent = accent,
-                )
+                if (post.status == CommunityPostStatus.Pinned) {
+                    PremiumChip(label = "Fixado", icon = Icons.Outlined.PushPin, accent = accent)
+                }
             }
             Text(
-                text = post.title,
-                color = Color.White,
-                fontSize = 19.sp,
-                lineHeight = 21.sp,
-                fontWeight = FontWeight.Black,
-            )
-            Text(
                 text = post.body,
-                color = PremiumZinc400,
-                fontSize = 12.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 3,
+                color = Color(0xFFD4D4D8),
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 8,
                 overflow = TextOverflow.Ellipsis,
             )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(188.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color.Black)
-                    .border(1.dp, PremiumZinc800, RoundedCornerShape(20.dp)),
-            ) {
-                Image(
-                    painter = painterResource(id = post.imageRes),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    alpha = if (post.status == CommunityPostStatus.Blocked) 0.30f else 0.78f,
-                )
+            if (!post.imageUrl.isNullOrBlank()) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f)),
+                        .fillMaxWidth()
+                        .height(260.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color.Black)
+                        .border(1.dp, PremiumZinc800, RoundedCornerShape(18.dp)),
+                ) {
+                    AsyncImage(
+                        model = post.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        alpha = if (post.status == CommunityPostStatus.Blocked) 0.30f else 1f,
+                        placeholder = painterResource(id = post.imageRes),
+                        fallback = painterResource(id = post.imageRes),
+                        error = painterResource(id = post.imageRes),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.28f)),
+                                ),
                             ),
-                        ),
-                )
+                    )
+                }
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CommunityMetric(Icons.Outlined.FavoriteBorder, "${post.likes}", PremiumAmber)
-                CommunityMetric(Icons.Outlined.ChatBubbleOutline, "${post.comments}", PremiumBrand)
+                CommunityMetric(Icons.Outlined.ChatBubbleOutline, if (post.commentsDisabled) "${post.comments} 🔒" else "${post.comments}", PremiumBrand)
+                CommunityMetric(Icons.Outlined.FavoriteBorder, "${post.likes}", PremiumRed)
+                Text(text = "🔥 ${post.hype}", color = PremiumAmber, fontSize = 12.sp, fontWeight = FontWeight.Black)
                 CommunityMetric(Icons.Outlined.Flag, "${post.reports}", if (post.reports > 0) PremiumRed else PremiumZinc500)
             }
         }

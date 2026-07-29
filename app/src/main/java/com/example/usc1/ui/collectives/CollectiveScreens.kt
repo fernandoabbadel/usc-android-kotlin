@@ -8,23 +8,19 @@ import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.usc1.core.ui.NativeAction
 import com.example.usc1.core.ui.NativeActionCard
 import com.example.usc1.core.ui.NativeModuleHeroCard
-import com.example.usc1.core.ui.NativeSectionTitle
 import com.example.usc1.core.ui.NativeStatCard
+import com.example.usc1.core.ui.PremiumEmptyState
 import com.example.usc1.core.ui.PremiumHeader
-import com.example.usc1.core.ui.PremiumInfoRow
+import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.core.ui.PremiumZinc400
-import com.example.usc1.ui.theme.UscTheme
 
 @Composable
 fun LeaguesScreen(
@@ -36,6 +32,10 @@ fun LeaguesScreen(
         title = "Ligas",
         subtitle = "Membros, agenda, loja e eventos",
         groups = state.leagues,
+        isLoading = state.isLoading,
+        errorMessage = state.errorMessage,
+        emptyTitle = "Nenhuma liga publicada",
+        emptySubtitle = "As ligas acadêmicas cadastradas no Supabase aparecerão aqui.",
         onGroupClick = onLeagueClick,
         card = { group, onClick -> LeagueCard(league = group, onClick = onClick) },
         modifier = modifier,
@@ -100,6 +100,10 @@ fun DirectoryScreen(
         title = "Diretório",
         subtitle = "Gestão, agenda e loja institucional",
         groups = state.directories,
+        isLoading = state.isLoading,
+        errorMessage = state.errorMessage,
+        emptyTitle = "Diretório não publicado",
+        emptySubtitle = "Quando a página do diretório existir em ligas_config, ela aparecerá aqui.",
         onGroupClick = onDirectoryClick,
         card = { group, onClick -> DirectoryCard(directory = group, onClick = onClick) },
         modifier = modifier,
@@ -162,8 +166,12 @@ fun CommissionsScreen(
 ) {
     CollectiveListScreen(
         title = "Comissões",
-        subtitle = "Operação, eventos e comunicação",
+        subtitle = "Turmas, formatura, eventos e loja",
         groups = state.commissions,
+        isLoading = state.isLoading,
+        errorMessage = state.errorMessage,
+        emptyTitle = "Nenhuma comissão publicada",
+        emptySubtitle = "As comissões de formatura cadastradas por turma aparecerão aqui.",
         onGroupClick = onCommissionClick,
         card = { group, onClick -> CommissionCard(commission = group, onClick = onClick) },
         modifier = modifier,
@@ -213,18 +221,62 @@ fun CommissionEventsScreen(commission: CollectiveGroup, onBackClick: () -> Unit,
 }
 
 @Composable
+fun CollectiveUnavailableScreen(
+    title: String,
+    subtitle: String,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
+        PremiumHeader(
+            title = title,
+            subtitle = "Página não encontrada",
+            icon = Icons.Outlined.Groups,
+            onBackClick = onBackClick,
+        )
+        PremiumEmptyState(
+            title = title,
+            subtitle = subtitle,
+            icon = Icons.Outlined.Info,
+            accent = PremiumZinc400,
+        )
+    }
+}
+
+@Composable
 private fun CollectiveListScreen(
     title: String,
     subtitle: String,
     groups: List<CollectiveGroup>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    emptyTitle: String,
+    emptySubtitle: String,
     onGroupClick: (CollectiveGroup) -> Unit,
     card: @Composable (CollectiveGroup, () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (isLoading && groups.isEmpty()) {
+        PremiumLoadingState(text = "Carregando $title", modifier = modifier)
+        return
+    }
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
         PremiumHeader(title = title, subtitle = subtitle, icon = Icons.Outlined.Groups)
-        groups.forEach { group ->
-            card(group) { onGroupClick(group) }
+        when {
+            errorMessage != null && groups.isEmpty() -> PremiumEmptyState(
+                title = "Não foi possível carregar",
+                subtitle = errorMessage,
+                icon = Icons.Outlined.Info,
+                accent = PremiumZinc400,
+            )
+            groups.isEmpty() -> PremiumEmptyState(
+                title = emptyTitle,
+                subtitle = emptySubtitle,
+                icon = Icons.Outlined.Groups,
+            )
+            else -> groups.forEach { group ->
+                card(group) { onGroupClick(group) }
+            }
         }
     }
 }
@@ -254,6 +306,7 @@ private fun CollectiveDetailScreen(
             subtitle = group.subtitle,
             body = group.description,
             imageRes = group.imageRes,
+            imageUrl = group.imageUrl,
             accent = accent,
             status = group.status,
         )
@@ -307,8 +360,17 @@ private fun CollectiveMembersScreen(
     val accent = collectiveAccent(group)
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
         PremiumHeader(title = "Membros", subtitle = group.name, icon = Icons.Outlined.Groups, accent = accent, onBackClick = onBackClick)
-        group.members.forEach { member ->
-            CollectiveInfoRow(member.name, "${member.role} • ${member.status}", accent = accent)
+        if (group.members.isEmpty()) {
+            PremiumEmptyState(
+                title = "Nenhum membro publicado",
+                subtitle = "Os membros cadastrados no Supabase aparecerão aqui.",
+                icon = Icons.Outlined.Groups,
+                accent = accent,
+            )
+        } else {
+            group.members.forEach { member ->
+                CollectiveInfoRow(member.name, "${member.role} • ${member.status}", accent = accent)
+            }
         }
     }
 }
@@ -322,8 +384,17 @@ private fun CollectiveAgendaScreen(
     val accent = collectiveAccent(group)
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
         PremiumHeader(title = "Agenda", subtitle = group.name, icon = Icons.Outlined.CalendarMonth, accent = accent, onBackClick = onBackClick)
-        group.agenda.forEach { item ->
-            CollectiveInfoRow(item.title, "${item.dateLabel} • ${item.place}", accent = accent)
+        if (group.agenda.isEmpty()) {
+            PremiumEmptyState(
+                title = "Agenda vazia",
+                subtitle = "Reuniões e tarefas publicadas no Supabase aparecerão aqui.",
+                icon = Icons.Outlined.CalendarMonth,
+                accent = accent,
+            )
+        } else {
+            group.agenda.forEach { item ->
+                CollectiveInfoRow(item.title, "${item.dateLabel} • ${item.place}", accent = accent)
+            }
         }
     }
 }
@@ -337,8 +408,17 @@ private fun CollectiveStoreScreen(
     val accent = collectiveAccent(group)
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
         PremiumHeader(title = "Loja", subtitle = group.name, icon = Icons.Outlined.Storefront, accent = accent, onBackClick = onBackClick)
-        group.store.forEach { item ->
-            CollectiveInfoRow(item.name, "${item.priceLabel} • ${item.status}", accent = accent)
+        if (group.store.isEmpty()) {
+            PremiumEmptyState(
+                title = "Loja vazia",
+                subtitle = "Produtos vinculados ao coletivo aparecerão aqui.",
+                icon = Icons.Outlined.Storefront,
+                accent = accent,
+            )
+        } else {
+            group.store.forEach { item ->
+                CollectiveInfoRow(item.name, "${item.priceLabel} • ${item.status}", accent = accent)
+            }
         }
     }
 }
@@ -352,8 +432,17 @@ private fun CollectiveEventsScreen(
     val accent = collectiveAccent(group)
     PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
         PremiumHeader(title = "Eventos", subtitle = group.name, icon = Icons.Outlined.Event, accent = accent, onBackClick = onBackClick)
-        group.events.forEach { event ->
-            CollectiveInfoRow(event.title, "${event.dateLabel} • ${event.status}", accent = accent)
+        if (group.events.isEmpty()) {
+            PremiumEmptyState(
+                title = "Nenhum evento publicado",
+                subtitle = "Eventos vinculados ao coletivo aparecerão aqui.",
+                icon = Icons.Outlined.Event,
+                accent = accent,
+            )
+        } else {
+            group.events.forEach { event ->
+                CollectiveInfoRow(event.title, "${event.dateLabel} • ${event.status}", accent = accent)
+            }
         }
     }
 }
@@ -372,82 +461,12 @@ private fun CollectiveInfoScreen(
             subtitle = group.accentName,
             body = group.description,
             imageRes = group.imageRes,
+            imageUrl = group.imageUrl,
             accent = accent,
             status = group.status,
         )
-        PremiumInfoRow("Tipo", group.kind.label, accent = accent)
-        PremiumInfoRow("Membros", "${group.memberCount}", accent = accent)
-        PremiumInfoRow("Status", group.status, accent = accent)
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun LeaguesScreenPreview() {
-    UscTheme(darkTheme = true) {
-        LeaguesScreen(state = LeagueUiState(), onLeagueClick = {})
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun LeagueDetailScreenPreview() {
-    UscTheme(darkTheme = true) {
-        LeagueDetailScreen(
-            league = CollectiveMockData.leagues.first(),
-            onMembersClick = {},
-            onAgendaClick = {},
-            onStoreClick = {},
-            onEventsClick = {},
-            onInfoClick = {},
-            onBackClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun DirectoryScreenPreview() {
-    UscTheme(darkTheme = true) {
-        DirectoryScreen(state = DirectoryUiState(), onDirectoryClick = {})
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun DirectoryDetailScreenPreview() {
-    UscTheme(darkTheme = true) {
-        DirectoryDetailScreen(
-            directory = CollectiveMockData.directories.first(),
-            onMembersClick = {},
-            onAgendaClick = {},
-            onStoreClick = {},
-            onEventsClick = {},
-            onInfoClick = {},
-            onBackClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun CommissionsScreenPreview() {
-    UscTheme(darkTheme = true) {
-        CommissionsScreen(state = CommissionUiState(), onCommissionClick = {})
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-fun CommissionDetailScreenPreview() {
-    UscTheme(darkTheme = true) {
-        CommissionDetailScreen(
-            commission = CollectiveMockData.commissions.first(),
-            onMembersClick = {},
-            onAgendaClick = {},
-            onStoreClick = {},
-            onEventsClick = {},
-            onBackClick = {},
-        )
+        CollectiveInfoRow("Status", group.status, accent = accent)
+        CollectiveInfoRow("Identificação", group.accentName, accent = accent)
+        CollectiveInfoRow("Tipo", group.kind.label, accent = accent)
     }
 }

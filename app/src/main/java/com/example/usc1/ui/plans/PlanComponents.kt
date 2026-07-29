@@ -270,11 +270,14 @@ fun PlanOrderCard(
     }
 }
 
-fun planAccent(plan: UscPlan): Color = when (plan.id) {
-    "atleta" -> PremiumGold
-    "lenda" -> PremiumPurple
-    "bicho-solto" -> PremiumRed
-    else -> PremiumBrand
+fun planAccent(plan: UscPlan): Color {
+    val haystack = "${plan.id} ${plan.name} ${plan.accentName}".lowercase()
+    return when {
+        haystack.contains("roxo") || haystack.contains("purple") || haystack.contains("lenda") -> PremiumPurple
+        haystack.contains("dour") || haystack.contains("gold") || haystack.contains("atleta") -> PremiumGold
+        haystack.contains("fogo") || haystack.contains("red") || haystack.contains("vermelh") || haystack.contains("bicho") -> PremiumRed
+        else -> PremiumBrand
+    }
 }
 
 fun planStatusColor(status: PlanStatus): Color = when (status) {

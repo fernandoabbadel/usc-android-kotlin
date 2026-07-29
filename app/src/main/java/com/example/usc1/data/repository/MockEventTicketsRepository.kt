@@ -6,12 +6,20 @@ import com.example.usc1.domain.repository.EventTicketsRepository
 import kotlinx.coroutines.delay
 
 class MockEventTicketsRepository : EventTicketsRepository {
-    override suspend fun getTickets(): List<EventTicket> {
+    override suspend fun getTickets(
+        tenantId: String,
+        userId: String,
+        limit: Int,
+    ): List<EventTicket> {
         delay(MockDelayMillis)
-        return mockTickets
+        return mockTickets.take(limit)
     }
 
-    override suspend fun getTicketById(ticketId: String): EventTicket? {
+    override suspend fun getTicketById(
+        tenantId: String,
+        userId: String,
+        ticketId: String,
+    ): EventTicket? {
         delay(MockDelayMillis)
         return mockTickets.firstOrNull { it.id == ticketId }
     }
