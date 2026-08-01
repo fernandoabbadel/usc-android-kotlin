@@ -4,7 +4,6 @@ import com.example.usc1.data.supabase.SupabaseClientProvider
 import com.example.usc1.domain.repository.GuideRepository
 import com.example.usc1.ui.guide.GuideCategory
 import com.example.usc1.ui.guide.GuideItem
-import com.example.usc1.ui.guide.GuideMockData
 import com.example.usc1.ui.guide.GuideSection
 import com.example.usc1.ui.guide.GuideUiState
 import com.example.usc1.ui.guide.LegalDocUiModel
@@ -22,6 +21,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 
 class SupabaseGuideRepository(
     private val clientProvider: () -> SupabaseClient = { SupabaseClientProvider.client },
@@ -30,8 +35,7 @@ class SupabaseGuideRepository(
         val cleanTenantId = tenantId.trim()
         if (!SupabaseClientProvider.config.isConfigured || cleanTenantId.isBlank()) {
             return@withContext GuideUiState(
-                sections = GuideMockData.sections,
-                faqItems = GuideMockData.faqItems,
+                isLoading = false,
                 errorMessage = "Supabase não configurado para carregar o guia.",
             )
         }
@@ -61,8 +65,7 @@ class SupabaseGuideRepository(
             .filter { it.items.isNotEmpty() }
 
         GuideUiState(
-            sections = sections.ifEmpty { GuideMockData.sections },
-            faqItems = buildFaqItems(items),
+            sections = sections,
             isLoading = false,
             errorMessage = null,
         )
@@ -72,11 +75,23 @@ class SupabaseGuideRepository(
         val cleanTenantId = tenantId.trim()
         if (!SupabaseClientProvider.config.isConfigured || cleanTenantId.isBlank()) {
             return@withContext LegalUiState(
-                docs = GuideMockData.legalDocs,
+                isLoading = false,
                 errorMessage = "Supabase não configurado para carregar documentos legais.",
             )
         }
 
+        // `/configuracoes/termos` do web lê os documentos da plataforma em
+        // `site_config.platform_legal_documents`, filtrando por `visibleInApp`.
+        val platformDocs = runCatching { fetchPlatformLegalDocs() }.getOrElse { emptyList() }
+        if (platformDocs.isNotEmpty()) {
+            return@withContext LegalUiState(
+                docs = platformDocs,
+                isLoading = false,
+                errorMessage = null,
+            )
+        }
+
+        // Sem documentos de plataforma disponíveis, cai para os documentos do tenant.
         val docs = clientProvider()
             .from(LegalDocsTable)
             .select(columns = Columns.raw(LegalDocColumns)) {
@@ -90,10 +105,50 @@ class SupabaseGuideRepository(
             .map { it.toUiDoc() }
 
         LegalUiState(
-            docs = docs.ifEmpty { GuideMockData.legalDocs },
+            docs = docs,
             isLoading = false,
             errorMessage = null,
         )
+    }
+
+    /** Espelha `extractPlatformLegalDocuments` + `filterPlatformLegalDocuments(surface = "app")`. */
+    private suspend fun fetchPlatformLegalDocs(): List<LegalDocUiModel> {
+        val row = clientProvider()
+            .from(SiteConfigTable)
+            .select(columns = Columns.raw("id,data")) {
+                filter { eq("id", PlatformLegalDocsRowId) }
+                limit(count = 1)
+            }
+            .decodeList<JsonObject>()
+            .firstOrNull()
+            ?: return emptyList()
+
+        val payload = (row["data"] as? JsonObject) ?: row
+        val documents = (payload["documents"] as? JsonArray)
+            ?: (payload["items"] as? JsonArray)
+            ?: return emptyList()
+
+        return documents.mapNotNull { element ->
+            val doc = element as? JsonObject ?: return@mapNotNull null
+            val visibleInApp = (doc["visibleInApp"] as? JsonPrimitive)?.booleanOrNull ?: true
+            if (!visibleInApp) return@mapNotNull null
+
+            val slug = doc.legalString("slug").ifBlank { doc.legalString("id") }
+            val title = doc.legalString("label")
+                .ifBlank { doc.legalString("title") }
+                .ifBlank { "Documento legal" }
+            val content = doc.legalString("content")
+            if (slug.isBlank() && content.isBlank()) return@mapNotNull null
+
+            LegalDocUiModel(
+                id = slug.ifBlank { title.lowercase(Locale.ROOT).replace(' ', '-') },
+                title = title.take(120),
+                content = content.take(80_000),
+                iconName = "FileText",
+                type = doc.legalString("slug"),
+                updatedAtLabel = doc.legalString("lastUpdated"),
+            )
+        }
     }
 
     private fun GuideDataRow.toUiItem(): GuideItem {
@@ -116,7 +171,7 @@ class SupabaseGuideRepository(
             url = url?.trim()?.takeIf(String::isNotBlank),
             schedule = horario?.trim()?.takeIf(String::isNotBlank),
             detail = detalhe?.trim()?.takeIf(String::isNotBlank),
-            photoUrl = foto?.trim()?.takeIf(String::isNotBlank),
+            photoUrl = resolveRemoteImageUrl(foto),
             phone = numero?.trim()?.takeIf(String::isNotBlank),
             color = cor?.trim()?.takeIf(String::isNotBlank),
         )
@@ -131,17 +186,6 @@ class SupabaseGuideRepository(
             type = tipo.trim().ifBlank { "Legal" },
             updatedAtLabel = updatedAt.formatUpdatedAt(),
         )
-    }
-
-    private fun buildFaqItems(items: List<GuideItem>): List<GuideItem> {
-        val generated = items
-            .filter { item ->
-                item.title.contains("?", ignoreCase = true) ||
-                    item.description.contains("como", ignoreCase = true) ||
-                    item.description.contains("dúvida", ignoreCase = true)
-            }
-            .take(8)
-        return generated.ifEmpty { GuideMockData.faqItems }
     }
 
     private fun String.formatUpdatedAt(): String {
@@ -179,6 +223,8 @@ class SupabaseGuideRepository(
     private companion object {
         const val GuideTable = "guia_data"
         const val LegalDocsTable = "legal_docs"
+        const val SiteConfigTable = "site_config"
+        const val PlatformLegalDocsRowId = "platform_legal_documents"
         const val MaxGuideItems = 600
         const val MaxLegalDocs = 60
         const val GuideColumns = "id,categoria,ordem,titulo,url,nome,horario,detalhe,descricao,foto,numero,cor,tenant_id"
@@ -215,3 +261,9 @@ private data class LegalDocRow(
     val updatedAt: String = "",
     @SerialName("tenant_id") val tenantId: String? = null,
 )
+
+private fun JsonObject.legalString(key: String): String {
+    val value = this[key] ?: return ""
+    if (value is JsonNull) return ""
+    return (value as? JsonPrimitive)?.contentOrNull.orEmpty().trim()
+}

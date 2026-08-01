@@ -26,6 +26,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -250,7 +252,7 @@ class SupabaseAuthRepository(
                 id = row.uid.ifBlank { fallbackUid },
                 name = row.nome.ifBlank { fallbackEmail.substringBefore("@").ifBlank { "Sem Nome" } },
                 email = row.email.orEmpty().ifBlank { fallbackEmail },
-                avatarUrl = row.foto?.ifBlank { null },
+                avatarUrl = resolveRemoteImageUrl(row.foto),
                 registrationNumber = row.matricula.orEmpty().trim(),
                 classCode = row.turma.orEmpty().trim(),
                 planName = row.plano.orEmpty().trim(),
@@ -260,6 +262,7 @@ class SupabaseAuthRepository(
                 planStatus = row.planoStatus.orEmpty().trim(),
                 role = effectiveRole,
                 status = userStatus,
+                isClassLeader = row.extra.isClassLeaderFlag(),
             ),
             tenant = tenantContext,
             status = authStatus,
@@ -275,7 +278,7 @@ class SupabaseAuthRepository(
             name = nome.ifBlank { slug.ifBlank { "Atlética" } },
             acronym = sigla.orEmpty().trim(),
             course = curso.orEmpty().trim(),
-            logoUrl = logoUrl?.ifBlank { null },
+            logoUrl = resolveRemoteImageUrl(logoUrl),
             palette = TenantPalette.entries.firstOrNull { it.remoteValue == paletteKey } ?: TenantPalette.Green,
             membershipStatus = membershipStatus,
         )
@@ -289,7 +292,7 @@ class SupabaseAuthRepository(
         const val DefaultAvatarUrl = "https://github.com/shadcn.png"
         const val UserSessionColumns =
             "uid,nome,email,foto,role,status,tenant_id,tenant_role,tenant_status," +
-                "matricula,turma,plano,plano_badge,plano_cor,plano_icon,plano_status"
+                "matricula,turma,plano,plano_badge,plano_cor,plano_icon,plano_status,extra"
         const val TenantMembershipColumns = "tenant_id,role,status,updated_at"
         const val TenantColumns = "id,nome,slug,sigla,curso,logo_url,palette_key,status"
     }
@@ -313,7 +316,12 @@ private data class AuthUserRow(
     @SerialName("tenant_id") val tenantId: String? = null,
     @SerialName("tenant_role") val tenantRole: String? = null,
     @SerialName("tenant_status") val tenantStatus: String? = null,
+    val extra: JsonObject? = null,
 )
+
+/** `extra.turmaLeader === true` no web. */
+private fun JsonObject?.isClassLeaderFlag(): Boolean =
+    (this?.get("turmaLeader") as? JsonPrimitive)?.booleanOrNull == true
 
 @Serializable
 private data class TenantMembershipRow(

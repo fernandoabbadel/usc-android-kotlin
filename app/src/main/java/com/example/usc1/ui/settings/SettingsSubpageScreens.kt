@@ -3,759 +3,649 @@ package com.example.usc1.ui.settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.SupervisorAccount
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.usc1.BuildConfig
-import com.example.usc1.core.roles.UserRole
-import com.example.usc1.core.session.AuthUser
 import com.example.usc1.core.session.UserSession
-import com.example.usc1.core.session.UserStatus
-import com.example.usc1.core.tenant.TenantContext
-import com.example.usc1.core.tenant.TenantMembershipStatus
-import com.example.usc1.core.tenant.TenantPalette
-import com.example.usc1.domain.model.AdminMentorshipLabelsConfig
-import com.example.usc1.domain.model.SettingsInviteActivity
-import com.example.usc1.domain.model.SettingsInviteApprovalStatus
-import com.example.usc1.domain.model.SettingsInviteDashboard
-import com.example.usc1.domain.model.SettingsInviteEntry
-import com.example.usc1.domain.model.SettingsMentorshipDirection
-import com.example.usc1.domain.model.SettingsMentorshipHub
+import com.example.usc1.core.ui.PremiumAmber
+import com.example.usc1.core.ui.PremiumBrand
+import com.example.usc1.core.ui.PremiumCard
+import com.example.usc1.core.ui.PremiumChip
+import com.example.usc1.core.ui.PremiumEmptyState
+import com.example.usc1.core.ui.PremiumHeader
+import com.example.usc1.core.ui.PremiumInfoRow
+import com.example.usc1.core.ui.PremiumLoadingState
+import com.example.usc1.core.ui.PremiumRed
+import com.example.usc1.core.ui.PremiumScreen
+import com.example.usc1.core.ui.PremiumSecondaryButton
+import com.example.usc1.core.ui.PremiumZinc400
+import com.example.usc1.core.ui.PremiumZinc500
+import com.example.usc1.core.ui.PremiumZinc800
+import com.example.usc1.core.ui.PremiumZinc900
+import com.example.usc1.domain.model.SettingsMentorshipAction
 import com.example.usc1.domain.model.SettingsMentorshipRequest
 import com.example.usc1.domain.model.SettingsMentorshipRoleCard
+import com.example.usc1.domain.model.SettingsMentorshipRoleOptions
+import com.example.usc1.domain.model.SettingsMentorshipRoleSide
 import com.example.usc1.domain.model.SettingsMentorshipStatus
-import com.example.usc1.domain.model.SettingsMentorshipUser
-import com.example.usc1.ui.theme.UscTheme
+import com.example.usc1.domain.model.SettingsTurmaLeaderRequest
 
-@Composable
-fun SettingsInvitesScreen(
-    state: SettingsUiState,
-    session: UserSession,
-    onBackClick: () -> Unit,
-    onRefreshClick: () -> Unit,
-    onCopyInviteClick: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val accent = state.tenantPalette.settingsAccent()
-    val tenantName = session.tenant?.name.orEmpty().ifBlank { state.tenantName.ifBlank { "sua atlética" } }
-    val canCreate = session.user != null &&
-        session.tenant?.membershipStatus == TenantMembershipStatus.Approved &&
-        session.user.role != UserRole.Guest
-
-    SettingsSubpageScaffold(
-        title = "Meus Convites",
-        subtitle = "Links gerados para entrada na atlética",
-        icon = Icons.Outlined.PersonAdd,
-        accent = accent,
-        onBackClick = onBackClick,
-        modifier = modifier,
-    ) {
-        SettingsNoticeCard(
-            title = "TRAZER AMIGO",
-            body = "Cada link é de uso único, expira em 72h e leva o convidado para o cadastro da $tenantName.",
-            icon = Icons.AutoMirrored.Outlined.Send,
-            accent = Color(0xFFFBBF24),
-        )
-
-        SettingsStatsRow(
-            stats = listOf(
-                SettingsMiniStat("Hoje", state.inviteDashboard.totalCreatedToday.toString()),
-                SettingsMiniStat("Restantes", state.inviteDashboard.remainingToday.toString()),
-                SettingsMiniStat("Ativos", state.inviteDashboard.activeCount.toString()),
-            ),
-            accent = accent,
-        )
-
-        if (!canCreate) {
-            SettingsNoticeCard(
-                title = "CONVITES BLOQUEADOS",
-                body = "Seu perfil precisa estar aprovado na atlética para gerar novos links.",
-                icon = Icons.Outlined.Close,
-                accent = Color(0xFFF87171),
-            )
-        }
-
-        SettingsSubpageToolbar(
-            title = "Links recentes",
-            subtitle = "${state.inviteDashboard.entries.size} encontrados",
-            actionLabel = "Atualizar",
-            actionIcon = Icons.Outlined.Refresh,
-            accent = accent,
-            isLoading = state.isInviteDashboardLoading,
-            onActionClick = onRefreshClick,
-        )
-
-        if (state.inviteDashboardError.isNotBlank()) {
-            SettingsErrorCard(message = state.inviteDashboardError, accent = Color(0xFFF87171))
-        }
-
-        if (state.isInviteDashboardLoading && state.inviteDashboard.entries.isEmpty()) {
-            SettingsLoadingCard(accent = accent)
-        } else if (state.inviteDashboard.entries.isEmpty()) {
-            SettingsEmptyCard(
-                title = "Nenhum convite carregado",
-                body = "Quando o Supabase responder, os links criados por você aparecem aqui com status, validade e uso.",
-                accent = accent,
-            )
-        } else {
-            state.inviteDashboard.entries.forEach { entry ->
-                SettingsInviteEntryCard(
-                    entry = entry,
-                    inviteLink = buildInviteLink(session.tenant?.slug.orEmpty(), entry.token),
-                    accent = accent,
-                    onCopyClick = onCopyInviteClick,
-                )
-            }
-        }
-    }
-}
-
+/**
+ * `/configuracoes/apadrinhamento` — adicionar vínculo (turma → aluno), cards de padrinho e
+ * afilhado com troca de rótulo e remoção, e as filas de convites recebidos e enviados.
+ */
 @Composable
 fun SettingsMentorshipScreen(
     state: SettingsUiState,
     session: UserSession,
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
+    onSendInviteClick: (targetUserId: String, targetIsMentor: Boolean) -> Unit,
+    onRespondClick: (relationshipId: String, action: SettingsMentorshipAction, roleLabel: String) -> Unit,
+    onEditRoleLabelClick: (relationshipId: String, side: SettingsMentorshipRoleSide, label: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val accent = state.tenantPalette.settingsAccent()
     val hub = state.mentorshipHub
     val labels = hub.labels
+    val currentUserId = session.user?.id.orEmpty()
 
-    SettingsSubpageScaffold(
-        title = labels.hubTitle,
-        subtitle = "Vínculos, convites recebidos e enviados",
-        icon = Icons.Outlined.FavoriteBorder,
-        accent = accent,
-        onBackClick = onBackClick,
-        modifier = modifier,
-    ) {
-        SettingsNoticeCard(
-            title = "AMBIENTE SOCIAL",
-            body = labels.requestHelpText,
-            icon = Icons.Outlined.SupervisorAccount,
-            accent = accent,
+    var targetIsMentor by remember { mutableStateOf(true) }
+    var selectedClass by remember { mutableStateOf("") }
+    var selectedUserId by remember { mutableStateOf("") }
+
+    PremiumScreen(modifier = modifier, bottomPadding = 40.dp) {
+        PremiumHeader(
+            title = labels.hubTitle,
+            subtitle = "Convites, aceite e visibilidade em ${state.tenantName.ifBlank { "sua atlética" }}",
+            icon = Icons.Outlined.FavoriteBorder,
+            accent = PremiumBrand,
+            onBackClick = onBackClick,
         )
 
-        SettingsSubpageToolbar(
-            title = "Meus vínculos",
-            subtitle = session.tenant?.name.orEmpty(),
-            actionLabel = "Atualizar",
-            actionIcon = Icons.Outlined.Refresh,
-            accent = accent,
-            isLoading = state.isMentorshipLoading,
-            onActionClick = onRefreshClick,
-        )
+        PremiumCard(accent = PremiumBrand) {
+            Text(
+                text = "Relações da Atlética",
+                color = PremiumBrand,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.4.sp,
+            )
+            Text(
+                text = "${labels.mentorLabel} e ${labels.menteeLabel}".uppercase(),
+                color = Color.White,
+                fontSize = 17.sp,
+                lineHeight = 21.sp,
+                fontWeight = FontWeight.Black,
+            )
+            Text(
+                text = labels.requestHelpText,
+                color = PremiumZinc400,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
 
         if (state.mentorshipError.isNotBlank()) {
-            SettingsErrorCard(message = state.mentorshipError, accent = Color(0xFFF87171))
+            PremiumCard(accent = PremiumRed) {
+                Text(
+                    text = "ERRO",
+                    color = PremiumRed,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.2.sp,
+                )
+                Text(
+                    text = state.mentorshipError,
+                    color = PremiumZinc400,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
+
+        PremiumSecondaryButton(
+            text = if (state.isMentorshipLoading) "Atualizando" else "Atualizar",
+            onClick = onRefreshClick,
+            enabled = !state.isMentorshipLoading,
+            accent = PremiumZinc400,
+            icon = Icons.Outlined.Refresh,
+        )
 
         if (state.isMentorshipLoading && !hub.hasVisibleContent()) {
-            SettingsLoadingCard(accent = accent)
+            PremiumLoadingState(text = "Carregando apadrinhamento")
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            SettingsRoleSlotCard(
-                title = labels.mentorLabel,
-                role = hub.mentor,
-                emptyText = "Nenhum vínculo ativo",
-                accent = accent,
-                modifier = Modifier.weight(1f),
-            )
-            SettingsRoleSlotCard(
-                title = labels.menteeLabel,
-                role = hub.mentee,
-                emptyText = "Nenhum vínculo ativo",
-                accent = Color(0xFF60A5FA),
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        SettingsRequestBlock(
-            title = "Recebidos",
-            empty = "Nenhum convite recebido.",
-            requests = hub.incoming,
-            accent = Color(0xFFFBBF24),
-        )
-        SettingsRequestBlock(
-            title = "Enviados",
-            empty = "Nenhum convite enviado.",
-            requests = hub.outgoing,
-            accent = accent,
-        )
-
-        SettingsNoticeCard(
-            title = "AÇÕES DE APADRINHAMENTO",
-            body = "Enviar, aceitar, recusar, cancelar ou remover vínculo altera dados no Supabase. Deixei a leitura pronta; as ações ficam para ativarmos com confirmação.",
-            icon = Icons.Outlined.Check,
-            accent = Color(0xFF60A5FA),
-        )
-    }
-}
-
-@Composable
-private fun SettingsSubpageScaffold(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    accent: Color,
-    onBackClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(SettingsBackground),
-        contentAlignment = Alignment.TopCenter,
-    ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = 448.dp)
-                .fillMaxSize(),
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = SettingsBackground.copy(alpha = 0.96f),
-                border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.05f)),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Voltar",
-                            tint = SettingsTextMuted,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .background(accent.copy(alpha = 0.12f), RoundedCornerShape(13.dp))
-                            .border(1.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(13.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = accent,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = title.uppercase(),
-                            color = Color.White,
-                            fontSize = 18.sp,
-                            lineHeight = 20.sp,
-                            fontWeight = FontWeight.Black,
-                            fontStyle = FontStyle.Italic,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = subtitle,
-                            color = SettingsTextDim,
-                            fontSize = 10.sp,
-                            lineHeight = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        content()
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsNoticeCard(
-    title: String,
-    body: String,
-    icon: ImageVector,
-    accent: Color,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.linearGradient(
-                    listOf(accent.copy(alpha = 0.14f), SettingsPanel, Color.Black),
-                ),
-                shape = RoundedCornerShape(22.dp),
-            )
-            .border(1.dp, accent.copy(alpha = 0.22f), RoundedCornerShape(22.dp))
-            .padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .background(accent.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
-                .border(1.dp, accent.copy(alpha = 0.28f), RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(17.dp))
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        // --- Adicionar vínculo: tipo -> turma -> aluno, igual aos três selects do web. ---
+        PremiumCard(accent = PremiumBrand) {
             Text(
-                text = title,
-                color = accent,
-                fontSize = 9.sp,
-                lineHeight = 10.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.5.sp,
-            )
-            Text(
-                text = body,
-                color = Color(0xFFE4E4E7),
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsStatsRow(
-    stats: List<SettingsMiniStat>,
-    accent: Color,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        stats.forEach { stat ->
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .background(SettingsPanel, RoundedCornerShape(18.dp))
-                    .border(1.dp, SettingsBorder, RoundedCornerShape(18.dp))
-                    .padding(horizontal = 10.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = stat.value,
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Black,
-                )
-                Text(
-                    text = stat.label.uppercase(),
-                    color = accent,
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.8.sp,
-                    maxLines = 1,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsSubpageToolbar(
-    title: String,
-    subtitle: String,
-    actionLabel: String,
-    actionIcon: ImageVector,
-    accent: Color,
-    isLoading: Boolean,
-    onActionClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column {
-            Text(
-                text = title.uppercase(),
+                text = "ADICIONAR VÍNCULO",
                 color = Color.White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 0.6.sp,
             )
-            if (subtitle.isNotBlank()) {
+
+            OptionRow(label = "Tipo") {
+                SelectablePill(labels.mentorLabel, targetIsMentor) {
+                    targetIsMentor = true
+                    selectedUserId = ""
+                }
+                SelectablePill(labels.menteeLabel, !targetIsMentor) {
+                    targetIsMentor = false
+                    selectedUserId = ""
+                }
+            }
+
+            OptionRow(label = "Turma") {
+                if (state.mentorshipClassOptions.isEmpty()) {
+                    Text(
+                        text = "Nenhum membro disponível",
+                        color = PremiumZinc500,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                state.mentorshipClassOptions.forEach { classCode ->
+                    SelectablePill(classCode, selectedClass == classCode) {
+                        selectedClass = classCode
+                        selectedUserId = ""
+                    }
+                }
+            }
+
+            if (selectedClass.isNotBlank()) {
+                OptionRow(label = "Aluno") {
+                    state.mentorshipCandidatesForClass(selectedClass).forEach { candidate ->
+                        SelectablePill(candidate.name, selectedUserId == candidate.id) {
+                            selectedUserId = candidate.id
+                        }
+                    }
+                }
+            }
+
+            PremiumSecondaryButton(
+                text = if (state.isSendingMentorshipInvite) "Enviando" else "Adicionar",
+                onClick = { onSendInviteClick(selectedUserId, targetIsMentor) },
+                enabled = selectedUserId.isNotBlank() && !state.isSendingMentorshipInvite,
+                accent = PremiumBrand,
+                icon = Icons.Outlined.PersonAdd,
+            )
+        }
+
+        MentorshipRoleCard(
+            title = labels.mentorLabel,
+            emptyText = "Você ainda não tem ${labels.mentorLabel.lowercase()}.",
+            item = hub.mentor,
+            options = hub.mentor?.let { SettingsMentorshipRoleOptions.resolve(labels, it.ownerRoleSide) }.orEmpty(),
+            isBusy = state.mentorshipActionId.isNotBlank() &&
+                state.mentorshipActionId == hub.mentor?.relationshipId,
+            accent = PremiumBrand,
+            onEditOption = { option ->
+                hub.mentor?.let { onEditRoleLabelClick(it.relationshipId, it.ownerRoleSide, option) }
+            },
+            onRemove = {
+                hub.mentor?.let { onRespondClick(it.relationshipId, SettingsMentorshipAction.Remove, "") }
+            },
+        )
+
+        MentorshipRoleCard(
+            title = labels.menteeLabel,
+            emptyText = "Você ainda não tem ${labels.menteeLabel.lowercase()}.",
+            item = hub.mentee,
+            options = hub.mentee?.let { SettingsMentorshipRoleOptions.resolve(labels, it.ownerRoleSide) }.orEmpty(),
+            isBusy = state.mentorshipActionId.isNotBlank() &&
+                state.mentorshipActionId == hub.mentee?.relationshipId,
+            accent = Color(0xFF60A5FA),
+            onEditOption = { option ->
+                hub.mentee?.let { onEditRoleLabelClick(it.relationshipId, it.ownerRoleSide, option) }
+            },
+            onRemove = {
+                hub.mentee?.let { onRespondClick(it.relationshipId, SettingsMentorshipAction.Remove, "") }
+            },
+        )
+
+        Text(
+            text = "CONVITES RECEBIDOS",
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.6.sp,
+        )
+        if (hub.incoming.isEmpty()) {
+            PremiumEmptyState(
+                title = "Nenhum convite pendente",
+                subtitle = "Convites recebidos de outros atletas aparecem aqui.",
+                icon = Icons.Outlined.FavoriteBorder,
+            )
+        } else {
+            hub.incoming.forEach { request ->
+                // O rótulo é escolhido pelo lado de quem aceita.
+                val side = if (request.roleLabel == labels.mentorLabel) {
+                    SettingsMentorshipRoleSide.Mentee
+                } else {
+                    SettingsMentorshipRoleSide.Mentor
+                }
+                MentorshipRequestCard(
+                    request = request,
+                    helper = "Quer te ter como ${request.roleLabel}.",
+                    isBusy = state.mentorshipActionId == request.id,
+                    acceptOptions = SettingsMentorshipRoleOptions.resolve(labels, side),
+                    onAccept = { option ->
+                        onRespondClick(request.id, SettingsMentorshipAction.Accept, option)
+                    },
+                    onReject = { onRespondClick(request.id, SettingsMentorshipAction.Reject, "") },
+                    onCancel = null,
+                    accent = PremiumAmber,
+                )
+            }
+        }
+
+        Text(
+            text = "CONVITES ENVIADOS",
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.6.sp,
+        )
+        if (hub.outgoing.isEmpty()) {
+            PremiumEmptyState(
+                title = "Nenhum convite enviado",
+                subtitle = "Você ainda não enviou convite de apadrinhamento.",
+                icon = Icons.Outlined.PersonAdd,
+            )
+        } else {
+            hub.outgoing.forEach { request ->
+                MentorshipRequestCard(
+                    request = request,
+                    helper = "Convite para ${request.roleLabel.lowercase()}.",
+                    isBusy = state.mentorshipActionId == request.id,
+                    acceptOptions = emptyList(),
+                    onAccept = {},
+                    onReject = null,
+                    onCancel = { onRespondClick(request.id, SettingsMentorshipAction.Cancel, "") },
+                    accent = Color(0xFF22D3EE),
+                )
+            }
+        }
+
+        if (currentUserId.isBlank()) {
+            PremiumEmptyState(
+                title = "Sessão necessária",
+                subtitle = "Entre com sua conta para gerenciar vínculos de apadrinhamento.",
+                icon = Icons.Outlined.FavoriteBorder,
+            )
+        }
+    }
+}
+
+/**
+ * `/configuracoes/lider-turma` — pendências de cadastro da turma do líder (ou de todo o tenant,
+ * para gestores). A aprovação em si roda com service role no web; ver relatório do M4.
+ */
+@Composable
+fun SettingsTurmaLeaderScreen(
+    state: SettingsUiState,
+    onBackClick: () -> Unit,
+    onRefreshClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val pending = state.turmaLeader
+
+    PremiumScreen(modifier = modifier, bottomPadding = 40.dp) {
+        PremiumHeader(
+            title = "Lider da Turma",
+            subtitle = if (pending.canManageAll) {
+                "Visao completa do tenant ${state.tenantName}".trim()
+            } else {
+                "Pendencias da turma ${pending.leaderTurma.ifBlank { state.classLabel }}".trim()
+            },
+            icon = Icons.Outlined.Shield,
+            accent = Color(0xFF22D3EE),
+            onBackClick = onBackClick,
+        )
+
+        PremiumCard(accent = Color(0xFF22D3EE)) {
+            Text(
+                text = "APROVACOES PENDENTES",
+                color = Color(0xFF22D3EE),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.3.sp,
+            )
+            Text(
+                text = if (pending.canManageAll) {
+                    "Você enxerga todas as solicitações do tenant."
+                } else {
+                    "Você só pode revisar usuários da sua própria turma."
+                },
+                color = PremiumZinc400,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+
+        PremiumCard(accent = PremiumZinc500) {
+            Text(
+                text = "REVISAO NO SERVIDOR",
+                color = PremiumZinc400,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.2.sp,
+            )
+            Text(
+                text = "Aprovar ou rejeitar grava no cadastro de outro usuário e roda com chave de " +
+                    "serviço no servidor da plataforma. O app mostra a fila, mas a decisão continua no painel web.",
+                color = PremiumZinc400,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+
+        PremiumSecondaryButton(
+            text = if (state.isTurmaLeaderLoading) "Atualizando" else "Atualizar",
+            onClick = onRefreshClick,
+            enabled = !state.isTurmaLeaderLoading,
+            accent = PremiumZinc400,
+            icon = Icons.Outlined.Refresh,
+        )
+
+        when {
+            state.isTurmaLeaderLoading && pending.requests.isEmpty() ->
+                PremiumLoadingState(text = "Carregando pendencias")
+
+            state.turmaLeaderError.isNotBlank() -> PremiumEmptyState(
+                title = "Pendencias indisponíveis",
+                subtitle = state.turmaLeaderError,
+                icon = Icons.Outlined.Shield,
+            )
+
+            pending.requests.isEmpty() -> PremiumEmptyState(
+                title = "Nenhuma solicitação pendente",
+                subtitle = "Nada na sua faixa de liderança agora.",
+                icon = Icons.Outlined.Shield,
+            )
+
+            else -> pending.requests.forEach { request ->
+                TurmaLeaderRequestCard(request = request)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TurmaLeaderRequestCard(request: SettingsTurmaLeaderRequest) {
+    PremiumCard(accent = Color(0xFF22D3EE)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MentorshipAvatar(
+                name = request.requesterName,
+                photoUrl = request.requesterPhotoUrl,
+                accent = Color(0xFF22D3EE),
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = subtitle,
-                    color = SettingsTextDim,
-                    fontSize = 10.sp,
+                    text = request.requesterName
+                        .ifBlank { request.requesterEmail }
+                        .ifBlank { request.requesterUserId },
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = listOf(
+                        request.requesterEmail.ifBlank { "Sem email" },
+                        request.requesterClass.ifBlank { "Sem turma" },
+                    ).joinToString(" • "),
+                    color = PremiumZinc500,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            PremiumChip(label = "Pendente", accent = PremiumAmber)
         }
-        Surface(
-            onClick = onActionClick,
-            enabled = !isLoading,
-            shape = RoundedCornerShape(999.dp),
-            color = accent.copy(alpha = 0.10f),
-            border = BorderStroke(1.dp, accent.copy(alpha = 0.25f)),
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(12.dp), color = accent, strokeWidth = 2.dp)
-                } else {
-                    Icon(actionIcon, contentDescription = null, tint = accent, modifier = Modifier.size(12.dp))
-                }
-                Text(
-                    text = actionLabel.uppercase(),
-                    color = accent,
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.9.sp,
-                )
-            }
-        }
+
+        PremiumInfoRow(
+            label = "Convite",
+            value = request.inviteToken.ifBlank { "manual" },
+            accent = Color(0xFF22D3EE),
+        )
+        PremiumInfoRow(
+            label = "Origem",
+            value = request.inviterName.ifBlank { request.inviterEmail }.ifBlank { "sem criador" },
+            accent = Color(0xFF22D3EE),
+        )
+        PremiumInfoRow(
+            label = "Solicitado em",
+            value = request.requestedAtLabel.ifBlank { "agora" },
+            accent = Color(0xFF22D3EE),
+        )
     }
 }
 
 @Composable
-private fun SettingsInviteEntryCard(
-    entry: SettingsInviteEntry,
-    inviteLink: String,
+private fun MentorshipRoleCard(
+    title: String,
+    emptyText: String,
+    item: SettingsMentorshipRoleCard?,
+    options: List<String>,
+    isBusy: Boolean,
     accent: Color,
-    onCopyClick: (String) -> Unit,
+    onEditOption: (String) -> Unit,
+    onRemove: () -> Unit,
 ) {
-    val activityColor = entry.activity.color(accent)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SettingsPanel, RoundedCornerShape(18.dp))
-            .border(1.dp, activityColor.copy(alpha = 0.24f), RoundedCornerShape(18.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
+    PremiumCard(accent = accent) {
+        Text(
+            text = (item?.roleLabel ?: title).uppercase(),
+            color = accent,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.3.sp,
+        )
+
+        if (item == null) {
+            Text(
+                text = emptyText,
+                color = PremiumZinc500,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            return@PremiumCard
+        }
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            MentorshipAvatar(name = item.user.name, photoUrl = item.user.photoUrl, accent = accent)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "CONVITE ${entry.token.take(8).uppercase()}",
+                    text = item.user.name.ifBlank { "Atleta" }.uppercase(),
                     color = Color.White,
-                    fontSize = 13.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "Criado ${entry.createdAt.ifBlank { "sem data" }}",
-                    color = SettingsTextDim,
-                    fontSize = 10.sp,
+                    text = item.user.classCode.ifBlank { "Sem turma" },
+                    color = PremiumZinc500,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                 )
             }
-            SettingsCompactChip(entry.activity.label, activityColor)
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SettingsCompactChip(entry.approvalStatus.label, entry.approvalStatus.color())
-            SettingsCompactChip("${entry.usesCount}/${entry.maxUses} uso", SettingsTextMuted)
+        if (options.size > 1) {
+            OptionRow(label = "Meu rotulo") {
+                options.forEach { option ->
+                    SelectablePill(
+                        label = option,
+                        selected = option == item.ownerRoleLabel,
+                        enabled = !isBusy && option != item.ownerRoleLabel,
+                    ) { onEditOption(option) }
+                }
+            }
         }
 
-        if (entry.requesterName.isNotBlank()) {
-            Text(
-                text = listOf(entry.requesterName, entry.requesterClass)
-                    .filter(String::isNotBlank)
-                    .joinToString(" • "),
-                color = Color(0xFFE4E4E7),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        PremiumSecondaryButton(
+            text = if (isBusy) "Processando" else "Remover vinculo",
+            onClick = onRemove,
+            enabled = !isBusy,
+            accent = PremiumRed,
+            icon = Icons.Outlined.Delete,
+        )
+    }
+}
 
+@Composable
+private fun MentorshipRequestCard(
+    request: SettingsMentorshipRequest,
+    helper: String,
+    isBusy: Boolean,
+    acceptOptions: List<String>,
+    onAccept: (String) -> Unit,
+    onReject: (() -> Unit)?,
+    onCancel: (() -> Unit)?,
+    accent: Color,
+) {
+    PremiumCard(accent = accent) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.Black.copy(alpha = 0.32f), RoundedCornerShape(12.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(12.dp))
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = inviteLink,
-                color = SettingsTextMuted,
-                fontSize = 10.sp,
-                lineHeight = 13.sp,
-                modifier = Modifier.weight(1f),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+            MentorshipAvatar(
+                name = request.otherUser?.name.orEmpty(),
+                photoUrl = request.otherUser?.photoUrl.orEmpty(),
+                accent = accent,
             )
-            Surface(
-                onClick = { onCopyClick(inviteLink) },
-                shape = CircleShape,
-                color = Color.White.copy(alpha = 0.06f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.ContentCopy,
-                    contentDescription = "Copiar convite",
-                    tint = accent,
-                    modifier = Modifier.padding(8.dp).size(14.dp),
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = request.otherUser?.name?.ifBlank { "Atleta" } ?: "Atleta",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = request.otherUser?.classCode.orEmpty().ifBlank { "Sem turma" },
+                    color = PremiumZinc500,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = helper,
+                    color = PremiumZinc400,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
                 )
             }
+            PremiumChip(label = request.status.label, accent = request.status.mentorshipColor())
         }
-    }
-}
 
-@Composable
-private fun SettingsRoleSlotCard(
-    title: String,
-    role: SettingsMentorshipRoleCard?,
-    emptyText: String,
-    accent: Color,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .background(SettingsPanel, RoundedCornerShape(18.dp))
-            .border(1.dp, accent.copy(alpha = 0.18f), RoundedCornerShape(18.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            text = title.uppercase(),
-            color = accent,
-            fontSize = 8.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.9.sp,
-        )
-        if (role == null) {
-            Text(
-                text = emptyText,
-                color = SettingsTextDim,
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        } else {
-            SettingsUserMiniRow(user = role.user, subtitle = role.roleLabel, accent = accent)
+        if (request.createdAt.isNotBlank()) {
+            PremiumInfoRow(label = "Enviado em", value = request.createdAt, accent = accent)
         }
-    }
-}
 
-@Composable
-private fun SettingsRequestBlock(
-    title: String,
-    empty: String,
-    requests: List<SettingsMentorshipRequest>,
-    accent: Color,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SettingsPanel, RoundedCornerShape(18.dp))
-            .border(1.dp, SettingsBorder, RoundedCornerShape(18.dp)),
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = title.uppercase(),
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.weight(1f),
-            )
-            SettingsCompactChip(requests.size.toString(), accent)
-        }
-        HorizontalDivider(color = SettingsBorder)
-        if (requests.isEmpty()) {
-            Text(
-                text = empty,
-                color = SettingsTextDim,
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(14.dp),
-            )
-        } else {
-            requests.forEachIndexed { index, request ->
-                SettingsMentorshipRequestRow(request = request, accent = accent)
-                if (index != requests.lastIndex) HorizontalDivider(color = SettingsBorder)
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsMentorshipRequestRow(
-    request: SettingsMentorshipRequest,
-    accent: Color,
-) {
-    Row(
-        modifier = Modifier.padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SettingsUserAvatar(user = request.otherUser, accent = accent)
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = request.otherUser?.name?.ifBlank { "Usuário USC" } ?: "Usuário USC",
-                color = Color.White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = listOf(
-                    request.roleLabel,
-                    request.otherUser?.classCode.orEmpty(),
-                    request.createdAt,
-                ).filter(String::isNotBlank).joinToString(" • "),
-                color = SettingsTextDim,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        acceptOptions.forEach { option ->
+            PremiumSecondaryButton(
+                text = if (acceptOptions.size > 1) "Aceitar como $option" else "Aceitar",
+                onClick = { onAccept(option) },
+                enabled = !isBusy,
+                accent = PremiumBrand,
+                icon = Icons.Outlined.Check,
             )
         }
-        SettingsCompactChip(request.status.label, request.status.color())
-    }
-}
-
-@Composable
-private fun SettingsUserMiniRow(
-    user: SettingsMentorshipUser,
-    subtitle: String,
-    accent: Color,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SettingsUserAvatar(user = user, accent = accent)
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = user.name.ifBlank { "Usuário USC" },
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        if (onReject != null) {
+            PremiumSecondaryButton(
+                text = "Recusar",
+                onClick = onReject,
+                enabled = !isBusy,
+                accent = PremiumRed,
+                icon = Icons.Outlined.Close,
             )
-            Text(
-                text = listOf(subtitle, user.classCode).filter(String::isNotBlank).joinToString(" • "),
-                color = SettingsTextDim,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        }
+        if (onCancel != null) {
+            PremiumSecondaryButton(
+                text = if (isBusy) "Processando" else "Cancelar",
+                onClick = onCancel,
+                enabled = !isBusy,
+                accent = PremiumZinc400,
+                icon = Icons.Outlined.Close,
             )
         }
     }
 }
 
 @Composable
-private fun SettingsUserAvatar(
-    user: SettingsMentorshipUser?,
+private fun MentorshipAvatar(
+    name: String,
+    photoUrl: String,
     accent: Color,
 ) {
     Box(
         modifier = Modifier
-            .size(34.dp)
+            .size(44.dp)
             .background(accent.copy(alpha = 0.14f), CircleShape)
             .border(1.dp, accent.copy(alpha = 0.32f), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        if (!user?.photoUrl.isNullOrBlank()) {
+        if (photoUrl.isNotBlank()) {
             AsyncImage(
-                model = user?.photoUrl,
-                contentDescription = user?.name,
+                model = photoUrl,
+                contentDescription = name,
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(44.dp)
                     .background(Color.Black, CircleShape),
             )
         } else {
             Text(
-                text = user?.name?.initials().orEmpty().ifBlank { "US" },
+                text = name.initials().ifBlank { "US" },
                 color = accent,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Black,
             )
         }
@@ -763,193 +653,65 @@ private fun SettingsUserAvatar(
 }
 
 @Composable
-private fun SettingsCompactChip(
+private fun OptionRow(
     label: String,
-    color: Color,
+    content: @Composable () -> Unit,
 ) {
-    Text(
-        text = label.uppercase(),
-        color = color,
-        fontSize = 8.sp,
-        fontWeight = FontWeight.Black,
-        letterSpacing = 0.5.sp,
-        modifier = Modifier
-            .background(color.copy(alpha = 0.10f), RoundedCornerShape(999.dp))
-            .border(1.dp, color.copy(alpha = 0.25f), RoundedCornerShape(999.dp))
-            .padding(horizontal = 7.dp, vertical = 4.dp),
-        maxLines = 1,
-    )
-}
-
-@Composable
-private fun SettingsLoadingCard(accent: Color) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SettingsPanel, RoundedCornerShape(18.dp))
-            .border(1.dp, SettingsBorder, RoundedCornerShape(18.dp))
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = accent, strokeWidth = 2.dp)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
-            text = "Carregando dados...",
-            color = SettingsTextMuted,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
+            text = label.uppercase(),
+            color = PremiumZinc500,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.2.sp,
         )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            content()
+        }
     }
 }
 
 @Composable
-private fun SettingsEmptyCard(
-    title: String,
-    body: String,
-    accent: Color,
+private fun SelectablePill(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
 ) {
-    SettingsNoticeCard(
-        title = title.uppercase(),
-        body = body,
-        icon = Icons.Outlined.Schedule,
-        accent = accent,
-    )
-}
-
-@Composable
-private fun SettingsErrorCard(
-    message: String,
-    accent: Color,
-) {
-    SettingsNoticeCard(
-        title = "ERRO AO CARREGAR",
-        body = message,
-        icon = Icons.Outlined.Close,
-        accent = accent,
-    )
-}
-
-private data class SettingsMiniStat(
-    val label: String,
-    val value: String,
-)
-
-private fun SettingsInviteActivity.color(accent: Color): Color = when (this) {
-    SettingsInviteActivity.Active -> accent
-    SettingsInviteActivity.Expired -> SettingsTextMuted
-    SettingsInviteActivity.Revoked -> Color(0xFFF87171)
-    SettingsInviteActivity.Closed -> Color(0xFFA1A1AA)
-}
-
-private fun SettingsInviteApprovalStatus.color(): Color = when (this) {
-    SettingsInviteApprovalStatus.Approved -> Color(0xFF34D399)
-    SettingsInviteApprovalStatus.Pending -> Color(0xFFFBBF24)
-    SettingsInviteApprovalStatus.Rejected -> Color(0xFFF87171)
-    SettingsInviteApprovalStatus.Unused -> SettingsTextMuted
-}
-
-private fun SettingsMentorshipStatus.color(): Color = when (this) {
-    SettingsMentorshipStatus.Pending -> Color(0xFFFBBF24)
-    SettingsMentorshipStatus.Accepted -> Color(0xFF34D399)
-    SettingsMentorshipStatus.Rejected -> Color(0xFFF87171)
-    SettingsMentorshipStatus.Cancelled -> SettingsTextMuted
-}
-
-private fun SettingsMentorshipHub.hasVisibleContent(): Boolean {
-    return mentor != null || mentee != null || incoming.isNotEmpty() || outgoing.isNotEmpty()
-}
-
-private fun buildInviteLink(
-    tenantSlug: String,
-    token: String,
-): String {
-    val baseUrl = BuildConfig.WEB_APP_URL.trimEnd('/').ifBlank { "https://usc-atleticas.vercel.app" }
-    val tenantPath = tenantSlug.trim().takeIf(String::isNotBlank)?.let { "/$it" }.orEmpty()
-    return "$baseUrl$tenantPath/cadastro?convite=$token"
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505, widthDp = 390, heightDp = 844)
-@Composable
-private fun SettingsInvitesScreenPreview() {
-    val session = previewSettingsSession()
-    UscTheme(darkTheme = true) {
-        SettingsInvitesScreen(
-            state = SettingsUiState(
-                tenantName = "Atlética Demo USC",
-                tenantPalette = TenantPalette.Green,
-                inviteDashboard = SettingsInviteDashboard(
-                    entries = listOf(
-                        SettingsInviteEntry(
-                            id = "1",
-                            token = "abc12345",
-                            createdAt = "28/07/2026 22:10",
-                            expiresAt = "31/07/2026 22:10",
-                            usesCount = 0,
-                            maxUses = 1,
-                        ),
-                    ),
-                    totalCreatedToday = 1,
-                    remainingToday = 4,
-                ),
-            ),
-            session = session,
-            onBackClick = {},
-            onRefreshClick = {},
-            onCopyInviteClick = {},
+    Surface(
+        modifier = Modifier.clickable(enabled = enabled, onClick = onClick),
+        shape = RoundedCornerShape(999.dp),
+        color = if (selected) PremiumBrand else PremiumZinc900,
+        border = BorderStroke(1.dp, if (selected) PremiumBrand else PremiumZinc800),
+    ) {
+        Text(
+            text = label.uppercase(),
+            color = when {
+                selected -> Color.Black
+                enabled -> PremiumZinc400
+                else -> PremiumZinc500
+            },
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
         )
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF050505, widthDp = 390, heightDp = 844)
-@Composable
-private fun SettingsMentorshipScreenPreview() {
-    val session = previewSettingsSession()
-    UscTheme(darkTheme = true) {
-        SettingsMentorshipScreen(
-            state = SettingsUiState(
-                tenantPalette = TenantPalette.Green,
-                mentorshipHub = SettingsMentorshipHub(
-                    labels = AdminMentorshipLabelsConfig(),
-                    mentor = SettingsMentorshipRoleCard(
-                        relationshipId = "m1",
-                        user = SettingsMentorshipUser("2", "Renata Dahe", "T1", ""),
-                        roleLabel = "Madrinha",
-                    ),
-                    incoming = listOf(
-                        SettingsMentorshipRequest(
-                            id = "r1",
-                            otherUser = SettingsMentorshipUser("3", "Pietro Natal", "T2", ""),
-                            status = SettingsMentorshipStatus.Pending,
-                            direction = SettingsMentorshipDirection.Incoming,
-                            roleLabel = "Afilhado",
-                            createdAt = "28/07/2026 21:45",
-                        ),
-                    ),
-                ),
-            ),
-            session = session,
-            onBackClick = {},
-            onRefreshClick = {},
-        )
-    }
+private fun SettingsMentorshipStatus.mentorshipColor(): Color = when (this) {
+    SettingsMentorshipStatus.Pending -> PremiumAmber
+    SettingsMentorshipStatus.Accepted -> PremiumBrand
+    SettingsMentorshipStatus.Rejected -> PremiumRed
+    SettingsMentorshipStatus.Cancelled -> PremiumZinc500
 }
 
-private fun previewSettingsSession(): UserSession {
-    return UserSession(
-        user = AuthUser(
-            id = "user_1",
-            name = "Fernando Lopes Abbade",
-            email = "fernando@example.com",
-            role = UserRole.MasterTenant,
-            status = UserStatus.Ativo,
-        ),
-        tenant = TenantContext(
-            id = "tenant_1",
-            slug = "aaakn",
-            name = "Atlética Demo USC",
-            acronym = "USC",
-            palette = TenantPalette.Green,
-            membershipStatus = TenantMembershipStatus.Approved,
-        ),
-    )
-}
+private fun com.example.usc1.domain.model.SettingsMentorshipHub.hasVisibleContent(): Boolean =
+    mentor != null || mentee != null || incoming.isNotEmpty() || outgoing.isNotEmpty()
+

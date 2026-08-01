@@ -46,6 +46,7 @@ import com.example.usc1.core.ui.PremiumZinc700
 import com.example.usc1.core.ui.PremiumZinc800
 import com.example.usc1.core.ui.PremiumZinc900
 import com.example.usc1.domain.model.AdminStoreOrder
+import com.example.usc1.domain.model.AdminStoreOrderStatus
 import com.example.usc1.domain.model.AdminStoreOrdersMode
 import java.text.NumberFormat
 import java.time.OffsetDateTime
@@ -297,8 +298,8 @@ private fun AdminStoreOrderCard(
                         modifier = Modifier.weight(1f),
                     )
                     PremiumChip(
-                        label = if (mode == AdminStoreOrdersMode.Pending) "Pendente" else "Confirmado",
-                        accent = if (mode == AdminStoreOrdersMode.Pending) PremiumAmber else Color(0xFF22D3EE),
+                        label = order.status.label,
+                        accent = orderStatusColor(order.status),
                     )
                 }
                 Text(
@@ -306,6 +307,13 @@ private fun AdminStoreOrderCard(
                     color = PremiumZinc400,
                     fontSize = 11.sp,
                 )
+                if (order.sellerName.isNotBlank()) {
+                    Text(
+                        text = "Vendedor: ${order.sellerName} • ${order.sellerTypeLabel}",
+                        color = PremiumZinc500,
+                        fontSize = 11.sp,
+                    )
+                }
                 Text(
                     text = "Quantidade: ${maxOf(1, order.quantidade)}",
                     color = PremiumZinc500,
@@ -324,6 +332,16 @@ private fun AdminStoreOrderCard(
                     color = PremiumZinc500,
                     fontSize = 11.sp,
                 )
+                if (order.paymentPixKey.isNotBlank()) {
+                    Text(
+                        text = "PIX: ${order.paymentPixKey}",
+                        color = PremiumZinc400,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Text(
                     text = "#${order.id.take(10)}",
                     color = PremiumZinc500,
@@ -401,8 +419,18 @@ private fun AdminStoreOrderCard(
 @Composable
 private fun ApprovedOrderInfo(order: AdminStoreOrder) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OrderInfoBox(label = "Status", value = order.status.label)
         OrderInfoBox(label = "Aprovado por", value = order.approvedBy.ifBlank { "Não informado" })
         OrderInfoBox(label = "Comprovante para", value = order.receiverLabel)
+        if (order.paymentBank.isNotBlank() || order.paymentHolder.isNotBlank() || order.paymentWhatsapp.isNotBlank()) {
+            OrderInfoBox(
+                label = "Pagamento",
+                value = listOf(order.paymentBank, order.paymentHolder, order.paymentWhatsapp)
+                    .filter(String::isNotBlank)
+                    .joinToString(" • ")
+                    .ifBlank { "Não informado" },
+            )
+        }
         OrderInfoBox(label = "Data da aprovação", value = formatDateTime(order.updatedAt.ifBlank { order.createdAt }))
     }
 }
@@ -511,6 +539,15 @@ private fun AdminStoreOrdersMessage(
 
 private fun formatCurrency(value: Double): String {
     return NumberFormat.getCurrencyInstance(Locale("pt", "BR")).format(value)
+}
+
+private fun orderStatusColor(status: AdminStoreOrderStatus): Color {
+    return when (status) {
+        AdminStoreOrderStatus.Pendente -> PremiumAmber
+        AdminStoreOrderStatus.Approved -> Color(0xFF22D3EE)
+        AdminStoreOrderStatus.Delivered -> PremiumBrandAccent
+        AdminStoreOrderStatus.Rejected -> Color(0xFFF87171)
+    }
 }
 
 private fun formatDateTime(value: String): String {

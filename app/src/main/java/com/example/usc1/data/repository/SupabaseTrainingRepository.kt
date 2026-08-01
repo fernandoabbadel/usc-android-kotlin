@@ -1,307 +1,401 @@
 package com.example.usc1.data.repository
 
 import com.example.usc1.data.supabase.SupabaseClientProvider
+import com.example.usc1.domain.model.TrainingAgendaData
+import com.example.usc1.domain.model.TrainingAttendanceRecord
+import com.example.usc1.domain.model.TrainingAttendanceStatus
+import com.example.usc1.domain.model.TrainingCatalog
+import com.example.usc1.domain.model.TrainingDetailData
+import com.example.usc1.domain.model.TrainingRecordStatus
+import com.example.usc1.domain.model.TrainingRsvpRecord
+import com.example.usc1.domain.model.TrainingRsvpStatus
+import com.example.usc1.domain.model.TrainingSessionRecord
 import com.example.usc1.domain.repository.TrainingRepository
-import com.example.usc1.ui.training.TrainingCheckIn
-import com.example.usc1.ui.training.TrainingFrequency
-import com.example.usc1.ui.training.TrainingSession
-import com.example.usc1.ui.training.TrainingStatus
-import com.example.usc1.ui.training.TrainingUiState
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Count
 import io.github.jan.supabase.postgrest.query.Order
 import java.time.Instant
-import java.time.LocalDate
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
 
+/**
+ * Porta de `web-reference/src/lib/treinosNativeService.ts` para as rotas
+ * `/treinos` e `/treinos/[id]`.
+ */
 class SupabaseTrainingRepository(
     private val clientProvider: () -> SupabaseClient = { SupabaseClientProvider.client },
 ) : TrainingRepository {
-    override suspend fun getTrainingHub(
+
+    override suspend fun getMonthAgenda(
         tenantId: String,
-        userId: String,
-        userName: String,
-    ): TrainingUiState = withContext(Dispatchers.IO) {
+        startDate: String,
+        endDate: String,
+    ): TrainingAgendaData = withContext(Dispatchers.IO) {
         val cleanTenantId = tenantId.trim()
-        val cleanUserId = userId.trim()
-        if (!SupabaseClientProvider.config.isConfigured || cleanTenantId.isBlank() || cleanUserId.isBlank()) {
-            return@withContext TrainingUiState(
-                activeChallengeSubtitle = "Sessão necessária",
-                activeChallengeDescription = "Entre com sua conta para carregar os treinos reais da atlética.",
-            )
+        val start = startDate.trim().take(10)
+        val end = endDate.trim().take(10)
+        if (!SupabaseClientProvider.config.isConfigured ||
+            cleanTenantId.isBlank() ||
+            start.isBlank() ||
+            end.isBlank()
+        ) {
+            return@withContext TrainingAgendaData()
         }
 
         val client = clientProvider()
-        val today = LocalDate.now(TrainingZone)
-        val startDate = today.minusDays(21).toString()
-
-        val treinoRows = client.from(TrainingsTable)
+        val rows = client.from(TrainingsTable)
             .select(columns = Columns.raw(TrainingColumns)) {
                 filter {
                     eq("tenant_id", cleanTenantId)
-                    gte("dia", startDate)
+                    gte("dia", start)
+                    lte("dia", end)
                 }
                 order(column = "dia", order = Order.ASCENDING)
-                limit(count = MaxTrainings.toLong())
+                limit(count = TrainingCatalog.MaxMonthResults.toLong())
             }
             .decodeList<TrainingRow>()
 
-        val trainingIds = treinoRows.mapNotNull { it.id.trim().takeIf(String::isNotBlank) }
-        val rsvps = if (trainingIds.isEmpty()) {
-            emptyList()
-        } else {
-            client.from(TrainingRsvpsTable)
-                .select(columns = Columns.raw(RsvpColumns)) {
-                    filter {
-                        eq("tenant_id", cleanTenantId)
-                        eq("userId", cleanUserId)
-                        isIn("treinoId", trainingIds)
-                    }
-                    limit(count = MaxPresenceRows.toLong())
-                }
-                .decodeList<TrainingRsvpRow>()
-        }
-        val chamada = if (trainingIds.isEmpty()) {
-            emptyList()
-        } else {
-            client.from(TrainingChamadaTable)
-                .select(columns = Columns.raw(ChamadaColumns)) {
-                    filter {
-                        eq("tenant_id", cleanTenantId)
-                        eq("userId", cleanUserId)
-                        isIn("treinoId", trainingIds)
-                    }
-                    order(column = "timestamp", order = Order.DESCENDING)
-                    limit(count = MaxPresenceRows.toLong())
-                }
-                .decodeList<TrainingChamadaRow>()
-        }
+        val modalityColors = runCatching { fetchModalityColors(client, cleanTenantId) }
+            .getOrElse { emptyMap() }
+        val presenceCounts = runCatching {
+            fetchPresenceCounts(client, cleanTenantId, rows.map { it.id })
+        }.getOrElse { emptyMap() }
 
-        val rsvpByTraining = rsvps.associateBy { it.treinoId }
-        val chamadaByTraining = chamada.associateBy { it.treinoId }
-        val sessionRows = treinoRows.filterNot { it.status.orEmpty().equals("cancelado", ignoreCase = true) }
-        val sessions = sessionRows.map { row ->
-            mapSession(
-                row = row,
-                rsvp = rsvpByTraining[row.id],
-                chamada = chamadaByTraining[row.id],
-                today = today,
-            )
-        }
-
-        val trainingById = treinoRows.associateBy { it.id }
-        val history = chamada.map { row ->
-            val treino = trainingById[row.treinoId]
-            TrainingCheckIn(
-                id = row.id.trim().ifBlank { row.treinoId.take(10).uppercase() },
-                sessionTitle = treino?.modalidade.orEmpty().trim().ifBlank { "Treino" },
-                userName = row.nome.orEmpty().trim().ifBlank { userName.ifBlank { "Atleta" } },
-                status = row.status.toPresenceStatus(),
-                qrPayload = buildTrainingPresenceQrPayload(
-                    treinoId = row.treinoId,
-                    tenantId = cleanTenantId,
-                    userId = cleanUserId,
-                    userName = userName,
-                    userClass = row.turma,
-                    userAvatar = row.avatar,
-                ),
-                createdAtLabel = formatInstant(row.timestamp.orEmpty()),
-            )
-        }
-
-        val selectedSession = sessions.firstOrNull { it.status != TrainingStatus.Closed } ?: sessions.firstOrNull()
-        val monthStart = today.withDayOfMonth(1)
-        val monthlyTrainingCount = treinoRows.count { row ->
-            row.localDate()?.let { !it.isBefore(monthStart) && !it.isAfter(today.withDayOfMonth(today.lengthOfMonth())) } == true
-        }
-        val monthlyPresenceCount = chamada.count { row ->
-            val instant = parseInstant(row.timestamp.orEmpty())
-            val date = instant?.atZone(TrainingZone)?.toLocalDate()
-            row.status.toPresenceStatus() == TrainingStatus.Confirmed &&
-                date != null &&
-                !date.isBefore(monthStart)
-        }
-
-        TrainingUiState(
-            activeChallengeTitle = "Desafio Cardume",
-            activeChallengeSubtitle = "Validado por check-in",
-            activeChallengeDescription = if (sessions.isEmpty()) {
-                "Nenhum treino cadastrado para este período."
-            } else {
-                "Some presenças reais, mantenha sequência e suba no ranking da atlética."
-            },
-            sessions = sessions,
-            checkIn = selectedSession?.let { session ->
-                TrainingCheckIn(
-                    id = "CHK-${session.id.take(8).uppercase()}",
-                    sessionTitle = session.title,
-                    userName = userName.ifBlank { "Atleta" },
-                    status = session.status,
-                    qrPayload = buildTrainingPresenceQrPayload(
-                        treinoId = session.id,
-                        tenantId = cleanTenantId,
-                        userId = cleanUserId,
-                        userName = userName,
-                        userClass = "",
-                        userAvatar = "",
-                    ),
-                    createdAtLabel = session.dateLabel,
+        TrainingAgendaData(
+            sessions = rows.map { row ->
+                row.toRecord(
+                    presentCount = presenceCounts[row.id] ?: 0,
+                    calendarColor = modalityColors[TrainingCatalog.modalityKey(row.modalidade.orEmpty())]
+                        ?: TrainingCatalog.DefaultModalityColor,
                 )
-            } ?: TrainingUiState().checkIn,
-            frequency = TrainingFrequency(
-                monthLabel = formatMonth(today),
-                attended = monthlyPresenceCount,
-                total = monthlyTrainingCount.coerceAtLeast(monthlyPresenceCount),
-                streakLabel = when (monthlyPresenceCount) {
-                    0 -> "Sem presenças registradas"
-                    1 -> "1 presença confirmada"
-                    else -> "$monthlyPresenceCount presenças confirmadas"
-                },
-            ),
-            history = history,
-        )
-    }
-
-    private fun mapSession(
-        row: TrainingRow,
-        rsvp: TrainingRsvpRow?,
-        chamada: TrainingChamadaRow?,
-        today: LocalDate,
-    ): TrainingSession {
-        val date = row.localDate()
-        val status = when {
-            chamada?.status.toPresenceStatus() == TrainingStatus.Confirmed -> TrainingStatus.Confirmed
-            rsvp?.status.toPresenceStatus() == TrainingStatus.Confirmed -> TrainingStatus.Confirmed
-            row.status.orEmpty().lowercase() in setOf("encerrado", "closed", "finalizado") -> TrainingStatus.Closed
-            date != null && date.isBefore(today) -> TrainingStatus.Closed
-            else -> TrainingStatus.Open
-        }
-        val confirmedCount = row.confirmados.size
-        return TrainingSession(
-            id = row.id.trim(),
-            title = row.modalidade.orEmpty().trim().ifBlank { "Treino" },
-            modality = row.modalidade.orEmpty().trim().ifBlank { "Treino" },
-            coachName = row.treinador.orEmpty().trim().ifBlank { "Atlética" },
-            dateLabel = formatTrainingDate(row.dia.orEmpty(), today),
-            timeLabel = row.horario.orEmpty().trim().ifBlank { "Livre" },
-            location = row.local.orEmpty().trim().ifBlank { "Local a definir" },
-            status = status,
-            presenceLabel = when {
-                confirmedCount > 0 -> "+$confirmedCount confirmados"
-                status == TrainingStatus.Confirmed -> "Presença confirmada"
-                status == TrainingStatus.Closed -> "Histórico fechado"
-                else -> "Check-in disponível"
             },
-            imageUrl = row.imagem?.trim()?.takeIf(String::isNotBlank),
+            modalityColors = modalityColors,
         )
     }
 
-    private fun TrainingRow.localDate(): LocalDate? {
-        return runCatching { LocalDate.parse(dia.orEmpty().take(10)) }.getOrNull()
-    }
-
-    private fun String?.toPresenceStatus(): TrainingStatus {
-        return when (orEmpty().trim().lowercase()) {
-            "presente",
-            "confirmado",
-            "confirmed",
-            "approved",
-            "aprovado",
-            "vou",
-            "going" -> TrainingStatus.Confirmed
-            "encerrado",
-            "closed",
-            "ausente",
-            "cancelado" -> TrainingStatus.Closed
-            else -> TrainingStatus.Open
-        }
-    }
-
-    private fun formatTrainingDate(value: String, today: LocalDate): String {
-        val date = runCatching { LocalDate.parse(value.take(10)) }.getOrNull() ?: return value.take(10)
-        return when (date) {
-            today -> "Hoje"
-            today.plusDays(1) -> "Amanhã"
-            else -> TrainingDayFormatter.format(date).uppercase()
-        }
-    }
-
-    private fun formatMonth(value: LocalDate): String {
-        val month = value.month.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("pt-BR"))
-            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.forLanguageTag("pt-BR")) else it.toString() }
-        return "$month ${value.year}"
-    }
-
-    private fun formatInstant(value: String): String {
-        return parseInstant(value)?.let(TrainingInstantFormatter::format) ?: value.take(16)
-    }
-
-    private fun parseInstant(value: String): Instant? {
-        val clean = value.trim()
-        if (clean.isBlank()) return null
-        return runCatching { OffsetDateTime.parse(clean).toInstant() }
-            .getOrElse { runCatching { Instant.parse(clean) }.getOrNull() }
-    }
-
-    private fun buildTrainingPresenceQrPayload(
-        treinoId: String,
+    override suspend fun getRsvpsForTrainings(
         tenantId: String,
+        trainingIds: List<String>,
+    ): Map<String, List<TrainingRsvpRecord>> = withContext(Dispatchers.IO) {
+        val cleanTenantId = tenantId.trim()
+        val ids = trainingIds.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        if (!SupabaseClientProvider.config.isConfigured || cleanTenantId.isBlank() || ids.isEmpty()) {
+            return@withContext emptyMap()
+        }
+
+        clientProvider().from(TrainingRsvpsTable)
+            .select(columns = Columns.raw(RsvpColumns)) {
+                filter {
+                    eq("tenant_id", cleanTenantId)
+                    isIn("treinoId", ids)
+                }
+                order(column = "timestamp", order = Order.DESCENDING)
+                limit(count = TrainingCatalog.MaxParticipants.toLong())
+            }
+            .decodeList<TrainingRsvpRow>()
+            .groupBy { it.treinoId.trim() }
+            .mapValues { (_, rows) -> rows.mapNotNull { it.toRecord() } }
+    }
+
+    override suspend fun getTrainingDetail(
+        tenantId: String,
+        trainingId: String,
+    ): TrainingDetailData? = withContext(Dispatchers.IO) {
+        val cleanTenantId = tenantId.trim()
+        val cleanTrainingId = trainingId.trim()
+        if (!SupabaseClientProvider.config.isConfigured ||
+            cleanTenantId.isBlank() ||
+            cleanTrainingId.isBlank()
+        ) {
+            return@withContext null
+        }
+
+        val client = clientProvider()
+        val session = client.from(TrainingsTable)
+            .select(columns = Columns.raw(TrainingColumns)) {
+                filter {
+                    eq("tenant_id", cleanTenantId)
+                    eq("id", cleanTrainingId)
+                }
+                limit(count = 1)
+            }
+            .decodeList<TrainingRow>()
+            .firstOrNull()
+            ?: return@withContext null
+
+        val rsvps = client.from(TrainingRsvpsTable)
+            .select(columns = Columns.raw(RsvpColumns)) {
+                filter {
+                    eq("tenant_id", cleanTenantId)
+                    eq("treinoId", cleanTrainingId)
+                }
+                order(column = "timestamp", order = Order.DESCENDING)
+                limit(count = TrainingCatalog.MaxParticipants.toLong())
+            }
+            .decodeList<TrainingRsvpRow>()
+
+        val attendance = client.from(TrainingAttendanceTable)
+            .select(columns = Columns.raw(AttendanceColumns)) {
+                filter {
+                    eq("tenant_id", cleanTenantId)
+                    eq("treinoId", cleanTrainingId)
+                }
+                order(column = "timestamp", order = Order.DESCENDING)
+                limit(count = TrainingCatalog.MaxParticipants.toLong())
+            }
+            .decodeList<TrainingAttendanceRow>()
+
+        val modalityColors = runCatching { fetchModalityColors(client, cleanTenantId) }
+            .getOrElse { emptyMap() }
+
+        TrainingDetailData(
+            session = session.toRecord(
+                presentCount = attendance.count {
+                    TrainingAttendanceStatus.fromRemote(it.status) == TrainingAttendanceStatus.Presente
+                },
+                calendarColor = modalityColors[TrainingCatalog.modalityKey(session.modalidade.orEmpty())]
+                    ?: TrainingCatalog.DefaultModalityColor,
+            ),
+            rsvps = rsvps.mapNotNull { it.toRecord() },
+            attendance = attendance.mapNotNull { it.toRecord() },
+        )
+    }
+
+    override suspend fun setRsvp(
+        tenantId: String,
+        trainingId: String,
         userId: String,
         userName: String,
-        userClass: String?,
-        userAvatar: String?,
-    ): String {
-        return buildJsonObject {
-            put("t", "treino-presenca")
-            put("v", 1)
-            put("tid", treinoId)
-            put("ten", tenantId)
-            put("uid", userId)
-            put("n", userName.ifBlank { "Atleta" })
-            put("tu", userClass.orEmpty().ifBlank { "Geral" })
-            put("av", userAvatar.orEmpty())
-            put("ts", System.currentTimeMillis())
-        }.toString()
+        userAvatarUrl: String,
+        userClass: String,
+        status: TrainingRsvpStatus,
+    ) = withContext(Dispatchers.IO) {
+        val cleanTenantId = tenantId.trim()
+        val cleanTrainingId = trainingId.trim()
+        val cleanUserId = userId.trim()
+        require(cleanTenantId.isNotBlank() && cleanTrainingId.isNotBlank() && cleanUserId.isNotBlank()) {
+            "Dados inválidos para confirmar presença no treino."
+        }
+
+        val client = clientProvider()
+        if (status == TrainingRsvpStatus.NotGoing) {
+            client.from(TrainingRsvpsTable).delete {
+                filter {
+                    eq("tenant_id", cleanTenantId)
+                    eq("treinoId", cleanTrainingId)
+                    eq("userId", cleanUserId)
+                }
+            }
+        } else {
+            val existingId = client.from(TrainingRsvpsTable)
+                .select(columns = Columns.raw("id")) {
+                    filter {
+                        eq("tenant_id", cleanTenantId)
+                        eq("treinoId", cleanTrainingId)
+                        eq("userId", cleanUserId)
+                    }
+                    limit(count = 1)
+                }
+                .decodeList<JsonObject>()
+                .firstOrNull()
+                ?.stringValue("id")
+                .orEmpty()
+
+            val payload = buildJsonObject {
+                if (existingId.isNotBlank()) put("id", JsonPrimitive(existingId))
+                put("tenant_id", JsonPrimitive(cleanTenantId))
+                put("treinoId", JsonPrimitive(cleanTrainingId))
+                put("userId", JsonPrimitive(cleanUserId))
+                put("userName", JsonPrimitive(userName.trim().take(120).ifBlank { "Atleta" }))
+                put("userAvatar", JsonPrimitive(userAvatarUrl.trim().take(2_000)))
+                put("userTurma", JsonPrimitive(userClass.trim().take(30).ifBlank { "Geral" }))
+                put("status", JsonPrimitive(TrainingRsvpStatus.Going.remoteValue))
+                put("timestamp", JsonPrimitive(Instant.now().toString()))
+            }
+            client.from(TrainingRsvpsTable).upsert(payload) {
+                onConflict = "treinoId,userId"
+            }
+        }
+
+        refreshConfirmedCount(client, cleanTenantId, cleanTrainingId)
+    }
+
+    /** `refreshTreinoConfirmedCount`: recontagem dos `going` gravada no próprio treino. */
+    private suspend fun refreshConfirmedCount(
+        client: SupabaseClient,
+        tenantId: String,
+        trainingId: String,
+    ) {
+        // `count: "exact", head: true` do web: contagem sem trazer as linhas.
+        val goingCount = client.from(TrainingRsvpsTable)
+            .select(columns = Columns.raw("id")) {
+                head = true
+                count(Count.EXACT)
+                filter {
+                    eq("tenant_id", tenantId)
+                    eq("treinoId", trainingId)
+                    eq("status", TrainingRsvpStatus.Going.remoteValue)
+                }
+            }
+            .countOrNull()
+            ?.coerceAtLeast(0L)
+            ?: return
+
+        client.from(TrainingsTable).update(
+            buildJsonObject {
+                put("confirmedCount", JsonPrimitive(goingCount.toInt()))
+                put("updatedAt", JsonPrimitive(Instant.now().toString()))
+            },
+        ) {
+            filter {
+                eq("tenant_id", tenantId)
+                eq("id", trainingId)
+            }
+        }
+    }
+
+    /** `fetchTreinoSettings`: `settings` com id escopado por tenant. */
+    private suspend fun fetchModalityColors(
+        client: SupabaseClient,
+        tenantId: String,
+    ): Map<String, String> {
+        val row = client.from(TrainingCatalog.SettingsTable)
+            .select(columns = Columns.raw("id,modalidades,data")) {
+                filter { eq("id", buildTenantScopedRowId(tenantId, TrainingCatalog.SettingsDocId)) }
+                limit(count = 1)
+            }
+            .decodeList<JsonObject>()
+            .firstOrNull()
+            ?: return emptyMap()
+
+        val allowed = (row["modalidades"] as? kotlinx.serialization.json.JsonArray)
+            ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.let(TrainingCatalog::modalityKey) }
+            ?.filter { it.isNotBlank() }
+            ?.toSet()
+            .orEmpty()
+
+        val colors = (row["data"] as? JsonObject)?.get("modalidadeColors") as? JsonObject
+            ?: return emptyMap()
+
+        return colors.entries.mapNotNull { (rawKey, rawValue) ->
+            val key = TrainingCatalog.modalityKey(rawKey)
+            if (key.isBlank()) return@mapNotNull null
+            if (allowed.isNotEmpty() && key !in allowed) return@mapNotNull null
+            val color = (rawValue as? JsonPrimitive)?.contentOrNull?.trim().orEmpty()
+            val normalized = if (HexColorRegex.matches(color)) color else TrainingCatalog.DefaultModalityColor
+            key to normalized
+        }.toMap()
+    }
+
+    /** `fetchTreinoPresenceCounts`: só as linhas `presente` da chamada. */
+    private suspend fun fetchPresenceCounts(
+        client: SupabaseClient,
+        tenantId: String,
+        trainingIds: List<String>,
+    ): Map<String, Int> {
+        val ids = trainingIds.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        if (ids.isEmpty()) return emptyMap()
+
+        return client.from(TrainingAttendanceTable)
+            .select(columns = Columns.raw("treinoId,status")) {
+                filter {
+                    eq("tenant_id", tenantId)
+                    isIn("treinoId", ids)
+                    eq("status", TrainingAttendanceStatus.Presente.remoteValue)
+                }
+                limit(count = MaxPresenceScan.toLong())
+            }
+            .decodeList<JsonObject>()
+            .mapNotNull { it.stringValue("treinoId")?.trim()?.takeIf(String::isNotBlank) }
+            .groupingBy { it }
+            .eachCount()
+    }
+
+    private fun buildTenantScopedRowId(tenantId: String, baseId: String): String {
+        return "tenant:${tenantId.trim()}::${baseId.trim()}"
+    }
+
+    private fun TrainingRow.toRecord(
+        presentCount: Int,
+        calendarColor: String,
+    ): TrainingSessionRecord {
+        return TrainingSessionRecord(
+            id = id.trim(),
+            modality = modalidade.orEmpty().trim().take(80).ifBlank { "Treino" },
+            weekdayLabel = diaSemana.orEmpty().trim().take(40),
+            date = dia.orEmpty().trim().take(10),
+            time = horario.orEmpty().trim().take(20),
+            location = local.orEmpty().trim().take(140),
+            coachName = treinador.orEmpty().trim().take(120),
+            coachId = treinadorId.orEmpty().trim().take(120),
+            coachAvatarUrl = resolveRemoteImageUrl(treinadorAvatar),
+            description = descricao.orEmpty().trim().take(700),
+            imageUrl = resolveRemoteImageUrl(imagem),
+            dayOrder = ordemDia.coerceAtLeast(0),
+            status = TrainingRecordStatus.fromRemote(status),
+            confirmedCount = confirmedCount.coerceAtLeast(0),
+            presentCount = presentCount,
+            calendarColor = calendarColor,
+        )
+    }
+
+    private fun TrainingRsvpRow.toRecord(): TrainingRsvpRecord? {
+        val cleanUserId = userId.trim()
+        if (cleanUserId.isBlank()) return null
+        return TrainingRsvpRecord(
+            userId = cleanUserId,
+            userName = userName.orEmpty().trim().take(120).ifBlank { "Aluno" },
+            userAvatarUrl = resolveRemoteImageUrl(userAvatar),
+            userClass = userTurma.orEmpty().trim().take(30).ifBlank { "Geral" },
+            status = TrainingRsvpStatus.fromRemote(status),
+        )
+    }
+
+    private fun TrainingAttendanceRow.toRecord(): TrainingAttendanceRecord? {
+        val cleanUserId = userId.trim().ifBlank { id.trim() }
+        if (cleanUserId.isBlank()) return null
+        return TrainingAttendanceRecord(
+            id = id.trim().ifBlank { cleanUserId },
+            userId = cleanUserId,
+            name = nome.orEmpty().trim().take(120).ifBlank { "Aluno" },
+            avatarUrl = resolveRemoteImageUrl(avatar),
+            userClass = turma.orEmpty().trim().take(30).ifBlank { "Geral" },
+            status = TrainingAttendanceStatus.fromRemote(status),
+        )
     }
 
     private companion object {
         const val TrainingsTable = "treinos"
         const val TrainingRsvpsTable = "treinos_rsvps"
-        const val TrainingChamadaTable = "treinos_chamada"
-        const val MaxTrainings = 160
-        const val MaxPresenceRows = 240
+        const val TrainingAttendanceTable = "treinos_chamada"
+        const val MaxPresenceScan = 5_000
         const val TrainingColumns =
-            "id,modalidade,diaSemana,dia,horario,local,treinador,treinadorId,treinadorAvatar,descricao,imagem,ordemDia,status,confirmados,createdAt,updatedAt"
-        const val RsvpColumns =
-            "id,treinoId,userId,userName,userAvatar,userTurma,status,timestamp"
-        const val ChamadaColumns =
-            "id,treinoId,userId,nome,avatar,turma,status,origem,pagamento,timestamp,updatedAt"
+            "id,modalidade,diaSemana,dia,horario,local,treinador,treinadorId,treinadorAvatar," +
+                "descricao,imagem,ordemDia,status,confirmedCount"
+        const val RsvpColumns = "id,treinoId,userId,userName,userAvatar,userTurma,status,timestamp"
+        const val AttendanceColumns = "id,treinoId,userId,nome,avatar,turma,status,origem,timestamp"
+        val HexColorRegex = Regex("^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
     }
 }
 
-private val TrainingZone: ZoneId = ZoneId.of("America/Sao_Paulo")
-
-private val TrainingDayFormatter: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("EEE, dd MMM", Locale.forLanguageTag("pt-BR"))
-
-private val TrainingInstantFormatter: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("dd/MM • HH:mm", Locale.forLanguageTag("pt-BR")).withZone(TrainingZone)
+private fun JsonObject.stringValue(key: String): String? {
+    val element: JsonElement = this[key] ?: return null
+    return (element as? JsonPrimitive)?.contentOrNull
+}
 
 @Serializable
 private data class TrainingRow(
     val id: String = "",
-    @SerialName("tenant_id") val tenantId: String? = null,
     val modalidade: String? = null,
     val diaSemana: String? = null,
     val dia: String? = null,
@@ -314,9 +408,7 @@ private data class TrainingRow(
     val imagem: String? = null,
     val ordemDia: Int = 0,
     val status: String? = null,
-    val confirmados: List<String> = emptyList(),
-    @SerialName("createdAt") val createdAt: String? = null,
-    @SerialName("updatedAt") val updatedAt: String? = null,
+    val confirmedCount: Int = 0,
 )
 
 @Serializable
@@ -332,7 +424,7 @@ private data class TrainingRsvpRow(
 )
 
 @Serializable
-private data class TrainingChamadaRow(
+private data class TrainingAttendanceRow(
     val id: String = "",
     val treinoId: String = "",
     val userId: String = "",
@@ -341,7 +433,6 @@ private data class TrainingChamadaRow(
     val turma: String? = null,
     val status: String? = null,
     val origem: String? = null,
-    val pagamento: String? = null,
     val timestamp: String? = null,
     @SerialName("updatedAt") val updatedAt: String? = null,
 )

@@ -4,7 +4,11 @@ import com.example.usc1.domain.model.AdminPartnerScansPage
 import com.example.usc1.domain.model.AdminPartnersBundle
 import com.example.usc1.domain.model.AdminPartnersPage
 import com.example.usc1.domain.model.AdminPartnersTierCounts
+import com.example.usc1.domain.model.PartnerContactVisibility
+import com.example.usc1.domain.model.PartnerCoupon
 import com.example.usc1.domain.model.PartnerForm
+import com.example.usc1.domain.model.PartnerLeadForm
+import com.example.usc1.domain.model.PartnerLoginResult
 import com.example.usc1.domain.model.PartnerPasswordReset
 import com.example.usc1.domain.model.PartnerRecord
 import com.example.usc1.domain.model.PartnerStatus
@@ -30,4 +34,30 @@ interface PartnersRepository {
     suspend fun setPartnerStatus(partnerId: String, status: PartnerStatus)
     suspend fun savePartner(form: PartnerForm): PartnerRecord
     suspend fun requestPasswordReset(partnerId: String): PartnerPasswordReset
+
+    /** `loginPartnerByEmail` de `/empresa`: compara a senha guardada em `parceiros`. */
+    suspend fun loginPartner(email: String, password: String): PartnerLoginResult?
+
+    /** Histórico de scans de um parceiro (`/empresa/{id}/historico`, 20 por página). */
+    suspend fun getPartnerScansPage(
+        partnerId: String,
+        page: Int,
+        pageSize: Int,
+    ): AdminPartnerScansPage
+
+    /** `createPartnerLead` de `/empresa/cadastro`: grava o parceiro com status `pending`. */
+    suspend fun createPartnerLead(form: PartnerLeadForm): String
+
+    /** `contact_visibility_ack` do parceiro, usado por `/empresa/{id}/editar`. */
+    suspend fun getPartnerContactVisibility(partnerId: String): PartnerContactVisibility
+
+    /** `updatePartnerProfile` de `/empresa/{id}/editar`. */
+    suspend fun updatePartnerPublicProfile(
+        partnerId: String,
+        whatsApp: String,
+        instagram: String,
+        site: String,
+        coupons: List<PartnerCoupon>,
+        contactVisibility: PartnerContactVisibility,
+    )
 }

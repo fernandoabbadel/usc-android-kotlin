@@ -34,24 +34,56 @@ data class CommunityPost(
     val commentsDisabled: Boolean = false,
     val imageUrl: String? = null,
     val imageRes: Int = R.drawable.logo_usc,
+    val likedByMe: Boolean = false,
+    val hypedByMe: Boolean = false,
+    val planColorKey: String = "",
+    val patente: String = "",
+)
+
+data class CommunityComment(
+    val id: String,
+    val postId: String,
+    val userId: String = "",
+    val authorName: String,
+    val authorAvatarUrl: String? = null,
+    val authorRole: String = "",
+    val body: String,
+    val timeLabel: String = "",
+    val likes: Int = 0,
 )
 
 data class CommunityUiState(
     val title: String = "Comunidade da Atlética",
     val subtitle: String = "Espaço oficial da atlética",
     val coverImageUrl: String? = null,
+    val currentUserId: String = "",
     val currentUserName: String = "",
     val currentUserAvatarUrl: String? = null,
     val isUserBanned: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val postDraft: String = "",
+    val isSubmittingPost: Boolean = false,
+    val postError: String? = null,
     val activeTab: String = DefaultCommunityCategories.first(),
     val activeFilter: CommunityFeedFilter = CommunityFeedFilter.Recent,
     val maxVisiblePosts: Int = 20,
     val tabs: List<String> = DefaultCommunityCategories,
     val allPosts: List<CommunityPost> = emptyList(),
     val posts: List<CommunityPost> = emptyList(),
-)
+    val openCommentsPostId: String? = null,
+    val comments: List<CommunityComment> = emptyList(),
+    val commentsLoading: Boolean = false,
+    val commentDraft: String = "",
+    val isSubmittingComment: Boolean = false,
+    val commentError: String? = null,
+) {
+    /** Limite de caracteres do textarea do web (`maxLength={150}`). */
+    val postDraftLimit: Int get() = 150
+
+    val canPublish: Boolean
+        get() = !isSubmittingPost && !isUserBanned && currentUserId.isNotBlank() && postDraft.isNotBlank()
+}
 
 val DefaultCommunityCategories = listOf(
     "Geral",

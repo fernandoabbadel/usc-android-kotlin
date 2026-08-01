@@ -19,11 +19,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.Payment
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
@@ -32,13 +37,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,11 +68,13 @@ import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumScreen
 import com.example.usc1.core.ui.PremiumSecondaryButton
+import com.example.usc1.core.ui.PremiumTextField
 import com.example.usc1.core.ui.PremiumZinc400
 import com.example.usc1.core.ui.PremiumZinc500
 import com.example.usc1.core.ui.PremiumZinc700
 import com.example.usc1.core.ui.PremiumZinc800
 import com.example.usc1.core.ui.PremiumZinc900
+import java.net.URLEncoder
 
 @Composable
 fun StoreScreen(
@@ -72,11 +86,22 @@ fun StoreScreen(
     onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val visibleProducts = state.products.filter { product ->
+        val query = searchQuery.trim()
+        query.isBlank() ||
+            product.name.contains(query, ignoreCase = true) ||
+            product.description.contains(query, ignoreCase = true) ||
+            product.category.contains(query, ignoreCase = true) ||
+            product.sellerName.contains(query, ignoreCase = true) ||
+            product.badge.contains(query, ignoreCase = true)
+    }
+
     when {
         state.isLoading -> PremiumLoadingState(text = "Carregando loja", modifier = modifier)
         state.errorMessage != null -> PremiumScreen(modifier = modifier) {
             PremiumHeader(
-                title = "Loja USC",
+                title = "Loja",
                 subtitle = "Produtos oficiais e retirada no evento",
                 icon = Icons.Outlined.Storefront,
             )
@@ -92,8 +117,8 @@ fun StoreScreen(
             bottomPadding = 116.dp,
         ) {
             PremiumHeader(
-                title = "Loja USC",
-                subtitle = "Drops, fardas e produtos do evento",
+                title = "Loja",
+                subtitle = "Produtos, carrinho e pedidos da atlética",
                 icon = Icons.Outlined.Storefront,
             )
 
@@ -102,6 +127,30 @@ fun StoreScreen(
                 onCartClick = onCartClick,
                 onOrdersClick = onOrdersClick,
             )
+
+            PremiumTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = "O que você procura?",
+                leadingIcon = Icons.Outlined.Search,
+            )
+
+            if (state.categoryCards.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    state.categoryCards.forEach { category ->
+                        StoreCategoryCard(
+                            category = category,
+                            selected = state.selectedCategory == category.name,
+                            onClick = { onCategoryClick(category.name) },
+                        )
+                    }
+                }
+            }
 
             Row(
                 modifier = Modifier
@@ -118,14 +167,14 @@ fun StoreScreen(
                 }
             }
 
-            if (state.products.isEmpty()) {
+            if (visibleProducts.isEmpty()) {
                 PremiumEmptyState(
                     title = "Nenhum produto",
                     subtitle = "Não há produtos publicados para este tenant e filtro.",
                     icon = Icons.Outlined.Storefront,
                 )
             } else {
-                state.products.forEach { product ->
+                visibleProducts.forEach { product ->
                     ProductCard(
                         product = product,
                         onClick = { onProductClick(product) },
@@ -139,11 +188,12 @@ fun StoreScreen(
 @Composable
 fun ProductDetailStateScreen(
     state: ProductDetailUiState,
-    onAddToCartClick: (StoreProduct) -> Unit,
+    onAddToCartClick: (StoreProduct, Int, String, String) -> Unit,
     onCartClick: () -> Unit,
     onBackClick: () -> Unit,
     onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onOrderClick: (StoreOrder) -> Unit = {},
 ) {
     when {
         state.isLoading -> PremiumLoadingState(text = "Carregando produto", modifier = modifier)
@@ -167,6 +217,9 @@ fun ProductDetailStateScreen(
             onCartClick = onCartClick,
             onBackClick = onBackClick,
             modifier = modifier,
+            myOrders = state.myOrders,
+            myOrdersLoading = state.myOrdersLoading,
+            onOrderClick = onOrderClick,
         )
     }
 }
@@ -174,11 +227,22 @@ fun ProductDetailStateScreen(
 @Composable
 fun ProductDetailScreen(
     product: StoreProduct,
-    onAddToCartClick: (StoreProduct) -> Unit,
+    onAddToCartClick: (StoreProduct, Int, String, String) -> Unit,
     onCartClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
+    myOrders: List<StoreOrder> = emptyList(),
+    myOrdersLoading: Boolean = false,
+    onOrderClick: (StoreOrder) -> Unit = {},
 ) {
+    var quantity by rememberSaveable(product.id) { mutableStateOf(1) }
+    var selectedVariant by rememberSaveable(product.id, product.variants.joinToString("|")) {
+        mutableStateOf(product.variants.firstOrNull().orEmpty())
+    }
+    var selectedColor by rememberSaveable(product.id, product.colors.joinToString("|")) {
+        mutableStateOf(product.colors.firstOrNull().orEmpty())
+    }
+
     PremiumScreen(
         modifier = modifier,
         bottomPadding = 116.dp,
@@ -223,6 +287,14 @@ fun ProductDetailScreen(
                     fontSize = 27.sp,
                     fontWeight = FontWeight.Black,
                 )
+                product.oldPriceLabel?.let { oldPrice ->
+                    Text(
+                        text = oldPrice,
+                        color = PremiumZinc500,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                    )
+                }
             }
         }
 
@@ -237,12 +309,50 @@ fun ProductDetailScreen(
             PremiumInfoRow(label = "Categoria", value = product.category, accent = productStatusColor(product.status))
             PremiumInfoRow(label = "Vendedor", value = product.sellerName.ifBlank { product.sellerType.label }, accent = PremiumBrandAccent)
             PremiumInfoRow(label = "Estoque", value = product.stockLabel, accent = productStatusColor(product.status))
+            if (product.colors.isNotEmpty()) {
+                PremiumInfoRow(label = "Cores", value = product.colors.take(4).joinToString(", "), accent = PremiumBrandAccent)
+            }
+            if (product.variants.isNotEmpty()) {
+                PremiumInfoRow(label = "Variações", value = product.variants.take(3).joinToString(", "), accent = productStatusColor(product.status))
+            }
+            if (product.characteristics.isNotEmpty()) {
+                PremiumInfoRow(label = "Características", value = product.characteristics.take(3).joinToString(", "), accent = PremiumZinc400)
+            }
+            PremiumInfoRow(label = "Métricas", value = "${product.likesCount} curtidas • ${product.soldCount} vendidos", accent = PremiumAmber)
+            if (product.pixKey.isNotBlank() || product.pixBank.isNotBlank() || product.pixHolder.isNotBlank()) {
+                PremiumInfoRow(label = "PIX", value = product.pixHolder.ifBlank { product.pixBank.ifBlank { "Configurado" } }, accent = PremiumBrand)
+            }
             PremiumInfoRow(label = "Avaliações", value = product.reviewLabel, accent = PremiumAmber)
         }
 
+        if (product.colors.isNotEmpty()) {
+            StoreOptionSelector(
+                title = "Cor",
+                options = product.colors,
+                selected = selectedColor,
+                onSelect = { selectedColor = it },
+                accent = productStatusColor(product.status),
+            )
+        }
+        if (product.variants.isNotEmpty()) {
+            StoreOptionSelector(
+                title = "Variação",
+                options = product.variants,
+                selected = selectedVariant,
+                onSelect = { selectedVariant = it },
+                accent = productStatusColor(product.status),
+            )
+        }
+        StoreQuantitySelector(
+            quantity = quantity,
+            onDecrease = { quantity = (quantity - 1).coerceAtLeast(1) },
+            onIncrease = { quantity += 1 },
+            accent = productStatusColor(product.status),
+        )
+
         PremiumPrimaryButton(
             text = if (product.status == StoreProductStatus.Available) "Adicionar ao carrinho" else product.status.label,
-            onClick = { onAddToCartClick(product) },
+            onClick = { onAddToCartClick(product, quantity, selectedVariant, selectedColor) },
             enabled = product.status == StoreProductStatus.Available,
             icon = Icons.Outlined.ShoppingCart,
             accent = productStatusColor(product.status),
@@ -252,6 +362,84 @@ fun ProductDetailScreen(
             onClick = onCartClick,
             icon = Icons.Outlined.AccountBalanceWallet,
         )
+
+        // "Seus pedidos" da ficha do produto no web: pendentes e aprovados deste item.
+        if (myOrdersLoading || myOrders.isNotEmpty()) {
+            Text(
+                text = "SEUS PEDIDOS",
+                color = PremiumZinc500,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.sp,
+                modifier = Modifier.padding(start = 2.dp),
+            )
+            if (myOrdersLoading) {
+                PremiumLoadingState(text = "Carregando seus pedidos")
+            } else {
+                val pending = myOrders.filter { it.status == StoreOrderStatus.Pending }
+                val approved = myOrders.filter { it.status != StoreOrderStatus.Pending }
+                if (pending.isNotEmpty()) {
+                    Text(
+                        text = "PENDENTES",
+                        color = PremiumAmber,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.padding(start = 2.dp),
+                    )
+                    pending.forEach { order ->
+                        ProductOrderRow(order = order, onClick = { onOrderClick(order) })
+                    }
+                }
+                if (approved.isNotEmpty()) {
+                    Text(
+                        text = "APROVADOS",
+                        color = PremiumBrand,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.padding(start = 2.dp),
+                    )
+                    approved.forEach { order ->
+                        ProductOrderRow(order = order, onClick = { onOrderClick(order) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductOrderRow(
+    order: StoreOrder,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PremiumCard(modifier = modifier.clickable(onClick = onClick), accent = storeOrderColor(order.status)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = "Pedido #${order.id.take(8).uppercase()}",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                Text(
+                    text = listOf(order.createdAtLabel, order.amountLabel)
+                        .filter(String::isNotBlank)
+                        .joinToString(" • "),
+                    color = PremiumZinc500,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            PremiumChip(
+                label = order.status.label,
+                accent = storeOrderColor(order.status),
+            )
+        }
     }
 }
 
@@ -312,7 +500,7 @@ fun CheckoutScreen(
     ) {
         PremiumHeader(
             title = "Checkout",
-            subtitle = "Checkout pendente de integração real",
+            subtitle = "PIX, comprovante e aprovação",
             icon = Icons.Outlined.CreditCard,
             onBackClick = onBackClick,
         )
@@ -337,13 +525,13 @@ fun CheckoutScreen(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
-                        text = "PIX USC",
+                        text = "Pagamento via PIX",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                     )
                     Text(
-                        text = "Aguardando comprovante e aprovação da atlética.",
+                        text = "O pedido fica pendente até a validação do comprovante.",
                         color = PremiumZinc400,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -354,16 +542,11 @@ fun CheckoutScreen(
             StoreTotalRow(label = "Total do pedido", value = state.totalLabel, highlight = true)
         }
 
-        PremiumCard(accent = PremiumAmber) {
-            PremiumChip(label = "Retirada no evento", icon = Icons.Outlined.LocalShipping, accent = PremiumAmber)
-            Text(
-                text = "Leve documento, carteirinha digital ou QR do pedido. A entrega fica liberada após aprovação do pagamento.",
-                color = PremiumZinc400,
-                fontSize = 13.sp,
-                lineHeight = 19.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+        StorePaymentInstructionsCard(
+            items = state.items,
+            totalLabel = state.totalLabel,
+            orderCode = "",
+        )
 
         state.items.forEach { item ->
             CartItemCard(item = item)
@@ -372,6 +555,93 @@ fun CheckoutScreen(
         PremiumPrimaryButton(
             text = "Criar pedido",
             onClick = onConfirmClick,
+            icon = Icons.Outlined.CheckCircle,
+        )
+    }
+}
+
+@Composable
+fun CheckoutConnectedScreen(
+    state: CartUiState,
+    onConfirmClick: () -> Unit,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PremiumScreen(
+        modifier = modifier,
+        bottomPadding = 116.dp,
+    ) {
+        PremiumHeader(
+            title = "Checkout",
+            subtitle = "PIX, comprovante e aprovação",
+            icon = Icons.Outlined.CreditCard,
+            onBackClick = onBackClick,
+        )
+
+        PremiumCard(accent = PremiumBrand) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    modifier = Modifier.size(54.dp),
+                    shape = CircleShape,
+                    color = PremiumBrand.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, PremiumBrand.copy(alpha = 0.34f)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Payment,
+                        contentDescription = null,
+                        modifier = Modifier.padding(14.dp),
+                        tint = PremiumBrand,
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        text = "Pagamento via PIX",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        text = "Cada produto usa o recebedor configurado no produto, Mini Vendor, liga, comissão, diretório ou loja oficial.",
+                        color = PremiumZinc400,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+            StoreTotalRow(label = "Produtos", value = state.subtotalLabel)
+            StoreTotalRow(label = "Total do pedido", value = state.totalLabel, highlight = true)
+        }
+
+        StorePaymentInstructionsCard(
+            items = state.items,
+            totalLabel = state.totalLabel,
+            orderCode = "",
+        )
+
+        state.checkoutError?.let { message ->
+            PremiumCard(accent = PremiumAmber) {
+                Text(
+                    text = message,
+                    color = PremiumAmber,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    fontWeight = FontWeight.Black,
+                )
+            }
+        }
+
+        state.items.forEach { item ->
+            CartItemCard(item = item)
+        }
+
+        PremiumPrimaryButton(
+            text = if (state.isSubmitting) "Criando pedido" else "Criar pedido",
+            onClick = onConfirmClick,
+            enabled = state.items.isNotEmpty(),
+            loading = state.isSubmitting,
             icon = Icons.Outlined.CheckCircle,
         )
     }
@@ -490,16 +760,11 @@ fun StoreOrderDetailScreen(
             CartItemCard(item = item)
         }
 
-        PremiumCard(accent = PremiumZinc700) {
-            PremiumChip(label = "Status visual", icon = Icons.Outlined.CheckCircle, accent = storeOrderColor(order.status))
-            Text(
-                text = "Detalhe de pedido pendente de integração com o fluxo real do web app.",
-                color = PremiumZinc400,
-                fontSize = 12.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+        StorePaymentInstructionsCard(
+            items = order.items,
+            totalLabel = order.amountLabel,
+            orderCode = order.id.take(8).uppercase(),
+        )
     }
 }
 
@@ -520,8 +785,246 @@ fun StoreOrderDetailUnavailableScreen(
         )
         PremiumEmptyState(
             title = "Pedido não carregado",
-            subtitle = "O detalhe de pedidos da loja ainda precisa ser portado do web app com Supabase real.",
+            subtitle = "Reabra Meus Pedidos para carregar o pedido dentro do tenant ativo.",
             icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+        )
+    }
+}
+
+@Composable
+private fun StorePaymentInstructionsCard(
+    items: List<CartItem>,
+    totalLabel: String,
+    orderCode: String,
+) {
+    if (items.isEmpty()) return
+
+    val clipboard = LocalClipboardManager.current
+    val uriHandler = LocalUriHandler.current
+    val groupedItems = items.groupBy { item ->
+        val product = item.product
+        listOf(
+            product.sellerType.remoteValue,
+            product.sellerId,
+            product.pixKey,
+            product.pixHolder,
+            product.receiptWhatsapp,
+        ).joinToString("|")
+    }.values.toList()
+
+    groupedItems.forEachIndexed { index, group ->
+        val product = group.first().product
+        val recipientName = product.receiptName
+            .ifBlank { product.sellerName }
+            .ifBlank { product.sellerType.label }
+        val productNames = group.joinToString(", ") { item ->
+            buildString {
+                append(item.quantity.coerceAtLeast(1))
+                append("x ")
+                append(item.product.name)
+                if (item.variantLabel.isNotBlank()) append(" • ${item.variantLabel}")
+                if (item.colorLabel.isNotBlank()) append(" • ${item.colorLabel}")
+            }
+        }
+        val hasPix = product.pixKey.isNotBlank() || product.pixBank.isNotBlank() || product.pixHolder.isNotBlank()
+        val whatsappUrl = buildStoreWhatsappUrl(
+            phone = product.receiptWhatsapp,
+            sellerName = recipientName,
+            productNames = productNames,
+            totalLabel = totalLabel,
+            orderCode = orderCode,
+        )
+        val accent = if (hasPix) PremiumBrand else PremiumAmber
+
+        PremiumCard(accent = accent) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    PremiumChip(
+                        label = if (groupedItems.size > 1) "Recebedor ${index + 1}" else "Pagamento",
+                        icon = Icons.Outlined.Payment,
+                        accent = accent,
+                        filled = hasPix,
+                    )
+                    Text(
+                        text = recipientName,
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        lineHeight = 19.sp,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        text = product.sellerType.label.uppercase(),
+                        color = PremiumZinc500,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.2.sp,
+                    )
+                }
+                ProductStatusChip(status = product.status)
+            }
+
+            Text(
+                text = productNames,
+                color = PremiumZinc400,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                fontWeight = FontWeight.Bold,
+            )
+
+            if (hasPix) {
+                PremiumInfoRow(
+                    label = "Chave PIX",
+                    value = product.pixKey.ifBlank { "Não configurada" },
+                    accent = accent,
+                )
+                PremiumInfoRow(
+                    label = "Banco",
+                    value = product.pixBank.ifBlank { "-" },
+                    accent = PremiumZinc400,
+                )
+                PremiumInfoRow(
+                    label = "Titular",
+                    value = product.pixHolder.ifBlank { recipientName },
+                    accent = PremiumZinc400,
+                )
+            } else {
+                Text(
+                    text = "Este produto ainda não tem PIX público configurado. O pedido será criado como pendente e a equipe informará o pagamento pelo canal oficial.",
+                    color = PremiumAmber,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                PremiumSecondaryButton(
+                    text = "Copiar PIX",
+                    onClick = { clipboard.setText(AnnotatedString(product.pixKey)) },
+                    enabled = product.pixKey.isNotBlank(),
+                    icon = Icons.Outlined.ContentCopy,
+                    accent = accent,
+                    modifier = Modifier.weight(1f),
+                )
+                PremiumSecondaryButton(
+                    text = "WhatsApp",
+                    onClick = { whatsappUrl?.let(uriHandler::openUri) },
+                    enabled = whatsappUrl != null,
+                    icon = Icons.Outlined.Send,
+                    accent = PremiumBrandAccent,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            PremiumChip(
+                label = if (orderCode.isNotBlank()) "Pedido #$orderCode" else "Será criado como pendente",
+                accent = if (orderCode.isNotBlank()) storeOrderColor(StoreOrderStatus.Pending) else PremiumAmber,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StoreOptionSelector(
+    title: String,
+    options: List<String>,
+    selected: String,
+    onSelect: (String) -> Unit,
+    accent: Color,
+) {
+    PremiumCard(accent = accent) {
+        Text(
+            text = title.uppercase(),
+            color = PremiumZinc500,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.4.sp,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            options.forEach { option ->
+                StoreCategoryPill(
+                    label = option,
+                    selected = option == selected,
+                    accent = accent,
+                    onClick = { onSelect(option) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoreQuantitySelector(
+    quantity: Int,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+    accent: Color,
+) {
+    PremiumCard(accent = accent) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "QUANTIDADE",
+                    color = PremiumZinc500,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.4.sp,
+                )
+                Text(
+                    text = "Escolha antes de adicionar ao carrinho",
+                    color = PremiumZinc400,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                StoreRoundIconButton(icon = Icons.Outlined.Remove, enabled = quantity > 1, accent = accent, onClick = onDecrease)
+                Text(text = quantity.toString(), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                StoreRoundIconButton(icon = Icons.Outlined.Add, enabled = true, accent = accent, onClick = onIncrease)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoreRoundIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    enabled: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .size(42.dp)
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = CircleShape,
+        color = if (enabled) accent.copy(alpha = 0.18f) else PremiumZinc900,
+        border = BorderStroke(1.dp, if (enabled) accent.copy(alpha = 0.38f) else PremiumZinc800),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (enabled) accent else PremiumZinc500,
+            modifier = Modifier.padding(10.dp),
         )
     }
 }
@@ -666,4 +1169,27 @@ private fun StoreTotalRow(
             fontWeight = FontWeight.Black,
         )
     }
+}
+
+private fun buildStoreWhatsappUrl(
+    phone: String,
+    sellerName: String,
+    productNames: String,
+    totalLabel: String,
+    orderCode: String,
+): String? {
+    val digits = phone.filter(Char::isDigit)
+    if (digits.isBlank()) return null
+    val normalizedPhone = if (digits.startsWith("55")) digits else "55$digits"
+    val message = buildString {
+        append("Olá, ")
+        append(sellerName.ifBlank { "equipe USC" })
+        append("! Segue o comprovante do pedido")
+        if (orderCode.isNotBlank()) append(" #$orderCode")
+        append(".\n\nItens: ")
+        append(productNames)
+        append("\nTotal: ")
+        append(totalLabel)
+    }
+    return "https://wa.me/$normalizedPhone?text=${URLEncoder.encode(message, "UTF-8")}"
 }

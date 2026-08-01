@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
-import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +32,7 @@ import com.example.usc1.core.ui.PremiumZinc800
 import com.example.usc1.core.ui.PremiumZinc900
 import com.example.usc1.data.repository.MockEventOrdersRepository
 import com.example.usc1.domain.model.EventOrder
+import com.example.usc1.domain.model.EventOrderItemType
 import com.example.usc1.domain.model.OrderStatus
 import com.example.usc1.ui.theme.UscTheme
 
@@ -41,11 +42,12 @@ fun EventOrderCard(
     onDetailsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accent = orderStatusColor(order.status)
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(26.dp),
         color = PremiumZinc900,
-        border = BorderStroke(1.dp, orderStatusColor(order.status).copy(alpha = 0.25f)),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.25f)),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -75,13 +77,19 @@ fun EventOrderCard(
                         fontWeight = FontWeight.Black,
                     )
                     Text(
-                        text = "${order.quantity} ingresso(s) • ${order.lotName}",
+                        text = "${order.quantity} ${order.itemType.unitLabel} • ${order.lotName}",
                         color = PremiumZinc400,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                     )
                 }
-                OrderStatusChip(status = order.status)
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    OrderStatusChip(status = order.status)
+                    OrderItemTypeChip(type = order.itemType)
+                }
             }
             Text(
                 text = "${order.paymentStatus.label} • ${order.approvalStatus}",
@@ -103,7 +111,7 @@ fun EventOrderCard(
                     )
                     Text(
                         text = order.amountLabel,
-                        color = orderStatusColor(order.status),
+                        color = accent,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black,
                     )
@@ -113,7 +121,7 @@ fun EventOrderCard(
                     onClick = onDetailsClick,
                     icon = Icons.AutoMirrored.Outlined.ArrowForward,
                     modifier = Modifier.weight(0.9f),
-                    accent = orderStatusColor(order.status),
+                    accent = accent,
                 )
             }
         }
@@ -130,6 +138,25 @@ fun OrderStatusChip(
         modifier = modifier,
         icon = Icons.AutoMirrored.Outlined.ReceiptLong,
         accent = orderStatusColor(status),
+    )
+}
+
+@Composable
+fun OrderItemTypeChip(
+    type: EventOrderItemType,
+    modifier: Modifier = Modifier,
+) {
+    PremiumChip(
+        label = type.label,
+        modifier = modifier,
+        icon = when (type) {
+            EventOrderItemType.Ticket -> Icons.AutoMirrored.Outlined.ReceiptLong
+            EventOrderItemType.EventProduct -> Icons.Outlined.Inventory2
+        },
+        accent = when (type) {
+            EventOrderItemType.Ticket -> PremiumBrand
+            EventOrderItemType.EventProduct -> PremiumAmber
+        },
     )
 }
 

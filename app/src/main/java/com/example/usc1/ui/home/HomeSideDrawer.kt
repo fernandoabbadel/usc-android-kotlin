@@ -34,7 +34,9 @@ import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Album
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CreditCard
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.HistoryEdu
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Games
@@ -143,6 +145,7 @@ fun HomeSideDrawer(
                 }
                 val athleteLinks = listOf(
                     HomeDrawerLink("Treinos", AppRoute.Training, Icons.Outlined.FitnessCenter, "treinos"),
+                    HomeDrawerLink("Ranking", AppRoute.Ranking, Icons.Outlined.EmojiEvents, "ranking"),
                     HomeDrawerLink("BoardRound", AppRoute.Boardround, Icons.Outlined.Games, "sharkround", "EM BREVE"),
                     HomeDrawerLink("Arena Games", AppRoute.Games, Icons.Outlined.Games, "arena_games", "EM BREVE"),
                 ).filter { it.moduleKey == null || state.dashboard.isModuleVisible(it.moduleKey) }
@@ -150,6 +153,8 @@ fun HomeSideDrawer(
                     HomeDrawerLink("Área das Ligas", AppRoute.Leagues, Icons.Outlined.Groups, "ligas"),
                     HomeDrawerLink("Comissões", AppRoute.Commissions, Icons.Outlined.Groups, "comissoes"),
                     HomeDrawerLink("Diretório", AppRoute.Directory, Icons.Outlined.School, "diretorio"),
+                    HomeDrawerLink("Nossa História", AppRoute.History, Icons.Outlined.HistoryEdu, "historico"),
+                    HomeDrawerLink("Área do Parceiro", AppRoute.Company, Icons.Outlined.Storefront, "empresa"),
                     HomeDrawerLink("Guia", AppRoute.Guide, Icons.AutoMirrored.Outlined.HelpOutline, "guia"),
                 ).filter { it.moduleKey == null || state.dashboard.isModuleVisible(it.moduleKey) }
 

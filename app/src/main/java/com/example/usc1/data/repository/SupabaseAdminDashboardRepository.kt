@@ -149,7 +149,7 @@ class SupabaseAdminDashboardRepository(
             id = cleanId,
             name = nome.trim().ifBlank { "Sem Nome" },
             email = email?.trim().orEmpty().ifBlank { "---" },
-            avatarUrl = foto?.trim()?.takeIf { it.isNotBlank() },
+            avatarUrl = resolveRemoteImageUrl(foto),
             className = turma?.trim().orEmpty().ifBlank { "---" },
             role = tenantRole?.trim()?.takeIf { it.isNotBlank() } ?: role?.trim().orEmpty(),
             createdAt = dataAdesao ?: createdAt,

@@ -26,6 +26,8 @@ data class AuthUser(
     val planStatus: String = "",
     val role: UserRole = UserRole.Visitante,
     val status: UserStatus = UserStatus.Ativo,
+    /** `users.extra.turmaLeader` do web: libera a área "Líder da Turma". */
+    val isClassLeader: Boolean = false,
 )
 
 typealias SessionUser = AuthUser

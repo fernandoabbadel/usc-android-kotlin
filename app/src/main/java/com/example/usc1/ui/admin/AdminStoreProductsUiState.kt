@@ -82,6 +82,19 @@ fun AdminStoreProduct.toForm(): AdminStoreProductForm {
         tagEffect = tagEffect.ifBlank { "none" },
         coresText = cores,
         caracteristicasText = caracteristicas.joinToString("\n"),
+        usarVariantes = variantes.isNotEmpty(),
+        variantesText = variantes.joinToString("\n") { variant ->
+            listOf(
+                variant.tamanho,
+                variant.cor,
+                variant.estoque.toString(),
+                variant.vendidos.toString(),
+            ).joinToString(" | ")
+        },
+        paymentPixKey = paymentPixKey,
+        paymentBank = paymentBank,
+        paymentHolder = paymentHolder,
+        paymentWhatsapp = paymentWhatsapp,
         sellerType = sellerType,
         sellerId = sellerId,
         sellerName = sellerName,

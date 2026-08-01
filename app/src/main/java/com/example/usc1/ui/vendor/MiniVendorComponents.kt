@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -87,6 +88,14 @@ fun MiniVendorProductCard(
                 )
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (product.category.isNotBlank()) {
+                        PremiumChip(label = product.category, icon = Icons.Outlined.Storefront, accent = PremiumBrand, filled = true)
+                    }
+                    if (product.tagLabel.isNotBlank()) {
+                        PremiumChip(label = product.tagLabel, accent = PremiumAmber)
+                    }
+                }
                 Text(
                     text = product.name,
                     color = Color.White,
@@ -95,10 +104,38 @@ fun MiniVendorProductCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(text = product.stockLabel, color = PremiumZinc400, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                if (product.description.isNotBlank()) {
+                    Text(
+                        text = product.description,
+                        color = PremiumZinc400,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    text = listOf(product.stockLabel, product.soldLabel, product.clicksLabel)
+                        .filter(String::isNotBlank)
+                        .joinToString(" • "),
+                    color = PremiumZinc400,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
                 PremiumChip(label = product.status, icon = Icons.Outlined.Storefront, accent = PremiumBrand)
             }
-            Text(text = product.priceLabel, color = PremiumBrand, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                if (!product.oldPriceLabel.isNullOrBlank()) {
+                    Text(
+                        text = product.oldPriceLabel,
+                        color = PremiumZinc500,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        textDecoration = TextDecoration.LineThrough,
+                    )
+                }
+                Text(text = product.priceLabel, color = PremiumBrand, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            }
         }
     }
 }
@@ -129,7 +166,7 @@ fun MiniVendorOrderCard(
                 Icon(Icons.AutoMirrored.Outlined.ReceiptLong, contentDescription = null, modifier = Modifier.padding(11.dp), tint = accent)
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(text = order.id, color = PremiumZinc500, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                Text(text = order.id.take(12).uppercase(), color = PremiumZinc500, fontSize = 10.sp, fontWeight = FontWeight.Black)
                 Text(text = order.customerName, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black)
                 Text(text = "${order.productName} • ${order.createdAtLabel}", color = PremiumZinc400, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }

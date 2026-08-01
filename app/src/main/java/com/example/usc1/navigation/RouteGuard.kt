@@ -89,5 +89,16 @@ object RouteGuard {
         AppRoute.PrivacyLgpd,
         AppRoute.LgpdRequest,
         AppRoute.LegalDocument,
+        AppRoute.LegalDocumentBySlug,
+        // No web, ranking, histórico e a área do parceiro não exigem conta vinculada.
+        AppRoute.Ranking,
+        AppRoute.RankingTurma,
+        AppRoute.History,
+        AppRoute.HistoryOrganogram,
+        AppRoute.Company,
+        AppRoute.CompanyRegister,
+        AppRoute.CompanyDashboard,
+        AppRoute.CompanyEdit,
+        AppRoute.CompanyHistory,
     )
 }

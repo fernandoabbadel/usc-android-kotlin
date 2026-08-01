@@ -31,7 +31,6 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
     onNotificationPreferenceChange: (Boolean) -> Unit = {},
-    onCreateInviteClick: () -> Unit = {},
     onOpenInvitesClick: (() -> Unit)? = null,
     onCopyInviteClick: (String) -> Unit = {},
     onToggleAccountClick: () -> Unit = {},
@@ -95,7 +94,6 @@ fun SettingsScreen(
                         SettingsInvitePanel(
                             state = state.invitePanel,
                             tenantName = state.tenantName,
-                            onCreateInviteClick = onCreateInviteClick,
                             onOpenInvitesClick = {
                                 onOpenInvitesClick?.invoke() ?: onItemClick(invitesItem)
                             },

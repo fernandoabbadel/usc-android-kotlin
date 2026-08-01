@@ -6,7 +6,9 @@ import com.example.usc1.core.session.UserStatus
 import com.example.usc1.core.tenant.TenantMembershipStatus
 import com.example.usc1.core.tenant.TenantPalette
 import com.example.usc1.domain.model.SettingsInviteDashboard
+import com.example.usc1.domain.model.SettingsMentorshipCandidate
 import com.example.usc1.domain.model.SettingsMentorshipHub
+import com.example.usc1.domain.model.SettingsTurmaLeaderPending
 import com.example.usc1.navigation.AppRoute
 
 data class SettingsUiState(
@@ -31,11 +33,34 @@ data class SettingsUiState(
     val inviteDashboard: SettingsInviteDashboard = SettingsInviteDashboard(),
     val isInviteDashboardLoading: Boolean = false,
     val inviteDashboardError: String = "",
+    val revokingInviteId: String = "",
+    val isRequestingBonusInvites: Boolean = false,
     val mentorshipHub: SettingsMentorshipHub = SettingsMentorshipHub(),
     val isMentorshipLoading: Boolean = false,
     val mentorshipError: String = "",
+    val mentorshipCandidates: List<SettingsMentorshipCandidate> = emptyList(),
+    val mentorshipActionId: String = "",
+    val isSendingMentorshipInvite: Boolean = false,
+    val turmaLeader: SettingsTurmaLeaderPending = SettingsTurmaLeaderPending(),
+    val isTurmaLeaderLoading: Boolean = false,
+    val turmaLeaderError: String = "",
+    val isTurmaLeader: Boolean = false,
+    val canManageTurmaRequests: Boolean = false,
+    val showMiniVendorMenu: Boolean = true,
+    val miniVendorBadge: String = "",
+    val statusMessage: String = "",
     val sections: List<SettingsSectionUiModel> = defaultSettingsSections,
-)
+) {
+    /** Turmas distintas dos candidatos, para o primeiro passo do seletor de vínculo. */
+    val mentorshipClassOptions: List<String>
+        get() = mentorshipCandidates
+            .map { it.classCode.ifBlank { "Sem turma" } }
+            .distinct()
+            .sorted()
+
+    fun mentorshipCandidatesForClass(classCode: String): List<SettingsMentorshipCandidate> =
+        mentorshipCandidates.filter { it.classCode.ifBlank { "Sem turma" } == classCode }
+}
 
 data class SettingsInviteUiModel(
     val isVisible: Boolean = false,
@@ -63,7 +88,7 @@ data class SettingsItemUiModel(
 )
 
 enum class SettingsAction(val route: String?) {
-    Profile(AppRoute.Profile),
+    Profile(AppRoute.Cadastro),
     Membership(AppRoute.MembershipCard),
     Security(AppRoute.AccountSecurity),
     Orders(AppRoute.OrdersHub),
@@ -84,7 +109,9 @@ enum class SettingsAction(val route: String?) {
     Scanner(AppRoute.Scanner),
     Guide(AppRoute.Guide),
     Invites(AppRoute.SettingsInvites),
+    InvitesHistory(AppRoute.SettingsInvitesHistory),
     Mentorship(AppRoute.SettingsMentorship),
+    TurmaLeader(AppRoute.SettingsTurmaLeader),
     Notifications(null),
     Support(AppRoute.Support),
     TermsPrivacy(AppRoute.Terms),
@@ -104,6 +131,8 @@ fun SettingsUiState.withSession(session: UserSession): SettingsUiState {
         tenant != null &&
         user.role != UserRole.Guest &&
         tenant.membershipStatus == TenantMembershipStatus.Approved
+    val canManageAll = user?.role?.canManageTenant == true
+    val isClassLeader = user?.isClassLeader == true
 
     return copy(
         userName = name,
@@ -121,6 +150,91 @@ fun SettingsUiState.withSession(session: UserSession): SettingsUiState {
         isAccountActive = user?.status == UserStatus.Ativo,
         userIdLabel = user?.id?.take(8)?.uppercase().orEmpty(),
         invitePanel = invitePanel.copy(isVisible = canGenerateInvite),
+        isTurmaLeader = isClassLeader,
+        canManageTurmaRequests = canManageAll,
+        sections = buildSettingsSections(
+            mentorshipTitle = mentorshipHub.labels.hubTitle,
+            miniVendorBadge = miniVendorBadge,
+            showMiniVendor = showMiniVendorMenu,
+            showTurmaLeader = isClassLeader || canManageAll,
+        ),
+    )
+}
+
+/**
+ * Espelha a montagem do menu em `/configuracoes`: o item do mini vendor só aparece quando o
+ * módulo está ligado para o tenant e carrega o selo de status do cadastro; o item de
+ * apadrinhamento usa o `hubTitle` configurado; "Lider da Turma" só aparece para líder/gestor.
+ */
+internal fun buildSettingsSections(
+    mentorshipTitle: String,
+    miniVendorBadge: String,
+    showMiniVendor: Boolean,
+    showTurmaLeader: Boolean,
+): List<SettingsSectionUiModel> {
+    val account = buildList {
+        add(SettingsItemUiModel("Dados Pessoais", "Atualizar cadastro", SettingsAction.Profile))
+        add(
+            SettingsItemUiModel(
+                title = "Meus Ingressos e Compras",
+                description = "Acompanhar meus pedidos de compra (convites, ingressos, produtos, planos, etc...)",
+                action = SettingsAction.Orders,
+                badge = "Novo",
+            ),
+        )
+        add(SettingsItemUiModel("Planos da Atlética", "Ver níveis e benefícios", SettingsAction.Plans))
+        add(SettingsItemUiModel("Meus Convites", "Tabela completa dos links gerados", SettingsAction.Invites))
+        add(
+            SettingsItemUiModel(
+                title = mentorshipTitle.ifBlank { "Apadrinhamento" },
+                description = "Aceitar convites e ver seu vínculo",
+                action = SettingsAction.Mentorship,
+            ),
+        )
+        if (showMiniVendor) {
+            add(
+                SettingsItemUiModel(
+                    title = "Mini Vendor",
+                    description = "Cadastrar ou editar sua lojinha",
+                    action = SettingsAction.MiniVendor,
+                    badge = miniVendorBadge.takeIf(String::isNotBlank),
+                ),
+            )
+        }
+        if (showTurmaLeader) {
+            add(
+                SettingsItemUiModel(
+                    title = "Lider da Turma",
+                    description = "Aprovar pendencias da sua turma",
+                    action = SettingsAction.TurmaLeader,
+                    badge = "Lider",
+                ),
+            )
+        }
+        add(
+            SettingsItemUiModel(
+                title = "Segurança & Senha",
+                description = "Proteger conta",
+                action = SettingsAction.Security,
+                badge = "Bloqueado",
+                isEnabled = false,
+            ),
+        )
+    }
+
+    return listOf(
+        SettingsSectionUiModel(title = "Minha Conta", items = account),
+        SettingsSectionUiModel(
+            title = "Preferências",
+            items = listOf(SettingsItemUiModel("Notificações", action = SettingsAction.Notifications)),
+        ),
+        SettingsSectionUiModel(
+            title = "Suporte",
+            items = listOf(
+                SettingsItemUiModel("Denúncias & Ajuda", "Reportar problemas", SettingsAction.Support),
+                SettingsItemUiModel("Termos e Privacidade", action = SettingsAction.TermsPrivacy),
+            ),
+        ),
     )
 }
 
@@ -148,45 +262,9 @@ internal fun UserRole.settingsLabel(): String = when (this) {
     UserRole.Vendas -> "Vendas"
 }
 
-internal val defaultSettingsSections = listOf(
-    SettingsSectionUiModel(
-        title = "Minha Conta",
-        items = listOf(
-            SettingsItemUiModel("Dados Pessoais", "Atualizar cadastro", SettingsAction.Profile),
-            SettingsItemUiModel(
-                title = "Meus Ingressos e Compras",
-                description = "Acompanhar meus pedidos de compra (convites, ingressos, produtos, planos, etc...)",
-                action = SettingsAction.Orders,
-                badge = "Novo",
-            ),
-            SettingsItemUiModel("Planos da Atlética", "Ver níveis e benefícios", SettingsAction.Plans),
-            SettingsItemUiModel("Meus Convites", "Tabela completa dos links gerados", SettingsAction.Invites),
-            SettingsItemUiModel(
-                title = "Apadrinhamento",
-                description = "Aceitar convites e ver seu vínculo",
-                action = SettingsAction.Mentorship,
-            ),
-            SettingsItemUiModel("Mini Vendor", "Cadastrar ou editar sua lojinha", SettingsAction.MiniVendor),
-            SettingsItemUiModel(
-                title = "Segurança & Senha",
-                description = "Proteger conta",
-                action = SettingsAction.Security,
-                badge = "Bloqueado",
-                isEnabled = false,
-            ),
-        ),
-    ),
-    SettingsSectionUiModel(
-        title = "Preferências",
-        items = listOf(
-            SettingsItemUiModel("Notificações", action = SettingsAction.Notifications),
-        ),
-    ),
-    SettingsSectionUiModel(
-        title = "Suporte",
-        items = listOf(
-            SettingsItemUiModel("Denúncias & Ajuda", "Reportar problemas", SettingsAction.Support),
-            SettingsItemUiModel("Termos e Privacidade", action = SettingsAction.TermsPrivacy),
-        ),
-    ),
+internal val defaultSettingsSections = buildSettingsSections(
+    mentorshipTitle = "Apadrinhamento",
+    miniVendorBadge = "",
+    showMiniVendor = true,
+    showTurmaLeader = false,
 )

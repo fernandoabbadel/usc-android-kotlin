@@ -102,7 +102,7 @@ fun TicketQrPlaceholder(
         modifier = modifier,
         cells = if (compact) 9 else 13,
         cellSize = if (compact) 4.dp else 9.dp,
-        label = if (compact) null else "QR mockado",
+        label = if (compact) null else "QR oficial",
     )
 }
 

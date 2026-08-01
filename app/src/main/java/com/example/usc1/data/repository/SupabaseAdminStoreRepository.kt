@@ -15,6 +15,7 @@ import com.example.usc1.domain.model.AdminStoreOrdersPage
 import com.example.usc1.domain.model.AdminStoreProduct
 import com.example.usc1.domain.model.AdminStoreProductForm
 import com.example.usc1.domain.model.AdminStoreProductStatus
+import com.example.usc1.domain.model.AdminStoreProductVariant
 import com.example.usc1.domain.model.AdminStoreProductsPage
 import com.example.usc1.domain.model.AdminStoreReview
 import com.example.usc1.domain.model.AdminStoreReviewStatus
@@ -255,6 +256,11 @@ class SupabaseAdminStoreRepository(
             .select(columns = Columns.raw(ProductColumns)) {
                 filter {
                     eq("tenant_id", tenantId)
+                    // Mesmo recorte de `fetchStoreProducts({ sellerType: "tenant" })` no web:
+                    // a loja do admin administra só os produtos da própria tenant. Liga,
+                    // comissão e diretório (`seller_type = league`) e mini vendor
+                    // (`seller_type = mini_vendor`) são administrados nas telas deles.
+                    eq("seller_type", AdminStoreSellerType.Tenant.remoteValue)
                     if (inactiveOnly) {
                         eq("active", false)
                     } else {
@@ -266,6 +272,11 @@ class SupabaseAdminStoreRepository(
             }
             .decodeList<AdminStoreProductRow>()
             .mapNotNull { it.toDomain(tenantId) }
+            .filter { product ->
+                // Registro legado pode trazer `seller_type = tenant` com `seller_id` de um
+                // coletivo; nesse caso o dono é o coletivo, não a tenant.
+                product.sellerId.ifBlank { tenantId } == tenantId
+            }
 
         AdminStoreProductsPage(
             tenantId = tenantId,
@@ -304,6 +315,12 @@ class SupabaseAdminStoreRepository(
         val sellerName = form.sellerName.trim().ifBlank { tenantName.orEmpty().trim().ifBlank { "Atlética" } }
         val sellerLogoUrl = form.sellerLogoUrl.trim().ifBlank { tenantLogoUrl.orEmpty().trim().ifBlank { "/logo.png" } }
         val productImage = form.img.trim().take(AdminStoreCatalog.ProductImageUrlMaxLength).ifBlank { "/logo.png" }
+        val variantPayload = if (form.usarVariantes) {
+            form.variantesText.toProductVariantsJsonArray()
+        } else {
+            JsonArray(emptyList())
+        }
+        val variantStock = variantPayload.sumVariantStock()
         val payload = mutableMapOf<String, Any?>(
             "tenant_id" to tenantId,
             "nome" to cleanName,
@@ -312,10 +329,12 @@ class SupabaseAdminStoreRepository(
             "img" to productImage,
             "preco" to price,
             "status" to form.status.remoteValue,
-            "estoque" to form.estoque.parseIntSafe(),
+            "estoque" to if (form.usarVariantes && variantStock > 0) variantStock else form.estoque.parseIntSafe(),
             "lote" to form.lote.trim().take(AdminStoreCatalog.ProductLotMaxLength).ifBlank { "geral" },
             "cores" to form.coresText.linesToCleanText(AdminStoreCatalog.ProductColorsTextMaxLength),
             "caracteristicas" to form.caracteristicasText.linesToJsonArray(AdminStoreCatalog.ProductFeaturesTextMaxLength),
+            "variantes" to variantPayload,
+            "payment_config" to form.toProductPaymentConfigOrNull(sellerName),
             "seller_type" to sellerType.remoteValue,
             "seller_id" to sellerId,
             "seller_name" to sellerName,
@@ -350,10 +369,8 @@ class SupabaseAdminStoreRepository(
                         "vendidos" to 0,
                         "cliques" to 0,
                         "likes" to JsonArray(emptyList()),
-                        "variantes" to JsonArray(emptyList()),
                         "plan_prices" to JsonArray(emptyList()),
                         "plan_visibility" to JsonArray(emptyList()),
-                        "payment_config" to null,
                         "active" to true,
                         "aprovado" to true,
                     ),
@@ -370,16 +387,20 @@ class SupabaseAdminStoreRepository(
         val client = clientProvider()
         val tenantId = SupabaseTenantResolver.resolveActiveTenantId(client)
         val product = client.from(ProductsTable)
-            .select(columns = Columns.raw("id,categoria")) {
+            .select(columns = Columns.raw("id,categoria,seller_type,seller_id")) {
                 filter {
                     eq("id", cleanProductId)
                     eq("tenant_id", tenantId)
+                    // O admin só liga/desliga produto da própria tenant: catálogo de coletivo
+                    // e de mini vendor é administrado nas telas deles.
+                    eq("seller_type", AdminStoreSellerType.Tenant.remoteValue)
                 }
                 limit(count = 1)
             }
             .decodeList<ProductLookupRow>()
             .firstOrNull()
-            ?: throw IllegalStateException("Produto fora do tenant ativo.")
+            ?.takeIf { it.sellerId.trim().ifBlank { tenantId } == tenantId }
+            ?: throw IllegalStateException("Produto fora da loja da tenant ativa.")
 
         if (active && product.categoria.trim().isBlank()) {
             throw IllegalStateException("Esse produto ficou sem categoria. Edite e escolha uma categoria antes de reativar.")
@@ -395,6 +416,7 @@ class SupabaseAdminStoreRepository(
                 filter {
                     eq("id", cleanProductId)
                     eq("tenant_id", tenantId)
+                    eq("seller_type", AdminStoreSellerType.Tenant.remoteValue)
                 }
             }
     }
@@ -473,13 +495,13 @@ class SupabaseAdminStoreRepository(
         val products = fetchTenantProductLookup(client, tenantId)
         val categoryNames = fetchTenantCategoryNames(client, tenantId, products)
         val normalizedCategory = categoryLabel?.trim().orEmpty()
-        val categoryProductIds = if (normalizedCategory.isNotBlank()) {
+        val allowedProductIds = if (normalizedCategory.isNotBlank()) {
             products.filter { it.categoria == normalizedCategory }.map { it.id }
         } else {
-            emptyList()
+            products.map { it.id }
         }
 
-        if (normalizedCategory.isNotBlank() && categoryProductIds.isEmpty()) {
+        if (allowedProductIds.isEmpty()) {
             return@withContext AdminStoreOrdersPage(
                 rows = emptyList(),
                 categoryNames = categoryNames,
@@ -495,10 +517,13 @@ class SupabaseAdminStoreRepository(
             .select(columns = Columns.raw(OrderColumns)) {
                 filter {
                     eq("tenant_id", tenantId)
-                    eq("status", mode.remoteStatus())
-                    if (categoryProductIds.isNotEmpty()) {
-                        isIn("productId", categoryProductIds)
+                    val statuses = mode.remoteStatuses()
+                    if (statuses.size == 1) {
+                        eq("status", statuses.first())
+                    } else {
+                        isIn("status", statuses)
                     }
+                    isIn("productId", allowedProductIds)
                 }
                 order(column = "createdAt", order = Order.DESCENDING)
                 range(offset.toLong()..(offset + safePageSize).toLong())
@@ -506,7 +531,11 @@ class SupabaseAdminStoreRepository(
             .decodeList<OrderRow>()
 
         val orders = rows.mapNotNull { row ->
-            row.toDomain(productCategoryById[row.productId.trim()] ?: "Sem categoria")
+            if (row.isEventLinked()) {
+                null
+            } else {
+                row.toDomain(productCategoryById[row.productId.trim()] ?: return@mapNotNull null)
+            }
         }
         AdminStoreOrdersPage(
             rows = orders.take(safePageSize),
@@ -599,15 +628,7 @@ class SupabaseAdminStoreRepository(
         client: SupabaseClient,
         tenantId: String,
     ): List<String> {
-        return client.from(ProductsTable)
-            .select(columns = Columns.raw("id")) {
-                filter {
-                    eq("tenant_id", tenantId)
-                }
-                order(column = "nome", order = Order.ASCENDING)
-                limit(count = MaxProducts.toLong())
-            }
-            .decodeList<ProductIdRow>()
+        return fetchTenantProductLookup(client, tenantId)
             .mapNotNull { it.id.trim().takeIf(String::isNotBlank) }
             .distinct()
     }
@@ -617,15 +638,22 @@ class SupabaseAdminStoreRepository(
         tenantId: String,
     ): List<ProductLookupRow> {
         return client.from(ProductsTable)
-            .select(columns = Columns.raw("id,categoria")) {
+            .select(columns = Columns.raw("id,categoria,seller_type,seller_id,data")) {
                 filter {
                     eq("tenant_id", tenantId)
+                    // Só os produtos da tenant: o recorte do admin não enxerga catálogo de
+                    // coletivo nem de mini vendor.
+                    eq("seller_type", AdminStoreSellerType.Tenant.remoteValue)
                 }
                 order(column = "nome", order = Order.ASCENDING)
                 limit(count = MaxProducts.toLong())
             }
             .decodeList<ProductLookupRow>()
-            .filter { it.id.isNotBlank() }
+            .filter { row ->
+                row.id.isNotBlank() &&
+                    !row.data.isEventPartyOrder() &&
+                    row.sellerId.trim().ifBlank { tenantId } == tenantId
+            }
     }
 
     private suspend fun fetchTenantCategoryNames(
@@ -638,6 +666,7 @@ class SupabaseAdminStoreRepository(
             .select(columns = Columns.raw("nome")) {
                 filter {
                     eq("tenant_id", tenantId)
+                    eq("seller_type", AdminStoreSellerType.Tenant.remoteValue)
                 }
                 order(column = "display_order", order = Order.ASCENDING)
                 limit(count = MaxCategories.toLong())
@@ -1046,9 +1075,9 @@ class SupabaseAdminStoreRepository(
         const val CategoryColumns =
             "id,tenant_id,nome,cover_img,button_color,logo_url,seller_type,seller_id,display_order,visible,createdAt"
         const val ProductColumns =
-            "id,tenant_id,nome,descricao,preco,precoAntigo,img,categoria,estoque,lote,tagLabel,tagColor,tagEffect,active,aprovado,status,vendidos,cliques,cores,caracteristicas,variantes,seller_type,seller_id,seller_name,seller_logo_url,createdAt,updatedAt"
+            "id,tenant_id,nome,descricao,preco,precoAntigo,img,categoria,estoque,lote,tagLabel,tagColor,tagEffect,active,aprovado,status,vendidos,cliques,cores,caracteristicas,variantes,payment_config,seller_type,seller_id,seller_name,seller_logo_url,data,createdAt,updatedAt"
         const val OrderColumns =
-            "id,tenant_id,userId,userName,productId,productName,price,total,quantidade,itens,data,status,approvedBy,payment_config,createdAt,updatedAt"
+            "id,tenant_id,userId,userName,productId,productName,price,total,quantidade,itens,data,status,approvedBy,payment_config,seller_type,seller_id,seller_name,seller_logo_url,eventId,eventoId,eventItemType,createdAt,updatedAt"
     }
 }
 
@@ -1081,6 +1110,9 @@ private data class ProductIdRow(
 private data class ProductLookupRow(
     val id: String = "",
     val categoria: String = "",
+    @SerialName("seller_type") val sellerType: String? = null,
+    @SerialName("seller_id") val sellerId: String = "",
+    val data: JsonElement? = null,
 )
 
 @Serializable
@@ -1106,15 +1138,23 @@ private data class AdminStoreProductRow(
     val cores: String? = null,
     val caracteristicas: JsonElement? = null,
     val variantes: JsonElement? = null,
+    @SerialName("payment_config") val paymentConfig: JsonElement? = null,
     @SerialName("seller_type") val sellerType: String? = null,
     @SerialName("seller_id") val sellerId: String? = null,
     @SerialName("seller_name") val sellerName: String? = null,
     @SerialName("seller_logo_url") val sellerLogoUrl: String? = null,
+    val data: JsonElement? = null,
 ) {
     fun toDomain(activeTenantId: String): AdminStoreProduct? {
         val cleanId = id.trim()
         if (cleanId.isBlank()) return null
+        if (data.isEventPartyOrder()) return null
         val seller = AdminStoreSellerType.fromRemote(sellerType)
+        val payment = paymentConfig.toAdminPaymentParts(
+            fallbackReceiverName = sellerName?.trim().orEmpty().ifBlank { "Loja" },
+            fallbackSellerType = seller.label,
+        )
+        val productVariants = variantes.toProductVariants()
         return AdminStoreProduct(
             id = cleanId,
             nome = nome?.trim().orEmpty(),
@@ -1135,7 +1175,12 @@ private data class AdminStoreProductRow(
             cliques = cliques ?: 0,
             cores = cores?.trim().orEmpty(),
             caracteristicas = caracteristicas.toStringList(),
-            variantCount = variantes.arraySize(),
+            variantes = productVariants,
+            variantCount = productVariants.size,
+            paymentPixKey = payment.pixKey,
+            paymentBank = payment.bank,
+            paymentHolder = payment.holder,
+            paymentWhatsapp = payment.whatsapp,
             sellerType = seller,
             sellerId = sellerId?.trim().orEmpty().ifBlank {
                 if (seller == AdminStoreSellerType.Tenant) activeTenantId else ""
@@ -1268,12 +1313,25 @@ private data class OrderRow(
     val status: String? = null,
     @SerialName("approvedBy") val approvedBy: String? = null,
     @SerialName("payment_config") val paymentConfig: JsonElement? = null,
+    @SerialName("seller_type") val sellerType: String? = null,
+    @SerialName("seller_id") val sellerId: String? = null,
+    @SerialName("seller_name") val sellerName: String? = null,
+    @SerialName("seller_logo_url") val sellerLogoUrl: String? = null,
+    @SerialName("eventId") val eventId: String? = null,
+    @SerialName("eventoId") val eventoId: String? = null,
+    @SerialName("eventItemType") val eventItemType: String? = null,
     @SerialName("createdAt") val createdAt: String? = null,
     @SerialName("updatedAt") val updatedAt: String? = null,
 ) {
     fun toDomain(productCategory: String): AdminStoreOrder? {
         val cleanId = id.trim()
         if (cleanId.isBlank()) return null
+        val seller = AdminStoreSellerType.fromRemote(sellerType)
+        val cleanSellerName = sellerName?.trim().orEmpty()
+        val payment = paymentConfig.toAdminPaymentParts(
+            fallbackReceiverName = cleanSellerName.ifBlank { "Loja" },
+            fallbackSellerType = seller.label,
+        )
         return AdminStoreOrder(
             id = cleanId,
             userId = userId.trim(),
@@ -1287,7 +1345,13 @@ private data class OrderRow(
             itens = itens ?: quantidade ?: 1,
             status = AdminStoreOrderStatus.fromRemote(status),
             approvedBy = approvedBy?.trim().orEmpty(),
-            receiverLabel = paymentConfig.receiverLabel(),
+            receiverLabel = payment.receiverLabel,
+            paymentPixKey = payment.pixKey,
+            paymentBank = payment.bank,
+            paymentHolder = payment.holder,
+            paymentWhatsapp = payment.whatsapp,
+            sellerName = cleanSellerName,
+            sellerTypeLabel = seller.label,
             variantLabel = data.variantLabel(),
             createdAt = createdAt?.trim().orEmpty(),
             updatedAt = updatedAt?.trim().orEmpty(),
@@ -1301,14 +1365,29 @@ private data class OrderRow(
     fun orderTotal(): Double {
         return total ?: price ?: 0.0
     }
-}
 
-private fun AdminStoreOrdersMode.remoteStatus(): String {
-    return when (this) {
-        AdminStoreOrdersMode.Pending -> "pendente"
-        AdminStoreOrdersMode.Approved -> "approved"
+    fun isEventLinked(): Boolean {
+        return eventId?.trim().orEmpty().isNotBlank() ||
+            eventoId?.trim().orEmpty().isNotBlank() ||
+            eventItemType?.trim().orEmpty().isNotBlank() ||
+            data.isEventPartyOrder()
     }
 }
+
+private fun AdminStoreOrdersMode.remoteStatuses(): List<String> {
+    return when (this) {
+        AdminStoreOrdersMode.Pending -> listOf("pending", "pendente")
+        AdminStoreOrdersMode.Approved -> listOf("approved", "delivered")
+    }
+}
+
+private data class AdminPaymentParts(
+    val receiverLabel: String,
+    val pixKey: String,
+    val bank: String,
+    val holder: String,
+    val whatsapp: String,
+)
 
 private fun String.parseMoneyOrNull(): Double? {
     val clean = trim().replace(",", ".")
@@ -1360,6 +1439,91 @@ private fun JsonObject.stringValue(key: String): String {
     return this[key]?.jsonPrimitive?.content?.trim().orEmpty()
 }
 
+private fun JsonObject.intValue(key: String): Int {
+    return this[key]?.jsonPrimitive?.intOrNull
+        ?: this[key]?.jsonPrimitive?.content?.trim()?.toIntOrNull()
+        ?: 0
+}
+
+private fun JsonElement?.toProductVariants(): List<AdminStoreProductVariant> {
+    val array = this as? JsonArray ?: return emptyList()
+    return array.mapIndexedNotNull { index, element ->
+        val row = element.asObject() ?: return@mapIndexedNotNull null
+        val tamanho = row.stringValue("tamanho")
+            .ifBlank { row.stringValue("size") }
+            .take(AdminStoreCatalog.ProductVariantFieldMaxLength)
+        val cor = row.stringValue("cor")
+            .ifBlank { row.stringValue("color") }
+            .take(AdminStoreCatalog.ProductVariantFieldMaxLength)
+        val estoque = row.intValue("estoque")
+        val vendidos = row.intValue("vendidos")
+        if (tamanho.isBlank() && cor.isBlank() && estoque <= 0) return@mapIndexedNotNull null
+        AdminStoreProductVariant(
+            id = row.stringValue("id").ifBlank { "variante-${index + 1}" },
+            tamanho = tamanho,
+            cor = cor,
+            estoque = estoque,
+            vendidos = vendidos,
+        )
+    }
+}
+
+private fun String.toProductVariantsJsonArray(): JsonArray {
+    val rows = lines()
+        .mapIndexedNotNull { index, rawLine ->
+            val parts = rawLine.split('|').map(String::trim)
+            val tamanho = parts.getOrNull(0).orEmpty().take(AdminStoreCatalog.ProductVariantFieldMaxLength)
+            val cor = parts.getOrNull(1).orEmpty().take(AdminStoreCatalog.ProductVariantFieldMaxLength)
+            val estoque = parts.getOrNull(2).orEmpty().parseIntSafe()
+            val vendidos = parts.getOrNull(3).orEmpty().parseIntSafe()
+            if (tamanho.isBlank() && cor.isBlank() && estoque <= 0) return@mapIndexedNotNull null
+            JsonObject(
+                mapOf(
+                    "id" to JsonPrimitive("variante-${index + 1}-${tamanho.ifBlank { "sem-tamanho" }}-${cor.ifBlank { "sem-cor" }}"),
+                    "tamanho" to JsonPrimitive(tamanho),
+                    "cor" to JsonPrimitive(cor),
+                    "estoque" to JsonPrimitive(estoque),
+                    "vendidos" to JsonPrimitive(vendidos),
+                ),
+            )
+        }
+        .take(48)
+    return JsonArray(rows)
+}
+
+private fun JsonArray.sumVariantStock(): Int {
+    return sumOf { element -> element.asObject()?.intValue("estoque") ?: 0 }
+}
+
+private fun AdminStoreProductForm.toProductPaymentConfigOrNull(receiverName: String): JsonObject? {
+    val pixKey = paymentPixKey.trim().take(AdminStoreCatalog.PixKeyMaxLength)
+    val bank = paymentBank.trim().take(AdminStoreCatalog.PixBankMaxLength)
+    val holder = paymentHolder.trim().take(AdminStoreCatalog.PixHolderMaxLength)
+    val whatsapp = paymentWhatsapp.trim().take(AdminStoreCatalog.PhoneMaxLength)
+    if (pixKey.isBlank() && bank.isBlank() && holder.isBlank() && whatsapp.isBlank()) {
+        return null
+    }
+    val recipient = mutableMapOf<String, JsonElement>()
+    val resolvedName = holder.ifBlank { receiverName.trim() }
+    if (resolvedName.isNotBlank()) recipient["name"] = JsonPrimitive(resolvedName)
+    if (whatsapp.isNotBlank()) {
+        recipient["phone"] = JsonPrimitive(whatsapp)
+        recipient["whatsapp"] = JsonPrimitive(whatsapp)
+    }
+    val payload = mutableMapOf<String, JsonElement>(
+        "enabled" to JsonPrimitive(true),
+    )
+    if (pixKey.isNotBlank()) {
+        payload["chave"] = JsonPrimitive(pixKey)
+        payload["pixKey"] = JsonPrimitive(pixKey)
+    }
+    if (bank.isNotBlank()) payload["banco"] = JsonPrimitive(bank)
+    if (holder.isNotBlank()) payload["titular"] = JsonPrimitive(holder)
+    if (whatsapp.isNotBlank()) payload["whatsapp"] = JsonPrimitive(whatsapp)
+    if (recipient.isNotEmpty()) payload["recipient"] = JsonObject(recipient)
+    return JsonObject(payload)
+}
+
 private fun JsonElement?.receiverLabel(): String {
     val payment = asObject() ?: return "Não informado"
     val recipient = payment["recipient"].asObject() ?: return "Não informado"
@@ -1369,6 +1533,51 @@ private fun JsonElement?.receiverLabel(): String {
         recipient.stringValue("phone"),
     ).filter(String::isNotBlank).joinToString(" - ").ifBlank { "Não informado" }
 }
+
+private fun JsonElement?.isEventPartyOrder(): Boolean {
+    val data = asObject() ?: return false
+    val eventParty = data["eventParty"].asObject() ?: return false
+    return eventParty.stringValue("eventId").isNotBlank() ||
+        eventParty.stringValue("eventName").isNotBlank() ||
+        eventParty.stringValue("section").isNotBlank() ||
+        eventParty.stringValue("categoryName").isNotBlank() ||
+        eventParty.stringValue("productId").isNotBlank() ||
+        eventParty.stringValue("productName").isNotBlank()
+}
+
+private fun JsonElement?.toAdminPaymentParts(
+    fallbackReceiverName: String,
+    fallbackSellerType: String,
+): AdminPaymentParts {
+    val payment = asObject()
+    val recipient = payment?.get("recipient").asObject()
+    val pixKey = payment?.stringValue("chave").orEmpty()
+        .ifBlank { payment?.stringValue("pixKey").orEmpty() }
+        .ifBlank { payment?.stringValue("pix_key").orEmpty() }
+    val bank = payment?.stringValue("banco").orEmpty()
+        .ifBlank { payment?.stringValue("bank").orEmpty() }
+    val holder = payment?.stringValue("titular").orEmpty()
+        .ifBlank { payment?.stringValue("holder").orEmpty() }
+        .ifBlank { recipient?.stringValue("name").orEmpty() }
+    val whatsapp = payment?.stringValue("whatsapp").orEmpty()
+        .ifBlank { recipient?.stringValue("whatsapp").orEmpty() }
+        .ifBlank { recipient?.stringValue("phone").orEmpty() }
+    val receiver = listOf(
+        recipient?.stringValue("name").orEmpty().ifBlank { holder },
+        recipient?.stringValue("turma").orEmpty(),
+        whatsapp,
+    ).filter(String::isNotBlank).joinToString(" - ")
+        .ifBlank { fallbackReceiverName.ifBlank { fallbackSellerType } }
+
+    return AdminPaymentParts(
+        receiverLabel = receiver.ifBlank { "Não informado" },
+        pixKey = pixKey,
+        bank = bank,
+        holder = holder,
+        whatsapp = whatsapp,
+    )
+}
+
 
 private fun JsonElement?.variantLabel(): String {
     val data = asObject() ?: return ""

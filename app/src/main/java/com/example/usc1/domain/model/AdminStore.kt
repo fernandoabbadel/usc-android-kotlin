@@ -80,11 +80,24 @@ data class AdminStoreProduct(
     val cliques: Int,
     val cores: String,
     val caracteristicas: List<String>,
+    val variantes: List<AdminStoreProductVariant>,
     val variantCount: Int,
+    val paymentPixKey: String,
+    val paymentBank: String,
+    val paymentHolder: String,
+    val paymentWhatsapp: String,
     val sellerType: AdminStoreSellerType,
     val sellerId: String,
     val sellerName: String,
     val sellerLogoUrl: String,
+)
+
+data class AdminStoreProductVariant(
+    val id: String,
+    val tamanho: String,
+    val cor: String,
+    val estoque: Int,
+    val vendidos: Int,
 )
 
 data class AdminStoreProductForm(
@@ -103,6 +116,12 @@ data class AdminStoreProductForm(
     val tagEffect: String = "none",
     val coresText: String = "",
     val caracteristicasText: String = "",
+    val usarVariantes: Boolean = false,
+    val variantesText: String = "",
+    val paymentPixKey: String = "",
+    val paymentBank: String = "",
+    val paymentHolder: String = "",
+    val paymentWhatsapp: String = "",
     val sellerType: AdminStoreSellerType = AdminStoreSellerType.Tenant,
     val sellerId: String = "",
     val sellerName: String = "",
@@ -164,6 +183,12 @@ data class AdminStoreOrder(
     val status: AdminStoreOrderStatus,
     val approvedBy: String,
     val receiverLabel: String,
+    val paymentPixKey: String,
+    val paymentBank: String,
+    val paymentHolder: String,
+    val paymentWhatsapp: String,
+    val sellerName: String,
+    val sellerTypeLabel: String,
     val variantLabel: String,
     val createdAt: String,
     val updatedAt: String,
@@ -183,6 +208,7 @@ enum class AdminStoreOrderStatus(val remoteValue: String, val label: String) {
     companion object {
         fun fromRemote(value: String?): AdminStoreOrderStatus {
             return when (value?.trim()?.lowercase()) {
+                "pending", "pendente" -> Pendente
                 "approved" -> Approved
                 "rejected" -> Rejected
                 "delivered" -> Delivered
@@ -281,6 +307,8 @@ object AdminStoreCatalog {
     const val ProductBadgeMaxLength = 30
     const val ProductColorsTextMaxLength = 600
     const val ProductFeaturesTextMaxLength = 1200
+    const val ProductVariantsTextMaxLength = 1600
+    const val ProductVariantFieldMaxLength = 40
 
     fun normalizePhoneInput(value: String): String {
         return value.filter(Char::isDigit).take(PhoneMaxLength)

@@ -88,6 +88,12 @@ fun AdminStoreProductsScreen(
     onTagEffectChange: (String) -> Unit,
     onColorsTextChange: (String) -> Unit,
     onFeaturesTextChange: (String) -> Unit,
+    onUseVariantsChange: (Boolean) -> Unit,
+    onVariantsTextChange: (String) -> Unit,
+    onPaymentPixKeyChange: (String) -> Unit,
+    onPaymentBankChange: (String) -> Unit,
+    onPaymentHolderChange: (String) -> Unit,
+    onPaymentWhatsappChange: (String) -> Unit,
     onSaveProductClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onBackClick: () -> Unit,
@@ -132,11 +138,10 @@ fun AdminStoreProductsScreen(
                 onClick = onCategoriesClick,
             )
             ProductSmallAction(
-                text = "Recebedores produtos",
+                text = "PIX por produto",
                 icon = Icons.Outlined.PersonAdd,
                 accent = Color(0xFF22D3EE),
-                enabled = false,
-                onClick = {},
+                onClick = onNewProductClick,
             )
             ProductSmallAction(
                 text = "Novo Produto",
@@ -262,6 +267,12 @@ fun AdminStoreProductsScreen(
                 onTagEffectChange = onTagEffectChange,
                 onColorsTextChange = onColorsTextChange,
                 onFeaturesTextChange = onFeaturesTextChange,
+                onUseVariantsChange = onUseVariantsChange,
+                onVariantsTextChange = onVariantsTextChange,
+                onPaymentPixKeyChange = onPaymentPixKeyChange,
+                onPaymentBankChange = onPaymentBankChange,
+                onPaymentHolderChange = onPaymentHolderChange,
+                onPaymentWhatsappChange = onPaymentWhatsappChange,
                 onSaveProductClick = onSaveProductClick,
                 onCloseProductFormClick = onCloseProductFormClick,
             )
@@ -331,6 +342,12 @@ private fun AdminStoreProductFormCard(
     onTagEffectChange: (String) -> Unit,
     onColorsTextChange: (String) -> Unit,
     onFeaturesTextChange: (String) -> Unit,
+    onUseVariantsChange: (Boolean) -> Unit,
+    onVariantsTextChange: (String) -> Unit,
+    onPaymentPixKeyChange: (String) -> Unit,
+    onPaymentBankChange: (String) -> Unit,
+    onPaymentHolderChange: (String) -> Unit,
+    onPaymentWhatsappChange: (String) -> Unit,
     onSaveProductClick: () -> Unit,
     onCloseProductFormClick: () -> Unit,
 ) {
@@ -369,7 +386,7 @@ private fun AdminStoreProductFormCard(
             leadingIcon = Icons.Outlined.Image,
         )
         ProductMessage(
-            message = "Upload de imagem: pendente no Android até configurar Supabase Storage com limite de tamanho, validação de tipo e compressão.",
+            message = "Use a URL pública da imagem do produto, igual ao campo img do web-reference. URLs do Storage/Supabase e imagens remotas são preservadas.",
             color = PremiumZinc400,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -447,9 +464,62 @@ private fun AdminStoreProductFormCard(
             label = "Características (1 por linha)",
             singleLine = false,
         )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ProductPill(
+                label = "Sem variações",
+                selected = !state.form.usarVariantes,
+                accent = PremiumZinc400,
+                onClick = { onUseVariantsChange(false) },
+            )
+            ProductPill(
+                label = "Usar variações",
+                selected = state.form.usarVariantes,
+                accent = PremiumBrandAccent,
+                onClick = { onUseVariantsChange(true) },
+            )
+        }
+        if (state.form.usarVariantes) {
+            PremiumTextField(
+                value = state.form.variantesText,
+                onValueChange = onVariantsTextChange,
+                label = "Variações: tamanho | cor | estoque | vendidos",
+                singleLine = false,
+            )
+            ProductMessage(
+                message = "Uma variação por linha. Exemplo: M | Verde | 10 | 0. O estoque do produto acompanha a soma das variações quando preenchidas.",
+                color = PremiumZinc400,
+            )
+        }
         ProductMessage(
-            message = "Preço e Visibilidade por Plano, recebedores e variações avançadas ainda dependem da próxima tradução dos componentes web equivalentes.",
-            color = PremiumAmber,
+            message = "Pagamento específico do produto. Se ficar vazio, o pedido usa o PIX geral da Loja.",
+            color = PremiumBrandAccent,
+        )
+        PremiumTextField(
+            value = state.form.paymentPixKey,
+            onValueChange = onPaymentPixKeyChange,
+            label = "Chave PIX do produto",
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PremiumTextField(
+                value = state.form.paymentBank,
+                onValueChange = onPaymentBankChange,
+                label = "Banco",
+                modifier = Modifier.weight(1f),
+            )
+            PremiumTextField(
+                value = state.form.paymentHolder,
+                onValueChange = onPaymentHolderChange,
+                label = "Titular",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        PremiumTextField(
+            value = state.form.paymentWhatsapp,
+            onValueChange = onPaymentWhatsappChange,
+            label = "WhatsApp do recebedor",
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PremiumSecondaryButton(

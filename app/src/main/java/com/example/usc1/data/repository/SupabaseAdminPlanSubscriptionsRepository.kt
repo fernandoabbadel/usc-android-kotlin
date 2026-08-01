@@ -143,7 +143,7 @@ private data class PlanSubscriptionRow(
             id = cleanId,
             aluno = aluno?.trim().orEmpty().ifBlank { "Aluno" },
             turma = turma?.trim().orEmpty().ifBlank { "T??" },
-            foto = foto?.trim().orEmpty(),
+            foto = resolveRemoteImageUrl(foto).orEmpty(),
             planoId = planoId?.trim().orEmpty(),
             planoNome = planoNome?.trim().orEmpty(),
             valorPago = (valorPago ?: 0.0).coerceAtLeast(0.0),

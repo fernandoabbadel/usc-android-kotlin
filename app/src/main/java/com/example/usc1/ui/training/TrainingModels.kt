@@ -1,139 +1,126 @@
 package com.example.usc1.ui.training
 
-import com.example.usc1.R
+import com.example.usc1.domain.model.TrainingCatalog
+import com.example.usc1.domain.model.TrainingClassRanking
+import com.example.usc1.domain.model.TrainingParticipant
+import com.example.usc1.domain.model.TrainingRsvpStatus
+import com.example.usc1.domain.model.TrainingSessionRecord
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 
-enum class TrainingStatus(val label: String) {
-    Open("Check-in aberto"),
-    Confirmed("Confirmado"),
-    Closed("Encerrado"),
+private val PtBr: Locale = Locale.forLanguageTag("pt-BR")
+
+/** Célula do calendário mensal de `/treinos`. */
+data class TrainingCalendarDay(
+    val day: Int?,
+    val dateIso: String = "",
+    val isHoliday: Boolean = false,
+    val dotColors: List<String> = emptyList(),
+)
+
+/** Card de treino da agenda, com os contadores e o social proof do web. */
+data class TrainingAgendaItem(
+    val session: TrainingSessionRecord,
+    val confirmedCount: Int = 0,
+    val presentCount: Int = 0,
+    val classRanking: List<TrainingClassRanking> = emptyList(),
+    val avatars: List<String> = emptyList(),
+    val userStatus: TrainingRsvpStatus? = null,
+) {
+    val isConfirmed: Boolean get() = userStatus == TrainingRsvpStatus.Going
 }
 
-data class TrainingSession(
-    val id: String,
-    val title: String,
-    val modality: String,
-    val coachName: String,
-    val dateLabel: String,
-    val timeLabel: String,
-    val location: String,
-    val status: TrainingStatus,
-    val presenceLabel: String,
-    val imageUrl: String? = null,
-    val imageRes: Int = R.drawable.battle_forest,
-)
-
-data class TrainingCheckIn(
-    val id: String,
-    val sessionTitle: String,
-    val userName: String,
-    val status: TrainingStatus,
-    val qrPayload: String,
-    val createdAtLabel: String,
-)
-
-data class TrainingFrequency(
-    val monthLabel: String,
-    val attended: Int,
-    val total: Int,
-    val streakLabel: String,
-)
-
-data class TrainingUiState(
+data class TrainingAgendaUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val activeChallengeTitle: String = "Desafio Cardume",
-    val activeChallengeSubtitle: String = "Validado por check-in",
-    val activeChallengeDescription: String = "Some presenças, mantenha sequência e suba no ranking da atlética.",
-    val sessions: List<TrainingSession> = emptyList(),
-    val checkIn: TrainingCheckIn = TrainingCheckIn(
-        id = "",
-        sessionTitle = "Nenhum treino aberto",
-        userName = "",
-        status = TrainingStatus.Closed,
-        qrPayload = "",
-        createdAtLabel = "",
-    ),
-    val frequency: TrainingFrequency = TrainingFrequency(
-        monthLabel = "",
-        attended = 0,
-        total = 0,
-        streakLabel = "Sem presenças registradas",
-    ),
-    val history: List<TrainingCheckIn> = emptyList(),
-)
+    val requiresSession: Boolean = false,
+    val year: Int = LocalDate.now().year,
+    val month: Int = LocalDate.now().monthValue,
+    val selectedDay: Int = LocalDate.now().dayOfMonth,
+    val days: List<TrainingCalendarDay> = emptyList(),
+    val sessions: List<TrainingAgendaItem> = emptyList(),
+    val pendingSessionId: String = "",
+    val message: String? = null,
+) {
+    val monthLabel: String
+        get() = "${monthName(month)} $year"
 
-object TrainingMockData {
-    val sessions = listOf(
-        TrainingSession(
-            id = "futsal-01",
-            title = "Treino Futsal Masculino",
-            modality = "Futsal",
-            coachName = "Capitão Lucas",
-            dateLabel = "Hoje",
-            timeLabel = "20:00",
-            location = "Ginásio USC",
-            status = TrainingStatus.Open,
-            presenceLabel = "+38 confirmados",
-            imageRes = R.drawable.battle_forest,
-        ),
-        TrainingSession(
-            id = "volei-02",
-            title = "Vôlei Interturmas",
-            modality = "Vôlei",
-            coachName = "Comissão Atlética",
-            dateLabel = "Qua, 08 JUL",
-            timeLabel = "18:30",
-            location = "Quadra 2",
-            status = TrainingStatus.Confirmed,
-            presenceLabel = "+21 confirmados",
-            imageRes = R.drawable.logo_usc_wide,
-        ),
-        TrainingSession(
-            id = "gym-03",
-            title = "Check-in Gym",
-            modality = "Academia",
-            coachName = "USC Gym",
-            dateLabel = "Sex, 10 JUL",
-            timeLabel = "Livre",
-            location = "Academia parceira",
-            status = TrainingStatus.Closed,
-            presenceLabel = "Histórico fechado",
-            imageRes = R.drawable.carteirinha_bg,
-        ),
-    )
+    val selectedDayLabel: String
+        get() = "$selectedDay DE ${monthName(month).uppercase(PtBr)}"
 
-    val checkIn = TrainingCheckIn(
-        id = "CHK-5021",
-        sessionTitle = sessions.first().title,
-        userName = "Fernando USC",
-        status = TrainingStatus.Open,
-        qrPayload = "USC-GYM-CHK-5021",
-        createdAtLabel = "Hoje • 19:52",
-    )
+    val selectedDateIso: String
+        get() = "%04d-%02d-%02d".format(year, month, selectedDay)
 
-    val frequency = TrainingFrequency(
-        monthLabel = "Julho 2026",
-        attended = 9,
-        total = 12,
-        streakLabel = "5 treinos seguidos",
-    )
+    val isSelectedDayHoliday: Boolean
+        get() = TrainingCatalog.isHoliday(selectedDateIso)
+}
 
-    val history = listOf(
-        checkIn.copy(status = TrainingStatus.Confirmed, createdAtLabel = "Ontem • 20:03"),
-        checkIn.copy(id = "CHK-4980", sessionTitle = "Vôlei Interturmas", status = TrainingStatus.Confirmed, createdAtLabel = "03 JUL • 18:44"),
-        checkIn.copy(id = "CHK-4912", sessionTitle = "Check-in Gym", status = TrainingStatus.Closed, createdAtLabel = "01 JUL • 07:20"),
-    )
+data class TrainingDetailUiState(
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val notFound: Boolean = false,
+    /** Treino já encerrado e usuário sem papel de gestão/treinador. */
+    val blockedByPastRule: Boolean = false,
+    val session: TrainingSessionRecord? = null,
+    val participants: List<TrainingParticipant> = emptyList(),
+    val classRanking: List<TrainingClassRanking> = emptyList(),
+    val confirmedCount: Int = 0,
+    val presentCount: Int = 0,
+    val userStatus: TrainingRsvpStatus? = null,
+    val isSubmitting: Boolean = false,
+    val presenceQrPayload: String = "",
+    val showPresenceQr: Boolean = false,
+    val message: String? = null,
+) {
+    val isConfirmed: Boolean get() = userStatus == TrainingRsvpStatus.Going
+}
 
-    fun sessionById(id: String): TrainingSession =
-        sessions.firstOrNull { it.id == id } ?: sessions.first()
+/** `getDaysInMonth` + preenchimento dos dias vazios antes do primeiro dia da semana. */
+fun buildTrainingCalendar(
+    year: Int,
+    month: Int,
+    sessions: List<TrainingSessionRecord>,
+): List<TrainingCalendarDay> {
+    val firstDay = LocalDate.of(year, month, 1)
+    // `Date.getDay()` do JS: domingo = 0.
+    val leading = firstDay.dayOfWeek.value % 7
+    val days = ArrayList<TrainingCalendarDay>(leading + firstDay.lengthOfMonth())
+    repeat(leading) { days += TrainingCalendarDay(day = null) }
 
-    val previewState = TrainingUiState(
-        activeChallengeTitle = "Desafio Cardume",
-        activeChallengeSubtitle = "Validado por check-in",
-        activeChallengeDescription = "Some presenças, mantenha sequência e suba no ranking da atlética.",
-        sessions = sessions,
-        checkIn = checkIn,
-        frequency = frequency,
-        history = history,
-    )
+    val byDate = sessions
+        .filterNot { it.isCancelled }
+        .groupBy { it.date }
+
+    for (day in 1..firstDay.lengthOfMonth()) {
+        val iso = "%04d-%02d-%02d".format(year, month, day)
+        days += TrainingCalendarDay(
+            day = day,
+            dateIso = iso,
+            isHoliday = TrainingCatalog.isHoliday(iso),
+            dotColors = byDate[iso].orEmpty().take(3).map { it.calendarColor },
+        )
+    }
+    return days
+}
+
+/** `treinosSelecionados`: treinos ativos do dia escolhido. */
+fun List<TrainingSessionRecord>.sessionsOfDay(dateIso: String): List<TrainingSessionRecord> =
+    filter { it.date == dateIso && !it.isCancelled }
+
+internal fun monthName(month: Int): String =
+    LocalDate.of(2000, month, 1).month.getDisplayName(TextStyle.FULL, PtBr)
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(PtBr) else it.toString() }
+
+/** `treino.dia.split("-").reverse()` do web. */
+fun formatTrainingDate(isoDate: String): String {
+    val parts = isoDate.trim().take(10).split("-")
+    if (parts.size != 3) return isoDate
+    return "${parts[2]}/${parts[1]}/${parts[0]}"
+}
+
+fun formatTrainingShortDate(isoDate: String): String {
+    val parts = isoDate.trim().take(10).split("-")
+    if (parts.size != 3) return isoDate
+    return "${parts[2]}/${parts[1]}"
 }

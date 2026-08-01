@@ -121,24 +121,6 @@ fun GuideScreen(
 }
 
 @Composable
-fun FaqScreen(
-    state: GuideUiState,
-    onBackClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    InfoListScreen(
-        title = "FAQ",
-        subtitle = "Dúvidas frequentes",
-        icon = Icons.AutoMirrored.Outlined.HelpOutline,
-        items = state.faqItems,
-        isLoading = state.isLoading,
-        errorMessage = state.errorMessage,
-        onBackClick = onBackClick,
-        modifier = modifier,
-    )
-}
-
-@Composable
 fun ContactUscScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -150,24 +132,6 @@ fun ContactUscScreen(
         items = listOf(
             GuideItem("email-usc", GuideCategory.Groups, 1, "E-mail", "Contato oficial da plataforma USC.", "USC"),
             GuideItem("instagram", GuideCategory.Groups, 2, "Instagram", "Canal social da atlética e comunidade.", "Social"),
-        ),
-        onBackClick = onBackClick,
-        modifier = modifier,
-    )
-}
-
-@Composable
-fun SupportScreen(
-    onBackClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    InfoListScreen(
-        title = "Suporte",
-        subtitle = "Atendimento e solicitações",
-        icon = Icons.AutoMirrored.Outlined.ContactSupport,
-        items = listOf(
-            GuideItem("pedido-problema", GuideCategory.Emergency, 1, "Pedido com problema", "Abra solicitação para loja, eventos ou planos.", "Pedido"),
-            GuideItem("conta-acesso", GuideCategory.Emergency, 2, "Conta e acesso", "Convite, aprovação, banimento e segurança.", "Conta"),
         ),
         onBackClick = onBackClick,
         modifier = modifier,
@@ -255,17 +219,20 @@ fun LgpdRequestScreen(
     )
 }
 
+/** `/legal/[slug]`: sem slug lista tudo, com slug abre o documento pedido. */
 @Composable
 fun LegalDocumentScreen(
     state: LegalUiState,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
+    slug: String = "",
 ) {
+    val selected = state.documentBySlug(slug)
     LegalDocsScreen(
-        title = "Documento Legal",
-        subtitle = "Texto e versão vigente",
+        title = selected?.title ?: "Documento Legal",
+        subtitle = selected?.updatedAtLabel ?: "Texto e versão vigente",
         icon = Icons.Outlined.Description,
-        docs = state.docs,
+        docs = selected?.let { listOf(it) } ?: state.docs,
         isLoading = state.isLoading,
         errorMessage = state.errorMessage,
         compact = false,

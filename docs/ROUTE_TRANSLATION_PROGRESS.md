@@ -108,3 +108,33 @@ Estas páginas já têm código Kotlin/Supabase iniciado, mas ainda não entram 
 - Admin raiz faltam: 92
 - Admin total incluindo `[tenant]/admin`: 28 / 127
 - Admin total incluindo `[tenant]/admin` faltam: 99
+
+## M6 - Coletivos, área pública (18 rotas)
+
+Fonte única: `ligas_config` normalizada por `web-reference/src/lib/leaguesService.ts`.
+Android: `SupabaseCollectivesRepository`, `CollectiveCatalogViewModel`, `CollectiveDetailViewModel`,
+`CollectiveCatalogScreen`, `CollectiveDetailScreen`.
+
+| # | Web `page.tsx` | Android | Status |
+|---:|---|---|---|
+| 1 | `app/ligas_usc/page.tsx` | `CollectiveCatalogScreen` (`leagues`) | Catálogo real por `likes desc`/60, curtir, seguir e Oráculo com `quiz_history` |
+| 2 | `app/ligas_usc/[leagueId]/page.tsx` | `CollectiveDetailScreen` aba Visão geral | Visão geral, links e pagamento reais |
+| 3 | `app/ligas_usc/[leagueId]/membros/page.tsx` | aba Membros | `ligas_config.membros` ordenado por cargo |
+| 4 | `app/ligas_usc/[leagueId]/agenda/page.tsx` | aba Agenda | Público/interno com hidratação do evento global |
+| 5 | `app/ligas_usc/[leagueId]/loja/page.tsx` | aba Loja | `categorias` + `produtos` por `seller_id` |
+| 6 | `app/comissoes/page.tsx` | `CollectiveCatalogScreen` (`commissions`) | Ordenado por vendas/exposição/likes/nome, membros por turma |
+| 7 | `app/comissoes/[leagueId]/page.tsx` | aba Visão geral | Idem liga, rótulo "Representação oficial" |
+| 8 | `app/comissoes/[leagueId]/membros/page.tsx` | aba Membros | Só a diretoria, como no web |
+| 9 | `app/comissoes/[leagueId]/agenda/page.tsx` | aba Agenda | Interno liberado por cargo ou pela turma |
+| 10 | `app/comissoes/[leagueId]/loja/page.tsx` | aba Loja | Idem liga |
+| 11 | `app/diretorio/page.tsx` | `AppRoute.Directory` | Registro primário (`fetchPrimaryLeagueRecord`), aba Visão geral |
+| 12 | `app/diretorio/membros/page.tsx` | `directory-root-members` | Registro primário, aba Membros |
+| 13 | `app/diretorio/agenda/page.tsx` | `directory-root-agenda` | Registro primário, aba Agenda |
+| 14 | `app/diretorio/loja/page.tsx` | `directory-root-store` | Registro primário, aba Loja |
+| 15 | `app/diretorio/[leagueId]/page.tsx` | `directory-detail/{id}` | Aba Visão geral |
+| 16 | `app/diretorio/[leagueId]/membros/page.tsx` | `directory-members/{id}` | Aba Membros |
+| 17 | `app/diretorio/[leagueId]/agenda/page.tsx` | `directory-agenda/{id}` | Aba Agenda |
+| 18 | `app/diretorio/[leagueId]/loja/page.tsx` | `directory-store/{id}` | Aba Loja |
+
+Pendência única do M6: `POST /api/ligas/member-requests` (solicitar entrada/acesso) roda com
+service role no web e não foi portado. O card de participação mostra o estado real e explica isso.

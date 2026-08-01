@@ -66,8 +66,10 @@ private fun EventOrderDetailLoaded(
         EventOrderCard(order = order, onDetailsClick = {})
         PremiumCard(accent = orderStatusColor(order.status)) {
             OrderStatusChip(status = order.status)
+            OrderItemTypeChip(type = order.itemType)
+            PremiumInfoRow("Tipo", order.itemType.label)
             PremiumInfoRow("Quantidade", "${order.quantity}")
-            PremiumInfoRow("Lote", order.lotName)
+            PremiumInfoRow(order.itemType.detailLabel, order.lotName)
             PremiumInfoRow("Valor", order.amountLabel)
             PremiumInfoRow("Pagamento", order.paymentStatus.label)
             PremiumInfoRow("Aprovação", order.approvalStatus)

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -30,11 +31,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.example.usc1.core.ui.PremiumAmber
 import com.example.usc1.core.ui.PremiumBrand
 import com.example.usc1.core.ui.PremiumChip
@@ -67,15 +70,31 @@ fun PartnerCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(178.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                accent.copy(alpha = 0.34f),
-                                PremiumZinc900,
+                    .background(Color.Black),
+            ) {
+                // Capa real do parceiro (imgCapa), como no /parceiros do web.
+                if (partner.coverUrl.isNotBlank() || partner.logoUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = partner.coverUrl.ifBlank { partner.logoUrl },
+                        contentDescription = partner.name,
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.8f,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    accent.copy(alpha = 0.22f),
+                                    Color.Transparent,
+                                    PremiumZinc900,
+                                ),
                             ),
                         ),
-                    ),
-            ) {
+                )
                 Row(
                     modifier = Modifier
                         .align(Alignment.TopStart)

@@ -15,17 +15,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.RemoveShoppingCart
 import androidx.compose.material.icons.outlined.ShoppingBag
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,6 +38,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,8 +48,8 @@ import com.example.usc1.core.ui.PremiumBrand
 import com.example.usc1.core.ui.PremiumBrandAccent
 import com.example.usc1.core.ui.PremiumCard
 import com.example.usc1.core.ui.PremiumChip
+import com.example.usc1.core.ui.PremiumPurple
 import com.example.usc1.core.ui.PremiumRed
-import com.example.usc1.core.ui.PremiumSecondaryButton
 import com.example.usc1.core.ui.PremiumZinc400
 import com.example.usc1.core.ui.PremiumZinc500
 import com.example.usc1.core.ui.PremiumZinc800
@@ -132,26 +132,27 @@ fun ProductCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accent = product.tagColor.toStoreColor(productStatusColor(product.status))
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(26.dp))
             .background(PremiumZinc900)
-            .border(1.dp, productStatusColor(product.status).copy(alpha = 0.24f), RoundedCornerShape(26.dp))
+            .border(1.dp, accent.copy(alpha = 0.28f), RoundedCornerShape(26.dp))
             .clickable(onClick = onClick),
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(214.dp)
+                    .height(226.dp)
                     .background(Color.Black),
             ) {
                 StoreProductImage(
                     product = product,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    alpha = 0.76f,
+                    alpha = 0.78f,
                 )
                 Box(
                     modifier = Modifier
@@ -174,10 +175,10 @@ fun ProductCard(
                 ) {
                     PremiumChip(
                         label = product.badge,
-                        accent = productStatusColor(product.status),
+                        accent = accent,
                         filled = product.status == StoreProductStatus.Available,
                     )
-                    PremiumChip(label = product.category, accent = PremiumBrandAccent)
+                    ProductStatusChip(status = product.status)
                 }
                 Surface(
                     modifier = Modifier
@@ -199,6 +200,7 @@ fun ProductCard(
                 modifier = Modifier.padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                StoreSellerLine(product = product)
                 Text(
                     text = product.name,
                     color = Color.White,
@@ -229,7 +231,17 @@ fun ProductCard(
                             color = PremiumZinc500,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp,
                         )
+                        product.oldPriceLabel?.let {
+                            Text(
+                                text = it,
+                                color = PremiumZinc500,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                textDecoration = TextDecoration.LineThrough,
+                            )
+                        }
                         Text(
                             text = product.priceLabel,
                             color = productStatusColor(product.status),
@@ -237,9 +249,207 @@ fun ProductCard(
                             fontWeight = FontWeight.Black,
                         )
                     }
-                    ProductStatusChip(status = product.status)
+                    PremiumChip(label = product.category, accent = PremiumBrandAccent)
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ProductColorPreview(colors = product.colors)
+                    Text(
+                        text = "${product.likesCount} curtidas • ${product.soldCount} vendidos",
+                        color = PremiumZinc500,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun StoreCategoryCard(
+    category: StoreCategory,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = category.buttonColor.toStoreColor(PremiumBrand)
+    Box(
+        modifier = modifier
+            .width(154.dp)
+            .height(116.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(PremiumZinc900)
+            .border(1.dp, accent.copy(alpha = if (selected) 0.86f else 0.28f), RoundedCornerShape(22.dp))
+            .clickable(onClick = onClick),
+    ) {
+        val fallbackPainter = painterResource(id = com.example.usc1.R.drawable.logo_platform_web)
+        if (!category.coverImageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = category.coverImageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                placeholder = fallbackPainter,
+                error = fallbackPainter,
+                alpha = 0.74f,
+            )
+        } else {
+            Image(
+                painter = fallbackPainter,
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(92.dp),
+                contentScale = ContentScale.Fit,
+                alpha = 0.26f,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.16f),
+                            Color.Black.copy(alpha = 0.56f),
+                            Color.Black.copy(alpha = 0.94f),
+                        ),
+                    ),
+                ),
+        )
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            PremiumChip(label = category.name, accent = accent, filled = selected)
+            PremiumChip(
+                label = if (category.isReceivingOrders) "Ativo" else "Pausado",
+                accent = if (category.isReceivingOrders) PremiumBrand else PremiumAmber,
+            )
+        }
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.size(28.dp),
+                shape = CircleShape,
+                color = Color.Black,
+                border = BorderStroke(1.dp, accent.copy(alpha = 0.65f)),
+            ) {
+                if (!category.sellerLogoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = category.sellerLogoUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        placeholder = fallbackPainter,
+                        error = fallbackPainter,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.ShoppingBag,
+                        contentDescription = null,
+                        modifier = Modifier.padding(7.dp),
+                        tint = accent,
+                    )
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    text = category.sellerName.ifBlank { category.sellerType.label },
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = category.sellerType.label.uppercase(),
+                    color = accent,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoreSellerLine(product: StoreProduct) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val fallbackPainter = painterResource(id = product.imageRes)
+        Surface(
+            modifier = Modifier.size(28.dp),
+            shape = CircleShape,
+            color = Color.Black,
+            border = BorderStroke(1.dp, PremiumZinc800),
+        ) {
+            if (!product.sellerLogoUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = product.sellerLogoUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    placeholder = fallbackPainter,
+                    error = fallbackPainter,
+                )
+            } else {
+                Image(
+                    painter = fallbackPainter,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                text = product.sellerName.ifBlank { product.sellerType.label },
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = product.sellerType.label.uppercase(),
+                color = PremiumZinc500,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProductColorPreview(colors: List<String>) {
+    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        val preview = colors.take(5).ifEmpty { listOf("#10B981") }
+        preview.forEach { color ->
+            Surface(
+                modifier = Modifier.size(16.dp),
+                shape = CircleShape,
+                color = color.toStoreColor(PremiumZinc800),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+            ) {}
         }
     }
 }
@@ -287,6 +497,21 @@ fun CartItemCard(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                 )
+                val optionSummary = listOf(item.variantLabel, item.colorLabel)
+                    .map(String::trim)
+                    .filter(String::isNotBlank)
+                    .joinToString(" • ")
+                if (optionSummary.isNotBlank()) {
+                    Text(
+                        text = optionSummary,
+                        color = PremiumZinc500,
+                        fontSize = 10.sp,
+                        lineHeight = 14.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 PremiumChip(label = item.product.category, accent = PremiumBrand)
             }
             Text(
@@ -460,4 +685,18 @@ fun storeOrderColor(status: StoreOrderStatus): Color = when (status) {
     StoreOrderStatus.Pending -> PremiumAmber
     StoreOrderStatus.Approved -> PremiumBrand
     StoreOrderStatus.Cancelled -> PremiumRed
+}
+
+private fun String?.toStoreColor(fallback: Color): Color {
+    val clean = this?.trim().orEmpty()
+    if (clean.isBlank()) return fallback
+    return when (clean.lowercase()) {
+        "emerald", "green", "verde" -> PremiumBrand
+        "amber", "yellow", "amarelo", "laranja", "orange" -> PremiumAmber
+        "purple", "violeta", "roxo" -> PremiumPurple
+        "red", "vermelho" -> PremiumRed
+        else -> runCatching {
+            Color(android.graphics.Color.parseColor(if (clean.startsWith("#")) clean else "#$clean"))
+        }.getOrDefault(fallback)
+    }
 }

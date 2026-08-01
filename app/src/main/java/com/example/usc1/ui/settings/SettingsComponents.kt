@@ -334,7 +334,6 @@ private fun ProfileAvatar(
 internal fun SettingsInvitePanel(
     state: SettingsInviteUiModel,
     tenantName: String,
-    onCreateInviteClick: () -> Unit,
     onOpenInvitesClick: () -> Unit,
     onCopyInviteClick: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -398,7 +397,7 @@ internal fun SettingsInvitePanel(
                         fontWeight = FontWeight.Black,
                     )
                     Text(
-                        text = "Gera 1 link para convidar amigos, de uso único e validade de 72h.",
+                        text = "Cada link é de uso único e vale 72h. A geração roda no painel web; aqui você acompanha, copia e encerra.",
                         color = Color(0xFFFDE68A).copy(alpha = 0.72f),
                         fontSize = 11.sp,
                         lineHeight = 15.sp,
@@ -406,9 +405,11 @@ internal fun SettingsInvitePanel(
                 }
             }
 
+            // A criação do link roda em rota de servidor com service role no web
+            // (`/api/member-invite`), então o app leva o usuário para a lista de convites
+            // em vez de exibir um botão de gerar que não teria efeito.
             Surface(
-                onClick = onCreateInviteClick,
-                enabled = state.canCreate,
+                onClick = onOpenInvitesClick,
                 shape = RoundedCornerShape(16.dp),
                 color = Color.Transparent,
             ) {
@@ -424,27 +425,15 @@ internal fun SettingsInvitePanel(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = Color(0xFF1B1300),
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Outlined.PersonAdd,
-                            contentDescription = null,
-                            tint = Color(0xFF1B1300),
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Outlined.PersonAdd,
+                        contentDescription = null,
+                        tint = Color(0xFF1B1300),
+                        modifier = Modifier.size(16.dp),
+                    )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (state.isLoading) {
-                            "GERANDO CONVITE"
-                        } else {
-                            "TRAZER AMIGO PARA A $tenantInviteLabel"
-                        },
+                        text = "MEUS CONVITES DA $tenantInviteLabel",
                         color = Color(0xFF1B1300),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
@@ -909,7 +898,9 @@ internal fun iconFor(action: SettingsAction): ImageVector = when (action) {
     SettingsAction.Scanner -> Icons.Outlined.QrCodeScanner
     SettingsAction.SignOut -> Icons.AutoMirrored.Outlined.Logout
     SettingsAction.Invites -> Icons.Outlined.PersonAdd
+    SettingsAction.InvitesHistory -> Icons.Outlined.History
     SettingsAction.Mentorship -> Icons.Outlined.FavoriteBorder
+    SettingsAction.TurmaLeader -> Icons.Outlined.Security
     SettingsAction.Notifications -> Icons.Outlined.Notifications
     SettingsAction.Support -> Icons.Outlined.WarningAmber
     SettingsAction.Guide -> Icons.Outlined.Settings

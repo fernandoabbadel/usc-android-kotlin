@@ -17,10 +17,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -55,6 +57,10 @@ fun CommunityPostCard(
     post: CommunityPost,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onAuthorClick: (String) -> Unit = {},
+    onCommentClick: (String) -> Unit = {},
+    onLikeClick: (String) -> Unit = {},
+    onHypeClick: (String) -> Unit = {},
 ) {
     val accent = communityStatusColor(post.status)
     Surface(
@@ -77,7 +83,9 @@ fun CommunityPostCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(
-                    modifier = Modifier.size(46.dp),
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clickable(enabled = post.userId.isNotBlank()) { onAuthorClick(post.userId) },
                     shape = CircleShape,
                     color = Color.Black,
                     border = BorderStroke(2.dp, accent),
@@ -101,10 +109,14 @@ fun CommunityPostCard(
                         )
                     }
                 }
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(enabled = post.userId.isNotBlank()) { onAuthorClick(post.userId) },
+                ) {
                     Text(
                         text = post.authorName,
-                        color = Color.White,
+                        color = communityPlanColor(post.planColorKey),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
@@ -164,15 +176,37 @@ fun CommunityPostCard(
                     )
                 }
             }
+            // Barra de ações do web: comentar | curtir | hype | denúncias.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CommunityMetric(Icons.Outlined.ChatBubbleOutline, if (post.commentsDisabled) "${post.comments} 🔒" else "${post.comments}", PremiumBrand)
-                CommunityMetric(Icons.Outlined.FavoriteBorder, "${post.likes}", PremiumRed)
-                Text(text = "🔥 ${post.hype}", color = PremiumAmber, fontSize = 12.sp, fontWeight = FontWeight.Black)
-                CommunityMetric(Icons.Outlined.Flag, "${post.reports}", if (post.reports > 0) PremiumRed else PremiumZinc500)
+                CommunityMetric(
+                    icon = Icons.Outlined.ChatBubbleOutline,
+                    value = if (post.commentsDisabled) "${post.comments} 🔒" else "${post.comments}",
+                    color = PremiumZinc500,
+                    onClick = { onCommentClick(post.id) },
+                )
+                CommunityMetric(
+                    icon = if (post.likedByMe) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    value = "${post.likes}",
+                    color = if (post.likedByMe) PremiumRed else PremiumZinc500,
+                    valueColor = if (post.likedByMe) PremiumRed else PremiumZinc400,
+                    onClick = { onLikeClick(post.id) },
+                )
+                CommunityMetric(
+                    icon = Icons.Outlined.LocalFireDepartment,
+                    value = "${post.hype}",
+                    color = if (post.hypedByMe) PremiumAmber else PremiumZinc500,
+                    valueColor = if (post.hypedByMe) PremiumAmber else PremiumZinc400,
+                    onClick = { onHypeClick(post.id) },
+                )
+                CommunityMetric(
+                    icon = Icons.Outlined.Flag,
+                    value = if (post.reports > 0) "${post.reports}" else "",
+                    color = if (post.reports > 0) PremiumRed else PremiumZinc500.copy(alpha = 0.5f),
+                )
             }
         }
     }
@@ -183,13 +217,111 @@ private fun CommunityMetric(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     value: String,
     color: Color,
+    valueColor: Color = PremiumZinc400,
+    onClick: (() -> Unit)? = null,
 ) {
     Row(
+        modifier = if (onClick != null) {
+            Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        } else {
+            Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(17.dp), tint = color)
-        Text(text = value, color = PremiumZinc400, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = color)
+        if (value.isNotBlank()) {
+            Text(text = value, color = valueColor, fontSize = 12.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+/** Espelha `resolvePlanTextClass` do web-reference. */
+fun communityPlanColor(colorKey: String): Color {
+    val key = colorKey.lowercase()
+    return when {
+        key.contains("emerald") || key.contains("green") -> PremiumBrand
+        key.contains("amber") || key.contains("yellow") || key.contains("gold") -> PremiumAmber
+        key.contains("red") || key.contains("rose") -> PremiumRed
+        key.contains("blue") || key.contains("cyan") -> Color(0xFF60A5FA)
+        key.contains("purple") || key.contains("violet") -> Color(0xFFA855F7)
+        key.contains("orange") -> Color(0xFFF97316)
+        else -> Color.White
+    }
+}
+
+@Composable
+fun CommunityCommentRow(
+    comment: CommunityComment,
+    onAuthorClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Surface(
+            modifier = Modifier
+                .size(36.dp)
+                .clickable(enabled = comment.userId.isNotBlank()) { onAuthorClick(comment.userId) },
+            shape = CircleShape,
+            color = PremiumZinc900,
+            border = BorderStroke(1.dp, PremiumZinc800),
+        ) {
+            if (!comment.authorAvatarUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = comment.authorAvatarUrl,
+                    contentDescription = comment.authorName,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = comment.authorName.take(1).uppercase(),
+                        color = PremiumBrand,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                    )
+                }
+            }
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = comment.authorName,
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (comment.timeLabel.isNotBlank()) {
+                    Text(
+                        text = comment.timeLabel,
+                        color = PremiumZinc500,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+            Text(
+                text = comment.body,
+                color = Color(0xFFD4D4D8),
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+            )
+        }
     }
 }
 

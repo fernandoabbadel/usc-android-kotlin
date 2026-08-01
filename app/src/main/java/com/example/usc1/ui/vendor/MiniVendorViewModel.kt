@@ -18,18 +18,13 @@ class MiniVendorViewModel(
     val uiState: StateFlow<MiniVendorUiState> = _uiState.asStateFlow()
 
     private var lastLoadKey: String = ""
+    private var lastSession: UserSession? = null
 
     fun load(session: UserSession, forceRefresh: Boolean = false) {
+        lastSession = session
         val tenantId = session.tenant?.id.orEmpty().trim()
         val userId = session.user?.id.orEmpty().trim()
-        val key = "$tenantId::$userId"
-        if (tenantId.isBlank() || userId.isBlank()) {
-            lastLoadKey = ""
-            _uiState.value = MiniVendorUiState(
-                statusLabel = "Sessão necessária para carregar o Mini Vendor.",
-            )
-            return
-        }
+        val key = "${tenantId.ifBlank { "active" }}::${userId.ifBlank { "auth" }}"
         if (!forceRefresh && key == lastLoadKey && (_uiState.value.hasProfile || _uiState.value.errorMessage != null)) {
             return
         }
@@ -40,6 +35,7 @@ class MiniVendorViewModel(
                 it.copy(
                     isLoading = true,
                     errorMessage = null,
+                    actionMessage = null,
                 )
             }
             runCatching {
@@ -52,6 +48,161 @@ class MiniVendorViewModel(
                         isLoading = false,
                         errorMessage = error.message.orEmpty().ifBlank {
                             "Não foi possível carregar seu Mini Vendor agora."
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    fun saveProfile(form: MiniVendorProfileForm) {
+        val session = lastSession ?: return
+        val tenantId = session.tenant?.id.orEmpty().trim()
+        val userId = session.user?.id.orEmpty().trim()
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isSavingProfile = true,
+                    errorMessage = null,
+                    actionMessage = null,
+                )
+            }
+            runCatching {
+                repository.saveProfile(
+                    tenantId = tenantId,
+                    userId = userId,
+                    form = form,
+                )
+            }.onSuccess { dashboard ->
+                lastLoadKey = ""
+                _uiState.value = dashboard.copy(
+                    isLoading = false,
+                    isSavingProfile = false,
+                    errorMessage = null,
+                )
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isSavingProfile = false,
+                        errorMessage = error.message.orEmpty().ifBlank {
+                            "Não foi possível salvar seu Mini Vendor agora."
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    fun saveProduct(form: MiniVendorProductForm) {
+        val session = lastSession ?: return
+        val tenantId = session.tenant?.id.orEmpty().trim()
+        val userId = session.user?.id.orEmpty().trim()
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isSavingProfile = true,
+                    errorMessage = null,
+                    actionMessage = null,
+                )
+            }
+            runCatching {
+                repository.saveProduct(
+                    tenantId = tenantId,
+                    userId = userId,
+                    form = form,
+                )
+            }.onSuccess { dashboard ->
+                lastLoadKey = ""
+                _uiState.value = dashboard.copy(
+                    isLoading = false,
+                    isSavingProfile = false,
+                    errorMessage = null,
+                )
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isSavingProfile = false,
+                        errorMessage = error.message.orEmpty().ifBlank {
+                            "Não foi possível salvar o produto agora."
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    fun setProductActive(product: MiniVendorProduct, active: Boolean) {
+        val session = lastSession ?: return
+        val tenantId = session.tenant?.id.orEmpty().trim()
+        val userId = session.user?.id.orEmpty().trim()
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isSavingProfile = true,
+                    errorMessage = null,
+                    actionMessage = null,
+                )
+            }
+            runCatching {
+                repository.setProductActive(
+                    tenantId = tenantId,
+                    userId = userId,
+                    productId = product.id,
+                    active = active,
+                )
+            }.onSuccess { dashboard ->
+                lastLoadKey = ""
+                _uiState.value = dashboard.copy(
+                    isLoading = false,
+                    isSavingProfile = false,
+                    errorMessage = null,
+                )
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isSavingProfile = false,
+                        errorMessage = error.message.orEmpty().ifBlank {
+                            "Não foi possível alterar o produto agora."
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    fun setOrderStatus(order: MiniVendorOrder, status: MiniVendorOrderStatus) {
+        val session = lastSession ?: return
+        val tenantId = session.tenant?.id.orEmpty().trim()
+        val userId = session.user?.id.orEmpty().trim()
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isSavingProfile = true,
+                    errorMessage = null,
+                    actionMessage = null,
+                )
+            }
+            runCatching {
+                repository.setOrderStatus(
+                    tenantId = tenantId,
+                    userId = userId,
+                    orderId = order.id,
+                    status = status,
+                    approvedBy = userId,
+                )
+            }.onSuccess { dashboard ->
+                lastLoadKey = ""
+                _uiState.value = dashboard.copy(
+                    isLoading = false,
+                    isSavingProfile = false,
+                    errorMessage = null,
+                )
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isSavingProfile = false,
+                        errorMessage = error.message.orEmpty().ifBlank {
+                            "Não foi possível atualizar o pedido agora."
                         },
                     )
                 }

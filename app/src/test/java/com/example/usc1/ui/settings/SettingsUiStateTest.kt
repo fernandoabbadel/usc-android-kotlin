@@ -81,4 +81,94 @@ class SettingsUiStateTest {
         assertFalse(SettingsInviteUiModel(isVisible = true, remainingToday = 5, isLoading = true).canCreate)
         assertTrue(SettingsInviteUiModel(isVisible = true, remainingToday = 1).canCreate)
     }
+
+    @Test
+    fun `mini vendor row disappears when the tenant module is off`() {
+        val hidden = buildSettingsSections(
+            mentorshipTitle = "Apadrinhamento",
+            miniVendorBadge = "Pendente",
+            showMiniVendor = false,
+            showTurmaLeader = false,
+        ).flatMap(SettingsSectionUiModel::items)
+
+        assertFalse(hidden.any { it.action == SettingsAction.MiniVendor })
+    }
+
+    @Test
+    fun `mini vendor row carries the real registration badge when the module is on`() {
+        val items = buildSettingsSections(
+            mentorshipTitle = "Apadrinhamento",
+            miniVendorBadge = "Revisar",
+            showMiniVendor = true,
+            showTurmaLeader = false,
+        ).flatMap(SettingsSectionUiModel::items)
+
+        assertEquals("Revisar", items.single { it.action == SettingsAction.MiniVendor }.badge)
+    }
+
+    @Test
+    fun `turma leader row only shows for leaders or tenant managers`() {
+        val withoutLeader = buildSettingsSections(
+            mentorshipTitle = "Apadrinhamento",
+            miniVendorBadge = "",
+            showMiniVendor = true,
+            showTurmaLeader = false,
+        ).flatMap(SettingsSectionUiModel::items)
+        assertFalse(withoutLeader.any { it.action == SettingsAction.TurmaLeader })
+
+        val withLeader = buildSettingsSections(
+            mentorshipTitle = "Apadrinhamento",
+            miniVendorBadge = "",
+            showMiniVendor = true,
+            showTurmaLeader = true,
+        ).flatMap(SettingsSectionUiModel::items)
+        assertEquals("Lider", withLeader.single { it.action == SettingsAction.TurmaLeader }.badge)
+    }
+
+    @Test
+    fun `mentorship row uses the tenant configured hub title`() {
+        val items = buildSettingsSections(
+            mentorshipTitle = "Veteranos e Calouros",
+            miniVendorBadge = "",
+            showMiniVendor = true,
+            showTurmaLeader = false,
+        ).flatMap(SettingsSectionUiModel::items)
+
+        assertEquals(
+            "Veteranos e Calouros",
+            items.single { it.action == SettingsAction.Mentorship }.title,
+        )
+    }
+
+    @Test
+    fun `class leader flag from the session unlocks the turma leader row`() {
+        val session = UserSession(
+            user = AuthUser(
+                id = "u1",
+                name = "Lider T2",
+                email = "lider@example.com",
+                classCode = "T2",
+                role = UserRole.User,
+                status = UserStatus.Ativo,
+                isClassLeader = true,
+            ),
+            tenant = TenantContext(
+                id = "tenant-1",
+                slug = "medicina",
+                name = "Atlética de Medicina",
+                membershipStatus = TenantMembershipStatus.Approved,
+            ),
+            status = AuthStatus.Authenticated,
+        )
+
+        val result = SettingsUiState().withSession(session)
+
+        assertTrue(result.isTurmaLeader)
+        assertFalse(result.canManageTurmaRequests)
+        assertTrue(
+            result.sections
+                .flatMap(SettingsSectionUiModel::items)
+                .any { it.action == SettingsAction.TurmaLeader },
+        )
+    }
 }

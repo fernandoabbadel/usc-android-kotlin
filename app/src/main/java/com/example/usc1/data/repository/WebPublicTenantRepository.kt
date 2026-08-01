@@ -145,7 +145,7 @@ private data class PublicTenantPayload(
             institution = faculdade.trim(),
             course = curso.trim(),
             city = cidade.trim(),
-            logoUrl = logoUrl.trim().ifBlank { null },
+            logoUrl = resolveRemoteImageUrl(logoUrl),
             palette = TenantPalette.entries.firstOrNull { palette ->
                 palette.remoteValue == paletteKey.trim().lowercase()
             } ?: TenantPalette.Green,

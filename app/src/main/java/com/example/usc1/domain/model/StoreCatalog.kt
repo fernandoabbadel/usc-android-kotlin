@@ -41,6 +41,22 @@ data class StoreSeller(
         get() = name.ifBlank { type.label }
 }
 
+data class StoreProductVariant(
+    val id: String,
+    val color: String,
+    val size: String,
+    val stock: Int?,
+    val sold: Int = 0,
+)
+
+data class StorePaymentConfig(
+    val pixKey: String = "",
+    val bank: String = "",
+    val holder: String = "",
+    val whatsapp: String = "",
+    val recipientName: String = "",
+)
+
 data class StoreCatalogProduct(
     val id: String,
     val tenantId: String,
@@ -54,6 +70,15 @@ data class StoreCatalogProduct(
     val lote: String? = null,
     val status: String,
     val tagLabel: String? = null,
+    val tagColor: String? = null,
+    val tagEffect: String? = null,
+    val colors: List<String> = emptyList(),
+    val variants: List<StoreProductVariant> = emptyList(),
+    val characteristics: List<String> = emptyList(),
+    val likesCount: Int = 0,
+    val soldCount: Int = 0,
+    val clicksCount: Int = 0,
+    val paymentConfig: StorePaymentConfig? = null,
     val seller: StoreSeller,
     val createdAt: String? = null,
 )
@@ -62,8 +87,11 @@ data class StoreCatalogCategory(
     val id: String,
     val name: String,
     val seller: StoreSeller,
+    val coverImageUrl: String? = null,
+    val buttonColor: String? = null,
     val displayOrder: Int? = null,
     val visible: Boolean = true,
+    val isReceivingOrders: Boolean = true,
 )
 
 data class StoreCatalogPage(

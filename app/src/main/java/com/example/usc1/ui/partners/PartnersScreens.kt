@@ -5,15 +5,23 @@ package com.example.usc1.ui.partners
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.WorkspacePremium
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -29,15 +37,19 @@ import com.example.usc1.core.ui.PremiumInfoRow
 import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumScreen
+import com.example.usc1.core.ui.PremiumTextField
 import com.example.usc1.core.ui.PremiumZinc400
 import com.example.usc1.core.ui.PremiumZinc500
 import com.example.usc1.domain.model.PartnerRecord
+import com.example.usc1.domain.model.PartnerTier
 
 @Composable
 fun PartnersScreen(
     state: PartnerUiState,
     onPartnerClick: (PartnerRecord) -> Unit,
     modifier: Modifier = Modifier,
+    onBackClick: (() -> Unit)? = null,
+    onSearchChange: (String) -> Unit = {},
 ) {
     if (state.isLoading && state.partners.isEmpty()) {
         PremiumLoadingState(text = "Carregando parceiros...", modifier = modifier)
@@ -50,8 +62,9 @@ fun PartnersScreen(
     ) {
         PremiumHeader(
             title = "Parceiros",
-            subtitle = "Empresas, cupons e benefícios da USC",
+            subtitle = "Benefícios por plano",
             icon = Icons.Outlined.Groups,
+            onBackClick = onBackClick,
         )
 
         PremiumCard(accent = PremiumBrand) {
@@ -72,6 +85,13 @@ fun PartnersScreen(
             )
         }
 
+        PremiumTextField(
+            value = state.search,
+            onValueChange = onSearchChange,
+            label = "Buscar parceiro...",
+            leadingIcon = Icons.Outlined.Search,
+        )
+
         state.errorMessage?.let { message ->
             Text(
                 text = message,
@@ -81,25 +101,60 @@ fun PartnersScreen(
             )
         }
 
-        Text(
-            text = "EMPRESAS PARCEIRAS",
-            color = PremiumZinc500,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier.padding(start = 2.dp),
-        )
-        if (state.partners.isEmpty()) {
-            PremiumEmptyState(
-                title = "Nenhum parceiro encontrado.",
-                subtitle = "A consulta do tenant ativo não retornou parceiros ativos.",
-                icon = Icons.Outlined.Storefront,
-            )
-        } else {
-            state.partners.forEach { partner ->
-                PartnerCard(
-                    partner = partner,
-                    onClick = { onPartnerClick(partner) },
+        // Seções por plano, como o TIER_SECTIONS do web.
+        state.sections.forEach { section ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = when (section.tier) {
+                            PartnerTier.Ouro -> Icons.Outlined.WorkspacePremium
+                            PartnerTier.Prata -> Icons.Outlined.Shield
+                            PartnerTier.Standard -> Icons.Outlined.Star
+                        },
+                        contentDescription = null,
+                        tint = when (section.tier) {
+                            PartnerTier.Ouro -> PremiumAmber
+                            PartnerTier.Prata -> PremiumZinc400
+                            PartnerTier.Standard -> PremiumBrand
+                        },
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = section.title.uppercase(),
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.8.sp,
+                    )
+                }
+                Text(
+                    text = "${section.subtitle} • ${section.partners.size}",
+                    color = PremiumZinc500,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
                 )
+            }
+
+            if (section.partners.isEmpty()) {
+                PremiumEmptyState(
+                    title = "Nenhum parceiro neste plano.",
+                    subtitle = "Assim que a atlética publicar parceiros deste plano, eles aparecem aqui.",
+                    icon = Icons.Outlined.Storefront,
+                )
+            } else {
+                section.partners.forEach { partner ->
+                    PartnerCard(
+                        partner = partner,
+                        onClick = { onPartnerClick(partner) },
+                    )
+                }
             }
         }
     }

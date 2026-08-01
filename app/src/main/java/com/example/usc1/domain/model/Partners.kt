@@ -159,6 +159,119 @@ data class PartnerPasswordReset(
     val expiresAt: String,
 )
 
+/** `PartnerLoginResult` de `partnersService.ts`, usado por `/empresa`. */
+data class PartnerLoginResult(
+    val id: String,
+    val name: String,
+    val status: PartnerStatus,
+    val passwordValid: Boolean,
+    val hasPasswordResetCode: Boolean = false,
+)
+
+/** `contact_visibility_ack`: aceite de exibição pública de cada contato. */
+data class PartnerContactVisibility(
+    val whatsApp: Boolean = false,
+    val instagram: Boolean = false,
+    val site: Boolean = false,
+)
+
+/** Payload de `createPartnerLead`, do passo 2 de `/empresa/cadastro`. */
+data class PartnerLeadForm(
+    val name: String = "",
+    val cnpj: String = "",
+    val responsible: String = "",
+    val cpf: String = "",
+    val category: String = "Alimentação",
+    val email: String = "",
+    val phone: String = "",
+    val password: String = "",
+    val passwordConfirmation: String = "",
+    val description: String = "",
+    val address: String = "",
+    val businessHours: String = "",
+    val tier: PartnerTier = PartnerTier.Standard,
+)
+
+object PartnerRegistrationRules {
+    val Categories = listOf(
+        "Alimentação",
+        "Vestuário",
+        "Saúde",
+        "Educação",
+        "Serviços",
+        "Lazer",
+        "Outros",
+    )
+
+    fun keepDigits(value: String, maxDigits: Int): String =
+        value.filter(Char::isDigit).take(maxDigits)
+
+    fun formatCnpj(value: String): String {
+        val digits = keepDigits(value, 14)
+        return when {
+            digits.isEmpty() -> ""
+            digits.length <= 2 -> digits
+            digits.length <= 5 -> "${digits.take(2)}.${digits.drop(2)}"
+            digits.length <= 8 -> "${digits.take(2)}.${digits.substring(2, 5)}.${digits.drop(5)}"
+            digits.length <= 12 ->
+                "${digits.take(2)}.${digits.substring(2, 5)}.${digits.substring(5, 8)}/${digits.drop(8)}"
+            else ->
+                "${digits.take(2)}.${digits.substring(2, 5)}.${digits.substring(5, 8)}/" +
+                    "${digits.substring(8, 12)}-${digits.drop(12)}"
+        }
+    }
+
+    fun formatCpf(value: String): String {
+        val digits = keepDigits(value, 11)
+        return when {
+            digits.isEmpty() -> ""
+            digits.length <= 3 -> digits
+            digits.length <= 6 -> "${digits.take(3)}.${digits.drop(3)}"
+            digits.length <= 9 -> "${digits.take(3)}.${digits.substring(3, 6)}.${digits.drop(6)}"
+            else ->
+                "${digits.take(3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.drop(9)}"
+        }
+    }
+
+    fun formatPhone(value: String): String {
+        val digits = keepDigits(value, 13)
+        if (digits.isEmpty()) return ""
+        if (digits.length <= 2) return digits
+        val country = digits.take(2)
+        if (digits.length <= 4) return "$country (${digits.drop(2)}"
+        val areaCode = digits.substring(2, 4)
+        val number = digits.drop(4)
+        return when {
+            number.isEmpty() -> "$country ($areaCode)"
+            number.length <= 4 -> "$country ($areaCode) $number"
+            number.length <= 8 -> "$country ($areaCode) ${number.take(4)}-${number.drop(4)}"
+            else -> "$country ($areaCode) ${number.take(5)}-${number.substring(5, minOf(9, number.length))}"
+        }
+    }
+
+    /** `validateStep2` de `/empresa/cadastro`. */
+    fun validate(form: PartnerLeadForm): String? {
+        if (form.name.isBlank()) return "Nome fantasia é obrigatório."
+        if (keepDigits(form.cnpj, 14).length != 14) return "CNPJ inválido (14 dígitos)."
+        if (form.responsible.isBlank()) return "Nome do responsável é obrigatório."
+        if (keepDigits(form.cpf, 11).length != 11) return "CPF inválido (11 dígitos)."
+
+        val emailRegex = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
+        if (!emailRegex.matches(form.email.trim()) || !form.email.contains(".com")) {
+            return "Email inválido."
+        }
+
+        val phoneDigits = keepDigits(form.phone, 13)
+        if (phoneDigits.length !in 12..13) {
+            return "Telefone inválido (use 55 + DDD + número)."
+        }
+
+        if (form.password.length < 8) return "A senha deve ter no mínimo 8 caracteres."
+        if (form.password != form.passwordConfirmation) return "As senhas não conferem."
+        return null
+    }
+}
+
 object PartnersCatalog {
     const val PageSize = 20
     const val BiPartnersLimit = 600

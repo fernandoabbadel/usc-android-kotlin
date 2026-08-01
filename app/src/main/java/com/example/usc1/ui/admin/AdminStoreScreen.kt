@@ -56,6 +56,8 @@ fun AdminStoreScreen(
     onHolderChange: (String) -> Unit,
     onWhatsappChange: (String) -> Unit,
     onSaveFinanceClick: () -> Unit,
+    onCategoryClick: () -> Unit,
+    onNewProductClick: () -> Unit,
     onMenuItemClick: (AdminStoreMenuItem) -> Unit,
     onRefreshClick: () -> Unit,
     onBackClick: () -> Unit,
@@ -80,15 +82,13 @@ fun AdminStoreScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PremiumSecondaryButton(
                 text = "Categoria",
-                onClick = {},
-                enabled = false,
+                onClick = onCategoryClick,
                 icon = Icons.Outlined.Category,
                 modifier = Modifier.weight(1f),
             )
             PremiumSecondaryButton(
                 text = "Novo Produto",
-                onClick = {},
-                enabled = false,
+                onClick = onNewProductClick,
                 icon = Icons.Outlined.Inventory2,
                 modifier = Modifier.weight(1f),
             )

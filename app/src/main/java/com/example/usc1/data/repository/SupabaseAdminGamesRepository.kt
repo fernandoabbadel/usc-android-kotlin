@@ -61,7 +61,7 @@ private data class ArenaUserRow(
             name = nome?.trim().orEmpty().ifBlank { "Atleta" },
             nickname = apelido?.trim().orEmpty(),
             className = turma?.trim().orEmpty().ifBlank { "Geral" },
-            photoUrl = foto?.trim().orEmpty(),
+            photoUrl = resolveRemoteImageUrl(foto).orEmpty(),
             xp = xp ?: 0,
             sharkCoins = sharkCoins ?: 0,
             planBadge = planBadge?.trim().orEmpty(),

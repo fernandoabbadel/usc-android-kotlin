@@ -45,8 +45,8 @@ object AppModules {
         AppModule(AppModuleKey.Boardround, "Boardround", "Boardround, estatísticas, ranking e quizzes.", "boardround", AppModulePhase.ImportantV2),
         AppModule(AppModuleKey.Achievements, "Conquistas", "Conquistas, badges e progresso por atividade.", "achievements", AppModulePhase.ImportantV2),
         AppModule(AppModuleKey.Fidelity, "Fidelidade", "Recompensas, resgates e histórico de fidelidade.", "fidelity", AppModulePhase.ImportantV2),
-        AppModule(AppModuleKey.History, "Histórico", "História institucional e organograma.", "history", AppModulePhase.ImportantV2),
-        AppModule(AppModuleKey.Company, "Empresa", "Login e gestão pública simplificada de parceiro.", "company", AppModulePhase.ImportantV2),
+        AppModule(AppModuleKey.History, "Histórico", "História institucional e organograma.", "historico", AppModulePhase.ImportantV2),
+        AppModule(AppModuleKey.Company, "Empresa", "Login e gestão pública simplificada de parceiro.", "empresa", AppModulePhase.ImportantV2),
         AppModule(AppModuleKey.AdminPanel, "Painel admin", "Visão geral admin, métricas, cadastros e atividade do tenant.", "admin", AppModulePhase.EssentialV1, allowedRoles = PermissionRoles.admin),
         AppModule(AppModuleKey.MasterPanel, "Painel master", "Gestão global da plataforma permanece no web/admin.", "master", AppModulePhase.WebAdminOnly),
     )

@@ -174,7 +174,7 @@ class SupabaseHomeDashboardRepository(
                     date = row.data?.trim().orEmpty(),
                     time = row.hora?.trim().orEmpty(),
                     location = row.local?.trim().orEmpty(),
-                    imageUrl = row.imagem?.trim()?.takeIf(String::isNotBlank),
+                    imageUrl = resolveRemoteImageUrl(row.imagem),
                     type = row.tipo?.trim().orEmpty(),
                     status = row.status?.trim().orEmpty().ifBlank { "ativo" },
                     likesCount = stats?.intValue("likes")?.coerceAtLeast(0) ?: 0,
@@ -213,7 +213,7 @@ class SupabaseHomeDashboardRepository(
                     id = id,
                     name = row.nome.trim().ifBlank { "Produto" },
                     price = (row.preco ?: 0.0).coerceAtLeast(0.0),
-                    imageUrl = row.img?.trim()?.takeIf(String::isNotBlank),
+                    imageUrl = resolveRemoteImageUrl(row.img),
                     likesCount = row.likes.size,
                     viewerHasLiked = userId.isNotBlank() && userId in row.likes,
                 )
@@ -240,8 +240,8 @@ class SupabaseHomeDashboardRepository(
                 HomeDashboardPartner(
                     id = id,
                     name = row.nome.trim().ifBlank { "Parceiro" },
-                    logoUrl = row.imgLogo?.trim()?.takeIf(String::isNotBlank),
-                    coverUrl = row.imgCapa?.trim()?.takeIf(String::isNotBlank),
+                    logoUrl = resolveRemoteImageUrl(row.imgLogo),
+                    coverUrl = resolveRemoteImageUrl(row.imgCapa),
                     category = row.categoria?.trim().orEmpty(),
                     tier = row.tier?.trim()?.lowercase().orEmpty().ifBlank { "standard" },
                 )
@@ -267,7 +267,7 @@ class SupabaseHomeDashboardRepository(
             ?: return HomeDashboardProfile()
 
         return HomeDashboardProfile(
-            avatarUrl = row.foto?.trim()?.takeIf(String::isNotBlank),
+            avatarUrl = resolveRemoteImageUrl(row.foto),
             className = row.turma?.trim().orEmpty(),
             planName = row.plano?.trim().orEmpty(),
             level = (row.level ?: 1).coerceAtLeast(1),
@@ -297,7 +297,7 @@ class SupabaseHomeDashboardRepository(
                     menuTitle = eventParty.stringValue("menuTitle")
                         .ifBlank { eventParty.stringValue("cardapioTitle") }
                         .ifBlank { "Menu do evento" },
-                    imageUrl = row.imagem?.trim()?.takeIf(String::isNotBlank),
+                    imageUrl = resolveRemoteImageUrl(row.imagem),
                 )
             }
     }
@@ -408,8 +408,10 @@ class SupabaseHomeDashboardRepository(
                     id = row.id,
                     name = row.nome.ifBlank { "Liga" },
                     acronym = row.sigla,
-                    logoUrl = listOfNotNull(row.logoUrl, row.logo, row.foto)
-                        .firstOrNull { it.isNotBlank() },
+                    logoUrl = resolveRemoteImageUrl(
+                        listOfNotNull(row.logoUrl, row.logo, row.foto)
+                            .firstOrNull { it.isNotBlank() },
+                    ),
                     description = row.descricao.orEmpty(),
                     weeklyTip = row.bizu.orEmpty(),
                 )
@@ -433,7 +435,7 @@ class SupabaseHomeDashboardRepository(
                 HomeDashboardPost(
                     id = row.id,
                     userName = row.userName.ifBlank { "Usuário" },
-                    avatarUrl = row.avatar?.trim()?.takeIf(String::isNotBlank),
+                    avatarUrl = resolveRemoteImageUrl(row.avatar),
                     text = row.texto,
                     createdAt = row.createdAt.orEmpty(),
                     likesCount = row.likes.size,
@@ -457,7 +459,7 @@ class SupabaseHomeDashboardRepository(
             }
             .decodeList<TrainingFallbackRow>()
             .filter { row -> isDashboardDateCurrent(row.dia, graceDays = 0) }
-            .mapNotNull { it.imagem?.trim()?.takeIf(String::isNotBlank) }
+            .mapNotNull { resolveRemoteImageUrl(it.imagem) }
             .distinct()
             .take(4)
     }
@@ -600,7 +602,7 @@ internal object DashboardBundleMapper {
             date = row.stringValue("data"),
             time = row.stringValue("hora"),
             location = row.stringValue("local"),
-            imageUrl = row.stringValue("imagem").takeIf(String::isNotBlank),
+            imageUrl = resolveRemoteImageUrl(row.stringValue("imagem")),
             type = row.stringValue("tipo"),
             status = row.stringValue("status").ifBlank { "ativo" },
             likesCount = row.intValue("likesCount").coerceAtLeast(0),
@@ -618,7 +620,7 @@ internal object DashboardBundleMapper {
             id = id,
             name = row.stringValue("nome").ifBlank { "Produto" },
             price = row.doubleValue("preco").coerceAtLeast(0.0),
-            imageUrl = row.stringValue("img").takeIf(String::isNotBlank),
+            imageUrl = resolveRemoteImageUrl(row.stringValue("img")),
             likesCount = row.intValue("likesCount").coerceAtLeast(0),
             viewerHasLiked = row.booleanValue("viewerHasLiked"),
             topClasses = row.objectArray("topTurmas").mapNotNull { stat ->
@@ -637,8 +639,8 @@ internal object DashboardBundleMapper {
         return HomeDashboardPartner(
             id = id,
             name = row.stringValue("nome").ifBlank { "Parceiro" },
-            logoUrl = row.stringValue("imgLogo").takeIf(String::isNotBlank),
-            coverUrl = row.stringValue("imgCapa").takeIf(String::isNotBlank),
+            logoUrl = resolveRemoteImageUrl(row.stringValue("imgLogo")),
+            coverUrl = resolveRemoteImageUrl(row.stringValue("imgCapa")),
             category = row.stringValue("categoria"),
             tier = row.stringValue("plano")
                 .ifBlank { row.stringValue("tier") }
@@ -655,11 +657,13 @@ internal object DashboardBundleMapper {
             id = id,
             name = row.stringValue("nome").ifBlank { "Liga" },
             acronym = row.stringValue("sigla"),
-            logoUrl = listOf(
-                row.stringValue("logoUrl"),
-                row.stringValue("logo"),
-                row.stringValue("foto"),
-            ).firstOrNull(String::isNotBlank),
+            logoUrl = resolveRemoteImageUrl(
+                listOf(
+                    row.stringValue("logoUrl"),
+                    row.stringValue("logo"),
+                    row.stringValue("foto"),
+                ).firstOrNull(String::isNotBlank),
+            ),
             description = row.stringValue("descricao"),
             weeklyTip = row.stringValue("bizu"),
         )
@@ -671,7 +675,7 @@ internal object DashboardBundleMapper {
         return HomeDashboardPost(
             id = id,
             userName = row.stringValue("userName").ifBlank { "Usuário" },
-            avatarUrl = row.stringValue("avatar").takeIf(String::isNotBlank),
+            avatarUrl = resolveRemoteImageUrl(row.stringValue("avatar")),
             text = row.stringValue("texto").ifBlank { row.stringValue("text") },
             createdAt = row.stringValue("createdAt"),
             likesCount = row.intValue("likesCount").coerceAtLeast(0),

@@ -43,6 +43,10 @@ class PartnersViewModel(
         }
     }
 
+    fun onSearchChange(value: String) {
+        _uiState.update { it.copy(search = value) }
+    }
+
     fun loadPartner(partnerId: String, forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _detailState.update { it.copy(isLoading = true, errorMessage = null, partner = null) }

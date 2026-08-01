@@ -6,6 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -40,6 +43,8 @@ import com.example.usc1.ui.admin.AdminDashboardScreen
 import com.example.usc1.ui.admin.AdminDashboardViewModel
 import com.example.usc1.ui.admin.AdminDatabaseScannerScreen
 import com.example.usc1.ui.admin.AdminDatabaseScannerViewModel
+import com.example.usc1.ui.admin.AdminEventSalesModeScreen
+import com.example.usc1.ui.admin.AdminEventSalesModeViewModel
 import com.example.usc1.domain.model.AdminStoreMenuKind
 import com.example.usc1.ui.admin.AdminGamesScreen
 import com.example.usc1.ui.admin.AdminGamesViewModel
@@ -89,8 +94,15 @@ import com.example.usc1.ui.events.EventCheckoutScreen
 import com.example.usc1.ui.events.EventDetailScreen
 import com.example.usc1.ui.events.EventDetailViewModel
 import com.example.usc1.ui.events.EventFlowUnavailableScreen
+import com.example.usc1.ui.events.EventPartyMenuScreen
+import com.example.usc1.ui.events.EventPartyMenuViewModel
+import com.example.usc1.ui.events.EventPartyProductScreen
+import com.example.usc1.ui.events.EventPartyProductViewModel
+import com.example.usc1.ui.events.EventPartyVouchersScreen
+import com.example.usc1.ui.events.EventPartyVouchersViewModel
 import com.example.usc1.ui.events.EventsScreen
 import com.example.usc1.ui.events.EventsViewModel
+import com.example.usc1.ui.events.buildEventOrderReceiptWhatsappUrl
 import com.example.usc1.ui.orders.EventOrderDetailScreen
 import com.example.usc1.ui.orders.EventOrderDetailViewModel
 import com.example.usc1.ui.orders.EventOrdersScreen
@@ -113,6 +125,8 @@ import com.example.usc1.ui.plans.PlansViewModel
 import com.example.usc1.ui.plans.UserPlanStatusScreen
 import com.example.usc1.ui.profile.ProfileScreen
 import com.example.usc1.ui.profile.ProfileViewModel
+import com.example.usc1.ui.cadastro.CadastroScreen
+import com.example.usc1.ui.cadastro.CadastroViewModel
 import com.example.usc1.ui.profile.withSession
 import com.example.usc1.ui.settings.SettingsAction
 import com.example.usc1.ui.settings.SettingsScreen
@@ -120,7 +134,7 @@ import com.example.usc1.ui.settings.SettingsViewModel
 import com.example.usc1.ui.settings.withSession
 import com.example.usc1.ui.store.CartScreen
 import com.example.usc1.ui.store.CartViewModel
-import com.example.usc1.ui.store.CheckoutScreen
+import com.example.usc1.ui.store.CheckoutConnectedScreen
 import com.example.usc1.ui.store.ProductDetailStateScreen
 import com.example.usc1.ui.store.ProductDetailViewModel
 import com.example.usc1.ui.store.StoreOrderDetailScreen
@@ -133,12 +147,10 @@ import com.example.usc1.ui.tickets.EventTicketDetailScreen
 import com.example.usc1.ui.tickets.EventTicketDetailViewModel
 import com.example.usc1.ui.tickets.EventTicketsScreen
 import com.example.usc1.ui.tickets.EventTicketsViewModel
-import com.example.usc1.ui.training.TrainingCheckInDetailScreen
-import com.example.usc1.ui.training.TrainingCheckInScreen
-import com.example.usc1.ui.training.TrainingFrequencyScreen
-import com.example.usc1.ui.training.TrainingHistoryScreen
-import com.example.usc1.ui.training.TrainingScreen
-import com.example.usc1.ui.training.TrainingViewModel
+import com.example.usc1.ui.training.TrainingAgendaScreen
+import com.example.usc1.ui.training.TrainingAgendaViewModel
+import com.example.usc1.ui.training.TrainingDetailScreen
+import com.example.usc1.ui.training.TrainingDetailViewModel
 
 @Composable
 fun UscNavGraph() {
@@ -154,7 +166,6 @@ fun UscNavGraph() {
             AppRoute.Store,
             AppRoute.Plans,
             AppRoute.Training,
-            AppRoute.Gym,
             AppRoute.Partners,
             AppRoute.Community,
             AppRoute.Leagues,
@@ -165,6 +176,9 @@ fun UscNavGraph() {
             AppRoute.Scanner,
             AppRoute.Guide,
             AppRoute.Legal,
+            AppRoute.Ranking,
+            AppRoute.History,
+            AppRoute.Company,
             AppRoute.Album,
             AppRoute.Games,
             AppRoute.Boardround,
@@ -253,23 +267,52 @@ fun UscNavGraph() {
         }
 
         composable(AppRoute.Profile) {
-            val profileViewModel: ProfileViewModel = viewModel()
-            val profileState by profileViewModel.uiState.collectAsState()
+            ProfileRoute(
+                navController = navController,
+                session = authState.session,
+                targetUserId = null,
+                showBack = false,
+            )
+        }
 
-            ProfileScreen(
-                state = profileState.withSession(authState.session),
-                onShortcutClick = { shortcut ->
-                    navController.navigate(shortcut.route) {
-                        launchSingleTop = true
-                    }
-                },
-                onRetryClick = profileViewModel::refresh,
+        composable(
+            route = AppRoute.ProfileDetail,
+            arguments = listOf(navArgument("userId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            ProfileRoute(
+                navController = navController,
+                session = authState.session,
+                targetUserId = backStackEntry.arguments?.getString("userId").orEmpty(),
+                showBack = true,
+            )
+        }
+
+        composable(AppRoute.Cadastro) {
+            val cadastroViewModel: CadastroViewModel = viewModel()
+            val cadastroState by cadastroViewModel.uiState.collectAsState()
+
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                cadastroViewModel.load(authState.session)
+            }
+
+            CadastroScreen(
+                state = cadastroState,
+                onFormChange = { form -> cadastroViewModel.updateForm { form } },
+                onSaveClick = { cadastroViewModel.save { navController.navigateUp() } },
+                onBackClick = { navController.navigateUp() },
             )
         }
 
         composable(AppRoute.Settings) {
             val settingsViewModel: SettingsViewModel = viewModel()
             val settingsState by settingsViewModel.uiState.collectAsState()
+
+            // O menu do web depende do status do mini vendor, dos módulos do tenant e do
+            // `hubTitle` do apadrinhamento — todos carregados antes de montar a lista.
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                settingsViewModel.loadMenuContext(authState.session)
+                settingsViewModel.loadMentorshipHub(authState.session)
+            }
 
             SettingsScreen(
                 state = settingsState.withSession(authState.session),
@@ -283,6 +326,19 @@ fun UscNavGraph() {
                                 launchSingleTop = true
                             }
                         }
+                    }
+                },
+                onOpenInvitesClick = {
+                    navController.navigate(AppRoute.SettingsInvites) { launchSingleTop = true }
+                },
+                onToggleAccountClick = {
+                    settingsViewModel.toggleAccountStatus(authState.session) {
+                        authViewModel.refreshApproval()
+                    }
+                },
+                onDeleteAccountClick = {
+                    settingsViewModel.deleteAccount(authState.session) {
+                        authViewModel.signOut()
                     }
                 },
                 onSignOutClick = authViewModel::signOut,
@@ -749,6 +805,16 @@ fun UscNavGraph() {
                     onHolderChange = storeViewModel::updateHolder,
                     onWhatsappChange = storeViewModel::updateWhatsapp,
                     onSaveFinanceClick = storeViewModel::saveFinance,
+                    onCategoryClick = {
+                        navController.navigate(AppRoute.AdminStoreCategories) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onNewProductClick = {
+                        navController.navigate(AppRoute.AdminStoreNewProduct) {
+                            launchSingleTop = true
+                        }
+                    },
                     onMenuItemClick = { item ->
                         val targetRoute = when (item.kind) {
                             AdminStoreMenuKind.Category -> AppRoute.AdminStoreCategories
@@ -901,6 +967,105 @@ fun UscNavGraph() {
                     onTagEffectChange = productsViewModel::updateTagEffect,
                     onColorsTextChange = productsViewModel::updateColorsText,
                     onFeaturesTextChange = productsViewModel::updateFeaturesText,
+                    onUseVariantsChange = productsViewModel::updateUseVariants,
+                    onVariantsTextChange = productsViewModel::updateVariantsText,
+                    onPaymentPixKeyChange = productsViewModel::updatePaymentPixKey,
+                    onPaymentBankChange = productsViewModel::updatePaymentBank,
+                    onPaymentHolderChange = productsViewModel::updatePaymentHolder,
+                    onPaymentWhatsappChange = productsViewModel::updatePaymentWhatsapp,
+                    onSaveProductClick = {
+                        productsViewModel.saveProduct(
+                            tenantName = tenantName,
+                            tenantLogoUrl = tenantLogoUrl,
+                        )
+                    },
+                    onRefreshClick = {
+                        productsViewModel.load(
+                            categoryLabel = productsState.selectedCategoryLabel,
+                            inactiveOnly = false,
+                            forceRefresh = true,
+                        )
+                    },
+                    onBackClick = { navController.navigateUp() },
+                )
+            }
+        }
+
+        composable(AppRoute.AdminStoreNewProduct) {
+            val user = authState.session.user
+            if (user?.role?.canManageTenant != true) {
+                PermissionDeniedScreen(
+                    title = "Novo Produto",
+                    subtitle = "Use uma conta com permissão administrativa neste tenant.",
+                )
+            } else {
+                val productsViewModel: AdminStoreProductsViewModel = viewModel()
+                val productsState by productsViewModel.uiState.collectAsState()
+                val tenantName = authState.session.tenant?.name.orEmpty()
+                val tenantLogoUrl = authState.session.tenant?.logoUrl.orEmpty()
+
+                LaunchedEffect(authState.session.tenant?.id) {
+                    productsViewModel.load(inactiveOnly = false, forceRefresh = false)
+                    productsViewModel.openCreateProduct()
+                }
+
+                AdminStoreProductsScreen(
+                    state = productsState,
+                    onInactiveProductsClick = {
+                        navController.navigate(AppRoute.AdminStoreDisabledProducts) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onActiveProductsClick = {
+                        navController.navigate(AppRoute.AdminStoreProducts) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onCategoriesClick = {
+                        navController.navigate(AppRoute.AdminStoreCategories) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onPendingOrdersClick = {
+                        navController.navigate(AppRoute.AdminStorePendingOrders) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onReviewsClick = {
+                        navController.navigate(AppRoute.AdminStoreReviews) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onNewProductClick = productsViewModel::openCreateProduct,
+                    onCloseProductFormClick = productsViewModel::closeProductForm,
+                    onEditProductClick = productsViewModel::editProduct,
+                    onOpenProductClick = { productId ->
+                        navController.navigate(AppRoute.productDetail(productId)) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onToggleProductActiveClick = productsViewModel::toggleProductActive,
+                    onCategoryClick = productsViewModel::selectCategory,
+                    onNameChange = productsViewModel::updateName,
+                    onCategoryChange = productsViewModel::updateCategory,
+                    onDescriptionChange = productsViewModel::updateDescription,
+                    onImageChange = productsViewModel::updateImage,
+                    onPriceChange = productsViewModel::updatePrice,
+                    onOldPriceChange = productsViewModel::updateOldPrice,
+                    onStatusChange = productsViewModel::updateStatus,
+                    onStockChange = productsViewModel::updateStock,
+                    onLotChange = productsViewModel::updateLot,
+                    onTagLabelChange = productsViewModel::updateTagLabel,
+                    onTagColorChange = productsViewModel::updateTagColor,
+                    onTagEffectChange = productsViewModel::updateTagEffect,
+                    onColorsTextChange = productsViewModel::updateColorsText,
+                    onFeaturesTextChange = productsViewModel::updateFeaturesText,
+                    onUseVariantsChange = productsViewModel::updateUseVariants,
+                    onVariantsTextChange = productsViewModel::updateVariantsText,
+                    onPaymentPixKeyChange = productsViewModel::updatePaymentPixKey,
+                    onPaymentBankChange = productsViewModel::updatePaymentBank,
+                    onPaymentHolderChange = productsViewModel::updatePaymentHolder,
+                    onPaymentWhatsappChange = productsViewModel::updatePaymentWhatsapp,
                     onSaveProductClick = {
                         productsViewModel.saveProduct(
                             tenantName = tenantName,
@@ -987,6 +1152,12 @@ fun UscNavGraph() {
                     onTagEffectChange = productsViewModel::updateTagEffect,
                     onColorsTextChange = productsViewModel::updateColorsText,
                     onFeaturesTextChange = productsViewModel::updateFeaturesText,
+                    onUseVariantsChange = productsViewModel::updateUseVariants,
+                    onVariantsTextChange = productsViewModel::updateVariantsText,
+                    onPaymentPixKeyChange = productsViewModel::updatePaymentPixKey,
+                    onPaymentBankChange = productsViewModel::updatePaymentBank,
+                    onPaymentHolderChange = productsViewModel::updatePaymentHolder,
+                    onPaymentWhatsappChange = productsViewModel::updatePaymentWhatsapp,
                     onSaveProductClick = {
                         productsViewModel.saveProduct(
                             tenantName = tenantName,
@@ -1533,15 +1704,15 @@ fun UscNavGraph() {
             if (user?.role?.canManageTenant != true) {
                 PermissionDeniedScreen(title = "Eventos", subtitle = "Use uma conta com permissão administrativa neste tenant.")
             } else {
-                val dashboardViewModel: AdminDashboardViewModel = viewModel()
-                val dashboardState by dashboardViewModel.uiState.collectAsState()
+                val eventSalesViewModel: AdminEventSalesModeViewModel = viewModel()
+                val eventSalesState by eventSalesViewModel.uiState.collectAsState()
                 LaunchedEffect(authState.session.tenant?.id) {
-                    dashboardViewModel.load(authState.session, forceRefresh = true)
+                    eventSalesViewModel.load(forceRefresh = true)
                 }
-                AdminBiSnapshotScreen(
-                    state = dashboardState,
-                    focus = AdminBiSnapshotFocus.Events,
-                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
+                AdminEventSalesModeScreen(
+                    state = eventSalesState,
+                    onRefreshClick = { eventSalesViewModel.load(forceRefresh = true) },
+                    onOpenPublicSalesModeClick = { navController.navigate(AppRoute.SalesMode) { launchSingleTop = true } },
                     onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
                 )
             }
@@ -1935,7 +2106,7 @@ fun UscNavGraph() {
                         launchSingleTop = true
                     }
                 },
-                onStatusFilterClick = eventsViewModel::loadEvents,
+                onFilterClick = eventsViewModel::selectFilter,
                 onTicketsClick = {
                     navController.navigate(AppRoute.EventTickets) {
                         launchSingleTop = true
@@ -1957,17 +2128,41 @@ fun UscNavGraph() {
             val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
             val eventDetailViewModel: EventDetailViewModel = viewModel()
             val eventDetailState by eventDetailViewModel.uiState.collectAsState()
+            val eventDetailClipboard = LocalClipboardManager.current
+            val eventDetailUriHandler = LocalUriHandler.current
 
-            LaunchedEffect(eventId) {
-                eventDetailViewModel.loadEvent(eventId)
+            LaunchedEffect(eventId, authState.session.tenant?.id, authState.session.user?.id) {
+                eventDetailViewModel.loadEvent(eventId, authState.session)
             }
 
             EventDetailScreen(
                 state = eventDetailState,
-                onCheckoutClick = { event ->
-                    navController.navigate(AppRoute.eventCheckout(event.id)) {
+                buyerName = authState.session.user?.name.orEmpty(),
+                buyerTurma = authState.session.user?.classCode.orEmpty(),
+                buyerPhone = "",
+                viewerUserId = authState.session.user?.id.orEmpty(),
+                onCheckoutClick = { event, lot ->
+                    navController.navigate(AppRoute.eventCheckout(event.id, lot.id)) {
                         launchSingleTop = true
                     }
+                },
+                onRsvpClick = { status ->
+                    eventDetailViewModel.setRsvp(authState.session, status)
+                },
+                onCommentDraftChange = eventDetailViewModel::updateCommentDraft,
+                onSubmitCommentClick = {
+                    eventDetailViewModel.submitComment(authState.session)
+                },
+                onVotePollClick = { pollId, optionIndex ->
+                    eventDetailViewModel.votePoll(authState.session, pollId, optionIndex)
+                },
+                onMenuProductOrderClick = { product, quantity, onSuccess ->
+                    eventDetailViewModel.submitMenuProductOrder(
+                        session = authState.session,
+                        product = product,
+                        quantity = quantity,
+                        onSuccess = onSuccess,
+                    )
                 },
                 onTicketsClick = {
                     navController.navigate(AppRoute.EventTickets) {
@@ -1975,22 +2170,159 @@ fun UscNavGraph() {
                     }
                 },
                 onBackClick = { navController.navigateUp() },
+                onAttendeeClick = { userId ->
+                    if (userId.isNotBlank()) {
+                        navController.navigate(AppRoute.profileDetail(userId)) { launchSingleTop = true }
+                    }
+                },
+                onPollOptionDraftChange = eventDetailViewModel::updatePollOptionDraft,
+                onSubmitPollOptionClick = { pollId ->
+                    eventDetailViewModel.submitPollOption(authState.session, pollId)
+                },
+                onCommentLikeClick = { commentId ->
+                    eventDetailViewModel.toggleCommentLike(authState.session, commentId)
+                },
+                onCommentReportClick = { commentId ->
+                    eventDetailViewModel.reportComment(authState.session, commentId)
+                },
+                onCommentDeleteClick = { commentId ->
+                    eventDetailViewModel.deleteComment(authState.session, commentId)
+                },
+                onCommentHiddenClick = { commentId, hidden ->
+                    eventDetailViewModel.setCommentHidden(authState.session, commentId, hidden)
+                },
+                onCopyPixClick = { pixKey ->
+                    if (pixKey.isNotBlank()) {
+                        eventDetailClipboard.setText(AnnotatedString(pixKey))
+                    }
+                },
+                onSendReceiptClick = { order ->
+                    val event = eventDetailState.event
+                    if (event != null) {
+                        buildEventOrderReceiptWhatsappUrl(
+                            order = order,
+                            event = event,
+                            buyerName = authState.session.user?.name.orEmpty(),
+                            buyerTurma = authState.session.user?.classCode.orEmpty(),
+                        )?.let(eventDetailUriHandler::openUri)
+                    }
+                },
+                onCancelOrderClick = { order ->
+                    eventDetailViewModel.cancelTicketOrder(authState.session, order.id)
+                },
+                onOpenOrderClick = { order ->
+                    navController.navigate(AppRoute.eventOrderDetail(order.id)) { launchSingleTop = true }
+                },
+                onEventMenuClick = {
+                    navController.navigate(AppRoute.eventPartyMenu(eventId)) { launchSingleTop = true }
+                },
+            )
+        }
+
+        composable(
+            route = AppRoute.EventPartyMenu,
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
+            val menuViewModel: EventPartyMenuViewModel = viewModel()
+            val menuState by menuViewModel.uiState.collectAsState()
+            LaunchedEffect(eventId, authState.session.tenant?.id, authState.session.user?.id) {
+                menuViewModel.load(eventId, authState.session)
+            }
+
+            EventPartyMenuScreen(
+                state = menuState,
+                onProductClick = { productId ->
+                    navController.navigate(AppRoute.eventPartyProduct(eventId, productId)) {
+                        launchSingleTop = true
+                    }
+                },
+                onVouchersClick = {
+                    navController.navigate(AppRoute.eventPartyVouchers(eventId)) { launchSingleTop = true }
+                },
+                onBackClick = { navController.navigateUp() },
+            )
+        }
+
+        composable(
+            route = AppRoute.EventPartyProduct,
+            arguments = listOf(
+                navArgument("eventId") { type = NavType.StringType },
+                navArgument("productId") { type = NavType.StringType },
+            ),
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
+            val productId = backStackEntry.arguments?.getString("productId").orEmpty()
+            val productViewModel: EventPartyProductViewModel = viewModel()
+            val productState by productViewModel.uiState.collectAsState()
+            LaunchedEffect(eventId, productId, authState.session.tenant?.id, authState.session.user?.id) {
+                productViewModel.load(eventId, productId, authState.session)
+            }
+
+            EventPartyProductScreen(
+                state = productState,
+                onQuantityChange = productViewModel::changeQuantity,
+                onOrderClick = { productViewModel.submitOrder(authState.session) {} },
+                onVouchersClick = {
+                    navController.navigate(AppRoute.eventPartyVouchers(eventId)) { launchSingleTop = true }
+                },
+                onBackClick = { navController.navigateUp() },
+            )
+        }
+
+        composable(
+            route = AppRoute.EventPartyVouchers,
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
+            val vouchersViewModel: EventPartyVouchersViewModel = viewModel()
+            val vouchersState by vouchersViewModel.uiState.collectAsState()
+            LaunchedEffect(eventId, authState.session.tenant?.id, authState.session.user?.id) {
+                vouchersViewModel.load(eventId, authState.session)
+            }
+
+            EventPartyVouchersScreen(
+                state = vouchersState,
+                onMenuClick = {
+                    navController.navigate(AppRoute.eventPartyMenu(eventId)) { launchSingleTop = true }
+                },
+                onBackClick = { navController.navigateUp() },
             )
         }
 
         composable(
             route = AppRoute.EventCheckout,
-            arguments = listOf(navArgument("eventId") { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument("eventId") { type = NavType.StringType },
+                navArgument("lotId") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+            ),
         ) { backStackEntry ->
             val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
+            val selectedLotId = backStackEntry.arguments?.getString("lotId").orEmpty()
             val eventCheckoutViewModel: EventDetailViewModel = viewModel()
             val eventCheckoutState by eventCheckoutViewModel.uiState.collectAsState()
-            LaunchedEffect(eventId) {
-                eventCheckoutViewModel.loadEvent(eventId)
+            LaunchedEffect(eventId, authState.session.tenant?.id, authState.session.user?.id) {
+                eventCheckoutViewModel.loadEvent(eventId, authState.session)
             }
 
             EventCheckoutScreen(
                 state = eventCheckoutState,
+                preferredLotId = selectedLotId,
+                buyerName = authState.session.user?.name.orEmpty(),
+                buyerTurma = authState.session.user?.classCode.orEmpty(),
+                buyerPhone = "",
+                onSubmitTicketRequest = { lot, quantity, recipient, onSuccess ->
+                    eventCheckoutViewModel.submitTicketRequest(
+                        session = authState.session,
+                        lot = lot,
+                        quantity = quantity,
+                        recipient = recipient,
+                        onSuccess = onSuccess,
+                    )
+                },
                 onOrdersClick = {
                     navController.navigate(AppRoute.EventOrders) {
                         launchSingleTop = true
@@ -2039,7 +2371,6 @@ fun UscNavGraph() {
             }
             EventTicketDetailScreen(
                 state = ticketDetailState,
-                onTransferClick = {},
                 onBackClick = { navController.navigateUp() },
             )
             return@composable
@@ -2126,15 +2457,27 @@ fun UscNavGraph() {
         ) { backStackEntry ->
             val productId = backStackEntry.arguments?.getString("productId").orEmpty()
             val productDetailViewModel: ProductDetailViewModel = viewModel()
+            val cartViewModel: CartViewModel = viewModel()
             val productDetailState by productDetailViewModel.uiState.collectAsState()
 
-            LaunchedEffect(productId) {
-                productDetailViewModel.loadProduct(productId)
+            LaunchedEffect(productId, authState.session.user?.id, authState.session.tenant?.id) {
+                productDetailViewModel.loadProduct(productId, authState.session)
             }
 
             ProductDetailStateScreen(
                 state = productDetailState,
-                onAddToCartClick = {
+                onOrderClick = { order ->
+                    navController.navigate(AppRoute.storeOrderDetail(order.id)) {
+                        launchSingleTop = true
+                    }
+                },
+                onAddToCartClick = { product, quantity, variantLabel, colorLabel ->
+                    cartViewModel.addProduct(
+                        product = product,
+                        quantity = quantity,
+                        variantLabel = variantLabel,
+                        colorLabel = colorLabel,
+                    )
                     navController.navigate(AppRoute.Cart) {
                         launchSingleTop = true
                     }
@@ -2145,7 +2488,7 @@ fun UscNavGraph() {
                     }
                 },
                 onBackClick = { navController.navigateUp() },
-                onRetryClick = { productDetailViewModel.loadProduct(productId) },
+                onRetryClick = { productDetailViewModel.loadProduct(productId, authState.session) },
             )
         }
 
@@ -2167,12 +2510,16 @@ fun UscNavGraph() {
         composable(AppRoute.Checkout) {
             val cartViewModel: CartViewModel = viewModel()
             val cartState by cartViewModel.uiState.collectAsState()
+            val uriHandler = LocalUriHandler.current
 
-            CheckoutScreen(
+            CheckoutConnectedScreen(
                 state = cartState,
                 onConfirmClick = {
-                    navController.navigate(AppRoute.StoreOrders) {
-                        launchSingleTop = true
+                    cartViewModel.submitCheckout(authState.session) { whatsappUrl ->
+                        whatsappUrl?.let { url -> runCatching { uriHandler.openUri(url) } }
+                        navController.navigate(AppRoute.StoreOrders) {
+                            launchSingleTop = true
+                        }
                     }
                 },
                 onBackClick = { navController.navigateUp() },
@@ -2305,130 +2652,62 @@ fun UscNavGraph() {
         }
 
         composable(AppRoute.Training) {
-            val trainingViewModel: TrainingViewModel = viewModel()
+            val trainingViewModel: TrainingAgendaViewModel = viewModel()
             val trainingState by trainingViewModel.uiState.collectAsState()
             LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
                 trainingViewModel.load(authState.session)
             }
 
-            TrainingScreen(
+            TrainingAgendaScreen(
                 state = trainingState,
-                onSessionClick = {
-                    navController.navigate(AppRoute.TrainingCheckIn) {
+                onPreviousMonth = { trainingViewModel.previousMonth(authState.session) },
+                onNextMonth = { trainingViewModel.nextMonth(authState.session) },
+                onDayClick = { day -> trainingViewModel.selectDay(authState.session, day) },
+                onSessionClick = { trainingId ->
+                    navController.navigate(AppRoute.trainingDetail(trainingId)) {
                         launchSingleTop = true
                     }
                 },
-                onCheckInClick = {
-                    navController.navigate(AppRoute.TrainingCheckIn) {
-                        launchSingleTop = true
-                    }
-                },
-                onFrequencyClick = {
-                    navController.navigate(AppRoute.TrainingFrequency) {
-                        launchSingleTop = true
-                    }
-                },
-                onHistoryClick = {
-                    navController.navigate(AppRoute.TrainingHistory) {
-                        launchSingleTop = true
-                    }
-                },
-            )
-        }
-
-        composable(AppRoute.Gym) {
-            val trainingViewModel: TrainingViewModel = viewModel()
-            val trainingState by trainingViewModel.uiState.collectAsState()
-            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
-                trainingViewModel.load(authState.session)
-            }
-
-            TrainingScreen(
-                state = trainingState,
-                onSessionClick = {
-                    navController.navigate(AppRoute.TrainingCheckIn) {
-                        launchSingleTop = true
-                    }
-                },
-                onCheckInClick = {
-                    navController.navigate(AppRoute.TrainingCheckIn) {
-                        launchSingleTop = true
-                    }
-                },
-                onFrequencyClick = {
-                    navController.navigate(AppRoute.TrainingFrequency) {
-                        launchSingleTop = true
-                    }
-                },
-                onHistoryClick = {
-                    navController.navigate(AppRoute.TrainingHistory) {
-                        launchSingleTop = true
-                    }
-                },
-            )
-        }
-
-        composable(AppRoute.TrainingCheckIn) {
-            val trainingViewModel: TrainingViewModel = viewModel()
-            val trainingState by trainingViewModel.uiState.collectAsState()
-            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
-                trainingViewModel.load(authState.session)
-            }
-
-            TrainingCheckInScreen(
-                state = trainingState,
-                onConfirmClick = {
-                    navController.navigate(AppRoute.trainingCheckInDetail(trainingState.checkIn.id)) {
-                        launchSingleTop = true
-                    }
+                onRsvp = { trainingId, status ->
+                    trainingViewModel.setRsvp(authState.session, trainingId, status)
                 },
                 onBackClick = { navController.navigateUp() },
             )
         }
 
         composable(
-            route = AppRoute.TrainingCheckInDetail,
-            arguments = listOf(navArgument("checkInId") { type = NavType.StringType }),
+            route = AppRoute.TrainingDetail,
+            arguments = listOf(navArgument("trainingId") { type = NavType.StringType }),
         ) { backStackEntry ->
-            val checkInId = backStackEntry.arguments?.getString("checkInId").orEmpty()
-            val trainingViewModel: TrainingViewModel = viewModel()
-            val trainingState by trainingViewModel.uiState.collectAsState()
-            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
-                trainingViewModel.load(authState.session)
-            }
-            val checkIn = remember(checkInId, trainingState.history, trainingState.checkIn) {
-                trainingState.history.firstOrNull { it.id == checkInId } ?: trainingState.checkIn
+            val trainingId = backStackEntry.arguments?.getString("trainingId").orEmpty()
+            val detailViewModel: TrainingDetailViewModel = viewModel()
+            val detailState by detailViewModel.uiState.collectAsState()
+            val uriHandler = LocalUriHandler.current
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id, trainingId) {
+                detailViewModel.load(authState.session, trainingId)
             }
 
-            TrainingCheckInDetailScreen(
-                checkIn = checkIn,
+            TrainingDetailScreen(
+                state = detailState,
                 onBackClick = { navController.navigateUp() },
-            )
-        }
-
-        composable(AppRoute.TrainingFrequency) {
-            val trainingViewModel: TrainingViewModel = viewModel()
-            val trainingState by trainingViewModel.uiState.collectAsState()
-            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
-                trainingViewModel.load(authState.session)
-            }
-
-            TrainingFrequencyScreen(
-                state = trainingState,
-                onBackClick = { navController.navigateUp() },
-            )
-        }
-
-        composable(AppRoute.TrainingHistory) {
-            val trainingViewModel: TrainingViewModel = viewModel()
-            val trainingState by trainingViewModel.uiState.collectAsState()
-            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
-                trainingViewModel.load(authState.session)
-            }
-
-            TrainingHistoryScreen(
-                state = trainingState,
-                onBackClick = { navController.navigateUp() },
+                onRsvp = { status -> detailViewModel.setRsvp(authState.session, status) },
+                onTogglePresenceQr = detailViewModel::setPresenceQrVisible,
+                onOpenMaps = { location ->
+                    // Mesmo destino de `getMapsLink()` em `/treinos/[id]`.
+                    uriHandler.openUri(
+                        "https://www.google.com/maps/search/?api=1&query=" + Uri.encode(location),
+                    )
+                },
+                onCoachClick = { userId ->
+                    if (userId.isNotBlank()) {
+                        navController.navigate(AppRoute.profileDetail(userId)) { launchSingleTop = true }
+                    }
+                },
+                onParticipantClick = { userId ->
+                    if (userId.isNotBlank()) {
+                        navController.navigate(AppRoute.profileDetail(userId)) { launchSingleTop = true }
+                    }
+                },
             )
         }
 
@@ -2447,6 +2726,8 @@ fun UscNavGraph() {
                         launchSingleTop = true
                     }
                 },
+                onBackClick = { navController.navigateUp() },
+                onSearchChange = partnersViewModel::onSearchChange,
             )
         }
 
@@ -2518,6 +2799,59 @@ fun UscNavGraph() {
             launchSingleTop = true
         }
     }
+}
+
+@Composable
+private fun ProfileRoute(
+    navController: androidx.navigation.NavHostController,
+    session: com.example.usc1.core.session.UserSession,
+    targetUserId: String?,
+    showBack: Boolean,
+) {
+    val profileViewModel: ProfileViewModel = viewModel(
+        key = "profile-${targetUserId.orEmpty().ifBlank { "self" }}",
+    )
+    val profileState by profileViewModel.uiState.collectAsState()
+
+    LaunchedEffect(session.tenant?.id, session.user?.id, targetUserId) {
+        profileViewModel.load(session = session, targetUserId = targetUserId)
+    }
+
+    ProfileScreen(
+        state = profileState.withSession(session),
+        onShortcutClick = { shortcut ->
+            navController.navigate(shortcut.route) { launchSingleTop = true }
+        },
+        onRetryClick = profileViewModel::refresh,
+        onBackClick = if (showBack) ({ navController.navigateUp(); Unit }) else null,
+        onTabSelect = profileViewModel::selectTab,
+        onFollowClick = profileViewModel::toggleFollow,
+        onAffinityClick = profileViewModel::toggleAffinity,
+        onEditProfileClick = {
+            navController.navigate(AppRoute.Cadastro) { launchSingleTop = true }
+        },
+        onOpenFollowList = profileViewModel::openFollowList,
+        onCloseFollowList = profileViewModel::closeFollowList,
+        onOpenPeople = { userId ->
+            navController.navigate(AppRoute.profileDetail(userId)) { launchSingleTop = true }
+        },
+        onOpenEvent = { eventId ->
+            navController.navigate(AppRoute.eventDetail(eventId)) { launchSingleTop = true }
+        },
+        onOpenTraining = { trainingId ->
+            if (trainingId.isBlank()) {
+                navController.navigate(AppRoute.Training) { launchSingleTop = true }
+            } else {
+                navController.navigate(AppRoute.trainingDetail(trainingId)) { launchSingleTop = true }
+            }
+        },
+        onOpenLeague = { leagueId ->
+            navController.navigate(AppRoute.leagueDetail(leagueId)) { launchSingleTop = true }
+        },
+        onOpenCommunity = {
+            navController.navigate(AppRoute.Community) { launchSingleTop = true }
+        },
+    )
 }
 
 private fun TenantPalette?.toCategoryColor(): String {

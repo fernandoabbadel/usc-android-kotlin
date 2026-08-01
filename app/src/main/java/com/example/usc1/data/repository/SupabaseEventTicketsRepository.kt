@@ -13,10 +13,18 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.net.URLEncoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 class SupabaseEventTicketsRepository(
     private val clientProvider: () -> SupabaseClient = { SupabaseClientProvider.client },
@@ -42,7 +50,7 @@ class SupabaseEventTicketsRepository(
                 limit(count = limit.coerceIn(1, 120).toLong())
             }
             .decodeList<EventTicketRequestRow>()
-            .mapNotNull { it.toTicket() }
+            .flatMap { it.toTickets() }
     }
 
     override suspend fun getTicketById(
@@ -53,6 +61,7 @@ class SupabaseEventTicketsRepository(
         val cleanTenantId = tenantId.trim()
         val cleanUserId = userId.trim()
         val cleanTicketId = ticketId.trim()
+        val requestedOrderId = cleanTicketId.substringBefore(TicketRouteSeparator).trim()
         if (!SupabaseClientProvider.config.isConfigured || cleanTenantId.isBlank() || cleanUserId.isBlank() || cleanTicketId.isBlank()) {
             return@withContext null
         }
@@ -62,38 +71,76 @@ class SupabaseEventTicketsRepository(
                 filter {
                     eq("tenant_id", cleanTenantId)
                     eq("userId", cleanUserId)
-                    eq("id", cleanTicketId)
+                    eq("id", requestedOrderId)
                 }
                 limit(count = 1)
             }
             .decodeList<EventTicketRequestRow>()
             .firstOrNull()
-            ?.toTicket()
+            ?.toTickets()
+            ?.firstOrNull { it.id == cleanTicketId }
     }
 
-    private fun EventTicketRequestRow.toTicket(): EventTicket? {
+    private fun EventTicketRequestRow.toTickets(): List<EventTicket> {
         val cleanId = id.trim()
-        if (cleanId.isBlank()) return null
+        if (cleanId.isBlank()) return emptyList()
         val mappedStatus = ticketStatusFromRemote(status)
-        val token = "EVT-${cleanId.take(8).uppercase(Locale.ROOT)}"
-        return EventTicket(
-            id = cleanId,
-            eventId = eventoId.trim(),
-            eventTitle = eventoNome.trim().ifBlank { "Evento USC" },
-            holderName = userName.trim().ifBlank { "Titular" },
-            status = mappedStatus,
-            token = token,
-            lotName = loteNome.trim().ifBlank { "Ingresso" },
-            dateLabel = dataSolicitacao.toDateLabel(),
-            qrPayload = "usc:event-ticket:$cleanId",
-            transferAvailable = mappedStatus == TicketStatus.Active,
-        )
+        val entries = paymentConfig.ticketEntries()
+
+        if (entries.isEmpty()) {
+            val token = "EVT-${cleanId.take(8).uppercase(Locale.ROOT)}"
+            return listOf(
+                EventTicket(
+                    id = cleanId,
+                    eventId = eventoId.trim(),
+                    eventTitle = eventoNome.trim().ifBlank { "Evento USC" },
+                    holderName = userName.trim().ifBlank { "Titular" },
+                    status = mappedStatus,
+                    token = token,
+                    lotName = loteNome.trim().ifBlank { "Ingresso" },
+                    dateLabel = dataSolicitacao.toDateLabel(),
+                    qrPayload = buildEventTicketPublicQrPayload(
+                        tenantId = tenantId.orEmpty(),
+                        orderId = cleanId,
+                        ticketToken = token,
+                    ),
+                    transferAvailable = false,
+                    holderTurma = userTurma.trim(),
+                ),
+            )
+        }
+
+        return entries.mapIndexed { index, entry ->
+            val entryToken = entry.token.ifBlank { "${cleanId}:${index + 1}" }
+            val entryStatus = ticketStatusFromRemote(entry.status).takeIf { entry.status.isNotBlank() } ?: mappedStatus
+            val ticketId = "$cleanId$TicketRouteSeparator$entryToken"
+            EventTicket(
+                id = ticketId,
+                eventId = entry.eventId.ifBlank { eventoId.trim() },
+                eventTitle = entry.eventTitle.ifBlank { eventoNome.trim().ifBlank { "Evento USC" } },
+                holderName = entry.holderName.ifBlank { userName.trim().ifBlank { "Titular" } },
+                status = entryStatus,
+                token = entryToken,
+                lotName = entry.loteName.ifBlank { loteNome.trim().ifBlank { entry.label.ifBlank { "Ingresso" } } },
+                dateLabel = dataSolicitacao.toDateLabel(),
+                qrPayload = buildEventTicketPublicQrPayload(
+                    tenantId = tenantId.orEmpty(),
+                    orderId = cleanId,
+                    ticketToken = entryToken,
+                ),
+                transferAvailable = entryStatus == TicketStatus.Active,
+                holderTurma = entry.holderTurma.ifBlank { userTurma.trim() },
+                transferredToUserName = entry.transferredToUserName,
+                transferredFromUserName = entry.transferredFromUserName,
+            )
+        }
     }
 
     private companion object {
         const val TicketRequestsTable = "solicitacoes_ingressos"
+        const val TicketRouteSeparator = "::"
         const val TicketRequestColumns =
-            "id,tenant_id,userId,userName,eventoId,eventoNome,loteId,loteNome,metodo,quantidade,status,dataSolicitacao,dataAprovacao,valorTotal,valorUnitario"
+            "id,tenant_id,userId,userName,userTurma,eventoId,eventoNome,loteId,loteNome,metodo,quantidade,status,dataSolicitacao,dataAprovacao,valorTotal,valorUnitario,payment_config"
     }
 }
 
@@ -103,6 +150,7 @@ private data class EventTicketRequestRow(
     @SerialName("tenant_id") val tenantId: String? = null,
     val userId: String = "",
     val userName: String = "",
+    val userTurma: String = "",
     val eventoId: String = "",
     val eventoNome: String = "",
     val loteId: String = "",
@@ -114,6 +162,21 @@ private data class EventTicketRequestRow(
     val dataAprovacao: String? = null,
     val valorTotal: String = "",
     val valorUnitario: String = "",
+    @SerialName("payment_config") val paymentConfig: JsonElement? = null,
+)
+
+private data class TicketEntryValue(
+    val id: String,
+    val token: String,
+    val label: String,
+    val status: String,
+    val eventId: String,
+    val eventTitle: String,
+    val loteName: String,
+    val holderName: String,
+    val holderTurma: String = "",
+    val transferredToUserName: String = "",
+    val transferredFromUserName: String = "",
 )
 
 private val eventTicketZone: ZoneId = ZoneId.of("America/Sao_Paulo")
@@ -139,4 +202,51 @@ private fun String.toDateLabel(): String {
     }.getOrElse {
         clean.take(16)
     }
+}
+
+private fun JsonElement?.ticketEntries(): List<TicketEntryValue> {
+    val config = this as? JsonObject ?: return emptyList()
+    val entriesElement = config["ticketEntries"]
+        ?: config["tickets"]
+        ?: config["ingressos"]
+        ?: return emptyList()
+    val entries = entriesElement as? JsonArray ?: return emptyList()
+    return entries.mapNotNull { item ->
+        val obj = item as? JsonObject ?: return@mapNotNull null
+        TicketEntryValue(
+            id = obj.stringValue("id"),
+            token = obj.stringValue("token").ifBlank { obj.stringValue("ticketToken") },
+            label = obj.stringValue("label").ifBlank { obj.stringValue("nome") },
+            status = obj.stringValue("status"),
+            eventId = obj.stringValue("eventId").ifBlank { obj.stringValue("eventoId") },
+            eventTitle = obj.stringValue("eventTitle").ifBlank { obj.stringValue("eventoNome") },
+            loteName = obj.stringValue("loteName").ifBlank { obj.stringValue("loteNome") },
+            holderName = obj.stringValue("holderName").ifBlank { obj.stringValue("userName") },
+            holderTurma = obj.stringValue("holderTurma").ifBlank { obj.stringValue("userTurma") },
+            transferredToUserName = obj.stringValue("transferredToUserName"),
+            transferredFromUserName = obj.stringValue("transferredFromUserName"),
+        )
+    }
+}
+
+private fun JsonObject.stringValue(key: String): String {
+    val value = this[key] ?: return ""
+    if (value is JsonNull) return ""
+    return value.jsonPrimitive.contentOrNull.orEmpty().trim()
+}
+
+private fun buildEventTicketPublicQrPayload(
+    tenantId: String,
+    orderId: String,
+    ticketToken: String,
+): String {
+    val encodedOrderId = orderId.encodePathSegment()
+    val encodedToken = ticketToken.encodePathSegment()
+    val cleanTenant = tenantId.trim().lowercase(Locale.ROOT)
+    val tenantPrefix = cleanTenant.takeIf(String::isNotBlank)?.let { "/${it.encodePathSegment()}" }.orEmpty()
+    return "https://usc-atleticas.vercel.app$tenantPrefix/public/ingressos/$encodedOrderId/$encodedToken"
+}
+
+private fun String.encodePathSegment(): String {
+    return URLEncoder.encode(this, "UTF-8").replace("+", "%20")
 }

@@ -3,7 +3,6 @@ package com.example.usc1.data.repository
 import com.example.usc1.R
 import com.example.usc1.data.supabase.SupabaseClientProvider
 import com.example.usc1.domain.repository.AlbumRepository
-import com.example.usc1.ui.album.AlbumMockData
 import com.example.usc1.ui.album.AlbumPhoto
 import com.example.usc1.ui.album.AlbumRankingEntry
 import com.example.usc1.ui.album.AlbumTurma
@@ -79,10 +78,27 @@ class SupabaseAlbumRepository(
                 imageRes = photoDrawableForTurma(turmaId),
                 imageUrl = safeImageUrl(user.foto),
                 turma = turmaId,
-                subtitle = turmaId,
+                subtitle = user.apelido.orEmpty().trim().ifBlank { turmaId },
                 collected = collectedIds.contains(user.uid.trim()),
+                publicProfileUrl = user.uid.trim().takeIf(String::isNotBlank),
+                bio = user.bio.orEmpty().trim(),
+                origin = user.cidadeOrigem.orEmpty().trim(),
+                ageLabel = albumAgeLabel(user.dataNascimento, user.idadePublica),
+                relationship = if (user.relacionamentoPublico == true) {
+                    user.statusRelacionamento.orEmpty().trim()
+                } else {
+                    ""
+                },
+                instagram = if (user.instagramPublico == true) {
+                    user.instagram.orEmpty().trim().removePrefix("@")
+                } else {
+                    ""
+                },
+                pets = user.pets.orEmpty().trim(),
+                sports = user.esportes.orEmpty().map(String::trim).filter(String::isNotBlank),
+                profileVisible = user.profilePublic != false,
             )
-        }.ifEmpty { AlbumMockData.photos }
+        }
 
         AlbumUiState(
             title = firstNotBlank(uiConfig?.titulo, uiConfig?.data.string("titulo"), "Álbum"),
@@ -91,9 +107,13 @@ class SupabaseAlbumRepository(
                 uiConfig?.data.string("subtitulo"),
                 "Escolha a turma para abrir somente o que você precisa",
             ),
-            heroHeadline = "Escolha a turma e domine o álbum",
+            heroHeadline = firstNotBlank(
+                uiConfig?.data.string("headline"),
+                uiConfig?.data.string("heroHeadline"),
+                "Escolha a turma e domine o álbum",
+            ),
             heroCoverUrl = safeImageUrl(firstNotBlank(uiConfig?.capa, uiConfig?.data.string("capa"))),
-            turmas = turmas.ifEmpty { AlbumMockData.turmas },
+            turmas = turmas,
             photos = photos,
             ranking = rankings,
             currentUserCollected = captures.size,
@@ -290,11 +310,7 @@ class SupabaseAlbumRepository(
     }
 
     private fun safeImageUrl(value: String?): String? {
-        val clean = value?.trim().orEmpty()
-        if (clean.startsWith("http://", ignoreCase = true)) return clean
-        if (clean.startsWith("https://", ignoreCase = true)) return clean
-        if (clean.startsWith("data:image/", ignoreCase = true)) return clean
-        return null
+        return resolveRemoteImageUrl(value)
     }
 
     private fun firstNotBlank(vararg values: String?): String {
@@ -318,10 +334,32 @@ class SupabaseAlbumRepository(
         const val MaxRanking = 100
         const val MaxCaptures = 500
         const val AppConfigColumns = "id,capa,titulo,subtitulo,data"
-        const val UserColumns = "uid,nome,turma,foto,tenant_id"
+        const val UserColumns =
+            "uid,nome,apelido,turma,foto,bio,instagram,instagramPublico,cidadeOrigem," +
+                "statusRelacionamento,relacionamentoPublico,dataNascimento,idadePublica," +
+                "pets,esportes,profile_public,tenant_id"
         const val RankingColumns = "id,userId,nome,foto,turma,totalColetado,scansT8,tenant_id"
         const val CaptureColumns = "id,targetUserId,nome,turma,dataColada,tenant_id"
     }
+}
+
+/** Espelha `calcularIdade` + `idadePublica` do `/album/[turmaId]` do web. */
+private fun albumAgeLabel(birthDate: String?, agePublic: Boolean?): String {
+    if (agePublic == false) return "?? anos"
+    val clean = birthDate?.trim().orEmpty()
+    if (clean.isBlank()) return ""
+    val parsed = runCatching { java.time.LocalDate.parse(clean.take(10)) }
+        .getOrElse {
+            runCatching {
+                val parts = clean.split("/")
+                if (parts.size != 3) return@runCatching null
+                java.time.LocalDate.of(parts[2].toInt(), parts[1].toInt(), parts[0].toInt())
+            }.getOrNull()
+        } ?: return ""
+    val today = java.time.LocalDate.now()
+    if (parsed.isAfter(today)) return ""
+    val years = java.time.Period.between(parsed, today).years
+    return if (years in 0..130) "$years anos" else ""
 }
 
 @Serializable
@@ -337,8 +375,20 @@ private data class AlbumAppConfigRow(
 private data class AlbumUserRow(
     val uid: String = "",
     val nome: String? = null,
+    val apelido: String? = null,
     val turma: String? = null,
     val foto: String? = null,
+    val bio: String? = null,
+    val instagram: String? = null,
+    val instagramPublico: Boolean? = null,
+    val cidadeOrigem: String? = null,
+    val statusRelacionamento: String? = null,
+    val relacionamentoPublico: Boolean? = null,
+    val dataNascimento: String? = null,
+    val idadePublica: Boolean? = null,
+    val pets: String? = null,
+    val esportes: List<String>? = null,
+    @SerialName("profile_public") val profilePublic: Boolean? = null,
     @SerialName("tenant_id") val tenantId: String? = null,
 )
 

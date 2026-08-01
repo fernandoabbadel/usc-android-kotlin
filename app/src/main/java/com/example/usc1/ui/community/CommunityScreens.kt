@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Block
@@ -30,6 +32,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +47,7 @@ import com.example.usc1.core.ui.PremiumHeader
 import com.example.usc1.core.ui.PremiumLoadingState
 import com.example.usc1.core.ui.PremiumPrimaryButton
 import com.example.usc1.core.ui.PremiumScreen
+import com.example.usc1.core.ui.PremiumTextField
 import com.example.usc1.core.ui.PremiumZinc400
 import com.example.usc1.core.ui.PremiumZinc500
 import com.example.usc1.core.ui.PremiumZinc800
@@ -55,11 +59,32 @@ fun CommunityScreen(
     state: CommunityUiState,
     onTabClick: (String) -> Unit,
     onFilterClick: (CommunityFeedFilter) -> Unit,
+    onPostDraftChange: (String) -> Unit,
+    onSubmitPost: () -> Unit,
     onPostClick: (CommunityPost) -> Unit,
     modifier: Modifier = Modifier,
+    onAuthorClick: (String) -> Unit = {},
+    onCommentClick: (String) -> Unit = {},
+    onLikeClick: (String) -> Unit = {},
+    onHypeClick: (String) -> Unit = {},
+    onCommentDraftChange: (String) -> Unit = {},
+    onSubmitComment: () -> Unit = {},
+    onCloseComments: () -> Unit = {},
 ) {
     if (state.isLoading) {
         PremiumLoadingState(text = "Carregando comunidade", modifier = modifier)
+        return
+    }
+
+    if (state.openCommentsPostId != null) {
+        CommunityCommentsScreen(
+            state = state,
+            onBackClick = onCloseComments,
+            onAuthorClick = onAuthorClick,
+            onCommentDraftChange = onCommentDraftChange,
+            onSubmitComment = onSubmitComment,
+            modifier = modifier,
+        )
         return
     }
 
@@ -111,33 +136,11 @@ fun CommunityScreen(
                 )
             }
         } else {
-            PremiumCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "PUBLICAR NO FEED",
-                            color = Color.White,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
-                        )
-                        Text(
-                            text = if (state.currentUserName.isBlank()) {
-                                "Entre com sua conta para postar, comentar e reagir."
-                            } else {
-                                "Mandar um salve na aba ${state.activeTab}."
-                            },
-                            color = PremiumZinc500,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-                PremiumPrimaryButton(text = "Nova publicação", onClick = {}, icon = Icons.AutoMirrored.Outlined.Send)
-            }
+            CommunityComposer(
+                state = state,
+                onPostDraftChange = onPostDraftChange,
+                onSubmitPost = onSubmitPost,
+            )
         }
 
         NativeSectionTitle(title = "Feed")
@@ -153,7 +156,7 @@ fun CommunityScreen(
             state.posts.isEmpty() -> {
                 PremiumEmptyState(
                     title = "Nenhum post em ${state.activeTab}",
-                    subtitle = "Seja o primeiro a postar nessa categoria quando o fluxo de publicação nativo for liberado.",
+                    subtitle = "Seja o primeiro a postar nessa categoria! 🚀",
                     icon = Icons.Outlined.ChatBubbleOutline,
                 )
             }
@@ -161,7 +164,170 @@ fun CommunityScreen(
                 CommunityPostCard(
                     post = post,
                     onClick = { onPostClick(post) },
+                    onAuthorClick = onAuthorClick,
+                    onCommentClick = onCommentClick,
+                    onLikeClick = onLikeClick,
+                    onHypeClick = onHypeClick,
                 )
+            }
+        }
+    }
+}
+
+/** Composer inline do web: avatar + textarea com contador + botão publicar. */
+@Composable
+private fun CommunityComposer(
+    state: CommunityUiState,
+    onPostDraftChange: (String) -> Unit,
+    onSubmitPost: () -> Unit,
+) {
+    PremiumCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                color = PremiumZinc900,
+                border = BorderStroke(1.dp, PremiumZinc800),
+            ) {
+                if (!state.currentUserAvatarUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = state.currentUserAvatarUrl,
+                        contentDescription = "Sua foto",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = state.currentUserName.take(1).uppercase().ifBlank { "U" },
+                            color = PremiumBrand,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                        )
+                    }
+                }
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                PremiumTextField(
+                    value = state.postDraft,
+                    onValueChange = onPostDraftChange,
+                    label = if (state.currentUserId.isBlank()) {
+                        "Entre com sua conta para postar"
+                    } else {
+                        "Mandar um salve na aba ${state.activeTab}..."
+                    },
+                    singleLine = false,
+                    leadingIcon = Icons.Outlined.ChatBubbleOutline,
+                )
+                Text(
+                    text = "${state.postDraft.length}/${state.postDraftLimit}",
+                    color = if (state.postDraft.length >= state.postDraftLimit - 10) {
+                        Color(0xFFEF4444)
+                    } else {
+                        PremiumZinc500
+                    },
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End,
+                )
+            }
+        }
+
+        state.postError?.takeIf(String::isNotBlank)?.let { error ->
+            Text(
+                text = error,
+                color = Color(0xFFF59E0B),
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+
+        PremiumPrimaryButton(
+            text = if (state.isSubmittingPost) "Enviando..." else "Publicar",
+            onClick = onSubmitPost,
+            enabled = state.canPublish,
+            icon = Icons.AutoMirrored.Outlined.Send,
+        )
+    }
+}
+
+/** Modal de comentários do web, como tela cheia no Android. */
+@Composable
+private fun CommunityCommentsScreen(
+    state: CommunityUiState,
+    onBackClick: () -> Unit,
+    onAuthorClick: (String) -> Unit,
+    onCommentDraftChange: (String) -> Unit,
+    onSubmitComment: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val post = state.allPosts.firstOrNull { it.id == state.openCommentsPostId }
+
+    PremiumScreen(modifier = modifier, horizontalPadding = 16.dp, bottomPadding = 116.dp) {
+        PremiumHeader(
+            title = "Comentários",
+            subtitle = post?.authorName?.let { "Publicação de $it" } ?: "Mural da comunidade",
+            icon = Icons.Outlined.ChatBubbleOutline,
+            onBackClick = onBackClick,
+        )
+
+        if (post != null) {
+            CommunityPostCard(post = post, onClick = {}, onAuthorClick = onAuthorClick)
+        }
+
+        if (post?.commentsDisabled == true) {
+            PremiumEmptyState(
+                title = "Comentários trancados",
+                subtitle = "A moderação desativou os comentários desta publicação.",
+                icon = Icons.Outlined.Block,
+                accent = Color(0xFFEF4444),
+            )
+            return@PremiumScreen
+        }
+
+        PremiumCard {
+            PremiumTextField(
+                value = state.commentDraft,
+                onValueChange = onCommentDraftChange,
+                label = "Escreva um comentário...",
+                singleLine = false,
+                leadingIcon = Icons.Outlined.ChatBubbleOutline,
+            )
+            state.commentError?.takeIf(String::isNotBlank)?.let { error ->
+                Text(
+                    text = error,
+                    color = Color(0xFFF59E0B),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            PremiumPrimaryButton(
+                text = if (state.isSubmittingComment) "Enviando..." else "Comentar",
+                onClick = onSubmitComment,
+                enabled = !state.isSubmittingComment &&
+                    state.currentUserId.isNotBlank() &&
+                    state.commentDraft.isNotBlank(),
+                icon = Icons.AutoMirrored.Outlined.Send,
+            )
+        }
+
+        when {
+            state.commentsLoading -> PremiumLoadingState(text = "Carregando comentários")
+            state.comments.isEmpty() -> PremiumEmptyState(
+                title = "Seja o primeiro a comentar",
+                subtitle = "Ninguém comentou nesta publicação ainda.",
+                icon = Icons.Outlined.ChatBubbleOutline,
+            )
+            else -> state.comments.forEach { comment ->
+                CommunityCommentRow(comment = comment, onAuthorClick = onAuthorClick)
             }
         }
     }
@@ -401,6 +567,8 @@ fun CommunityScreenPreview() {
             state = CommunityMockData.previewState,
             onTabClick = {},
             onFilterClick = {},
+            onPostDraftChange = {},
+            onSubmitPost = {},
             onPostClick = {},
         )
     }

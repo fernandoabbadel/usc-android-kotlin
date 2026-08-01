@@ -6,10 +6,14 @@ import com.example.usc1.domain.model.AdminPartnerScansPage
 import com.example.usc1.domain.model.AdminPartnersBundle
 import com.example.usc1.domain.model.AdminPartnersPage
 import com.example.usc1.domain.model.AdminPartnersTierCounts
+import com.example.usc1.domain.model.PartnerContactVisibility
 import com.example.usc1.domain.model.PartnerCoupon
 import com.example.usc1.domain.model.PartnerForm
+import com.example.usc1.domain.model.PartnerLeadForm
+import com.example.usc1.domain.model.PartnerLoginResult
 import com.example.usc1.domain.model.PartnerPasswordReset
 import com.example.usc1.domain.model.PartnerRecord
+import com.example.usc1.domain.model.PartnerRegistrationRules
 import com.example.usc1.domain.model.PartnerScanRecord
 import com.example.usc1.domain.model.PartnerStatus
 import com.example.usc1.domain.model.PartnerTier
@@ -29,7 +33,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -297,9 +303,237 @@ class SupabasePartnersRepository(
         PartnerPasswordReset(code = code, expiresAt = expiresAt)
     }
 
+    override suspend fun loginPartner(
+        email: String,
+        password: String,
+    ): PartnerLoginResult? = withContext(Dispatchers.IO) {
+        val cleanEmail = email.trim().lowercase()
+        val cleanPassword = password.trim()
+        if (cleanEmail.isBlank() || cleanPassword.isBlank()) return@withContext null
+
+        val client = clientProvider()
+        val tenantId = SupabaseTenantResolver.resolveActiveTenantId(client)
+        if (tenantId.isBlank()) return@withContext null
+
+        val row = client.from(PartnersTable)
+            .select(columns = Columns.raw(PartnerLoginColumns)) {
+                filter {
+                    eq("tenant_id", tenantId)
+                    eq("email", cleanEmail)
+                }
+                limit(count = 1)
+            }
+            .decodeList<PartnerLoginRow>()
+            .firstOrNull()
+            ?: return@withContext null
+
+        val resetExpiresAt = row.passwordResetExpiresAt?.trim().orEmpty()
+        val resetStillValid = row.passwordResetCode?.trim().orEmpty().isNotBlank() &&
+            runCatching { OffsetDateTime.parse(resetExpiresAt).isAfter(OffsetDateTime.now()) }
+                .getOrDefault(false)
+
+        PartnerLoginResult(
+            id = row.id.trim(),
+            name = row.nome?.trim().orEmpty().ifBlank { "Parceiro" },
+            status = PartnerStatus.fromRemote(row.status),
+            passwordValid = row.senha?.trim().orEmpty() == cleanPassword,
+            hasPasswordResetCode = resetStillValid,
+        )
+    }
+
+    override suspend fun getPartnerScansPage(
+        partnerId: String,
+        page: Int,
+        pageSize: Int,
+    ): AdminPartnerScansPage = withContext(Dispatchers.IO) {
+        val cleanPartnerId = partnerId.trim()
+        val client = clientProvider()
+        val tenantId = SupabaseTenantResolver.resolveActiveTenantId(client)
+        val safePage = page.coerceAtLeast(1)
+        val safePageSize = pageSize.coerceIn(1, PartnersCatalog.PageSize)
+        if (cleanPartnerId.isBlank()) {
+            return@withContext AdminPartnerScansPage(
+                tenantId = tenantId,
+                scans = emptyList(),
+                page = safePage,
+                pageSize = safePageSize,
+                hasMore = false,
+            )
+        }
+
+        val from = ((safePage - 1) * safePageSize).toLong()
+        val to = from + safePageSize
+        val rows = client.from(ScansTable)
+            .select(columns = Columns.raw(ScanColumns)) {
+                filter {
+                    eq("tenant_id", tenantId)
+                    eq("empresaId", cleanPartnerId)
+                }
+                order(column = "timestamp", order = Order.DESCENDING)
+                range(from..to)
+            }
+            .decodeList<PartnerScanRow>()
+            .mapNotNull { it.toDomain(tenantId) }
+
+        AdminPartnerScansPage(
+            tenantId = tenantId,
+            scans = rows.take(safePageSize),
+            page = safePage,
+            pageSize = safePageSize,
+            hasMore = rows.size > safePageSize,
+        )
+    }
+
+    override suspend fun createPartnerLead(form: PartnerLeadForm): String = withContext(Dispatchers.IO) {
+        PartnerRegistrationRules.validate(form)?.let { throw IllegalArgumentException(it) }
+
+        val client = clientProvider()
+        val tenantId = SupabaseTenantResolver.resolveActiveTenantId(client)
+        require(tenantId.isNotBlank()) { "Atlética não identificada para a parceria." }
+
+        val partnerId = UUID.randomUUID().toString()
+        val now = OffsetDateTime.now().toString()
+        client.from(PartnersTable).insert(
+            mapOf(
+                "id" to partnerId,
+                "tenant_id" to tenantId,
+                "nome" to form.name.trim().take(PartnersCatalog.MaxNameLength),
+                "cnpj" to form.cnpj.trim().take(PartnersCatalog.MaxContactLength),
+                "responsavel" to form.responsible.trim().take(PartnersCatalog.MaxContactLength),
+                "cpf" to form.cpf.trim().take(PartnersCatalog.MaxContactLength),
+                "categoria" to form.category.trim().take(PartnersCatalog.MaxCategoryLength),
+                "email" to form.email.trim().lowercase().take(PartnersCatalog.MaxContactLength),
+                "telefone" to form.phone.trim().take(PartnersCatalog.MaxContactLength),
+                "senha" to form.password,
+                "descricao" to form.description.trim().take(PartnersCatalog.MaxDescriptionLength),
+                "endereco" to form.address.trim().take(PartnersCatalog.MaxContactLength),
+                "horario" to form.businessHours.trim().take(PartnersCatalog.MaxContactLength),
+                "tier" to form.tier.remoteValue,
+                "status" to PartnerStatus.Pending.remoteValue,
+                "vendasTotal" to 0,
+                "totalScans" to 0,
+                "cupons" to JsonArray(emptyList()),
+                "createdAt" to now,
+            ),
+        )
+        partnerId
+    }
+
+    override suspend fun getPartnerContactVisibility(
+        partnerId: String,
+    ): PartnerContactVisibility = withContext(Dispatchers.IO) {
+        val cleanPartnerId = partnerId.trim()
+        if (cleanPartnerId.isBlank()) return@withContext PartnerContactVisibility()
+
+        val client = clientProvider()
+        val tenantId = SupabaseTenantResolver.resolveActiveTenantId(client)
+        val ack = client.from(PartnersTable)
+            .select(columns = Columns.raw("id,contact_visibility_ack")) {
+                filter {
+                    eq("tenant_id", tenantId)
+                    eq("id", cleanPartnerId)
+                }
+                limit(count = 1)
+            }
+            .decodeList<JsonObject>()
+            .firstOrNull()
+            ?.get("contact_visibility_ack") as? JsonObject
+            ?: return@withContext PartnerContactVisibility()
+
+        PartnerContactVisibility(
+            whatsApp = ack.flag("whats"),
+            instagram = ack.flag("insta"),
+            site = ack.flag("site"),
+        )
+    }
+
+    override suspend fun updatePartnerPublicProfile(
+        partnerId: String,
+        whatsApp: String,
+        instagram: String,
+        site: String,
+        coupons: List<PartnerCoupon>,
+        contactVisibility: PartnerContactVisibility,
+    ): Unit = withContext(Dispatchers.IO) {
+        val cleanPartnerId = partnerId.trim()
+        require(cleanPartnerId.isNotBlank()) { "Parceiro inválido." }
+
+        val client = clientProvider()
+        val tenantId = SupabaseTenantResolver.resolveActiveTenantId(client)
+        require(tenantId.isNotBlank()) { "Atlética não identificada." }
+
+        val normalizedCoupons = coupons
+            .map { coupon ->
+                coupon.copy(
+                    title = coupon.title.trim(),
+                    rule = coupon.rule.trim(),
+                    valueLabel = coupon.valueLabel.trim(),
+                    type = coupon.type.ifBlank { "percentual" },
+                    qrCode = coupon.qrCode.ifBlank {
+                        "USC-${cleanPartnerId.take(8)}-${coupon.id.take(8)}"
+                    },
+                )
+            }
+            .filter { it.title.isNotBlank() && it.valueLabel.isNotBlank() }
+
+        client.from(PartnersTable).update(
+            buildJsonObject {
+                put("whats", JsonPrimitive(whatsApp.trim().take(PartnersCatalog.MaxContactLength)))
+                put(
+                    "insta",
+                    JsonPrimitive(
+                        instagram.trim().removePrefix("@").take(PartnersCatalog.MaxContactLength),
+                    ),
+                )
+                // `normalizeSiteInput` remove o protocolo antes de gravar.
+                put(
+                    "site",
+                    JsonPrimitive(
+                        site.trim().replace(Regex("^https?://", RegexOption.IGNORE_CASE), "").take(240),
+                    ),
+                )
+                put(
+                    "cupons",
+                    JsonArray(
+                        normalizedCoupons.map { coupon ->
+                            buildJsonObject {
+                                put("id", JsonPrimitive(coupon.id))
+                                put("titulo", JsonPrimitive(coupon.title))
+                                put("regra", JsonPrimitive(coupon.rule))
+                                put("valor", JsonPrimitive(coupon.valueLabel))
+                                put("tipo", JsonPrimitive(coupon.type))
+                                put("ativo", JsonPrimitive(coupon.active))
+                                put("codigoQr", JsonPrimitive(coupon.qrCode))
+                                if (coupon.imageUrl.isNotBlank()) {
+                                    put("imagem", JsonPrimitive(coupon.imageUrl))
+                                }
+                            }
+                        },
+                    ),
+                )
+                put(
+                    "contact_visibility_ack",
+                    buildJsonObject {
+                        put("whats", JsonPrimitive(contactVisibility.whatsApp))
+                        put("insta", JsonPrimitive(contactVisibility.instagram))
+                        put("site", JsonPrimitive(contactVisibility.site))
+                    },
+                )
+                put("updatedAt", JsonPrimitive(OffsetDateTime.now().toString()))
+            },
+        ) {
+            filter {
+                eq("tenant_id", tenantId)
+                eq("id", cleanPartnerId)
+            }
+        }
+    }
+
     private companion object {
         const val PartnersTable = "parceiros"
         const val ScansTable = "scans"
+        const val PartnerLoginColumns =
+            "id,nome,status,senha,password_reset_code,password_reset_expires_at"
         const val PartnerColumns =
             "id,tenant_id,nome,categoria,tier,status,cnpj,responsavel,email,telefone,descricao,endereco,horario,insta,site,whats,imgCapa,imgLogo,mensalidade,vendasTotal,totalScans,cupons,createdAt"
         const val ScanColumns =
@@ -355,8 +589,8 @@ private data class PartnerRow(
             instagram = insta?.trim().orEmpty(),
             site = site?.trim().orEmpty(),
             whatsApp = whats?.trim().orEmpty(),
-            coverUrl = imgCapa?.trim().orEmpty(),
-            logoUrl = imgLogo?.trim().orEmpty(),
+            coverUrl = resolveRemoteImageUrl(imgCapa).orEmpty(),
+            logoUrl = resolveRemoteImageUrl(imgLogo).orEmpty(),
             monthlyFee = mensalidade ?: 0.0,
             salesTotal = vendasTotal ?: 0.0,
             totalScans = max(0, totalScans ?: 0),
@@ -440,7 +674,7 @@ private fun JsonElement?.toCoupons(): List<PartnerCoupon> {
             title = title,
             rule = obj.string("regra"),
             valueLabel = obj.string("valor"),
-            imageUrl = obj.string("imagem"),
+            imageUrl = resolveRemoteImageUrl(obj.string("imagem")).orEmpty(),
             type = obj.string("tipo"),
             active = obj["ativo"]?.jsonPrimitive?.booleanOrNull ?: true,
             qrCode = obj.string("codigoQr").ifBlank { obj.string("codigo_qr") },
@@ -451,6 +685,20 @@ private fun JsonElement?.toCoupons(): List<PartnerCoupon> {
 private fun JsonObject.string(key: String): String {
     return this[key]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
 }
+
+private fun JsonObject.flag(key: String): Boolean {
+    return this[key]?.jsonPrimitive?.booleanOrNull ?: false
+}
+
+@Serializable
+private data class PartnerLoginRow(
+    val id: String = "",
+    val nome: String? = null,
+    val status: String? = null,
+    val senha: String? = null,
+    @SerialName("password_reset_code") val passwordResetCode: String? = null,
+    @SerialName("password_reset_expires_at") val passwordResetExpiresAt: String? = null,
+)
 
 private fun String.parseMoneyValue(): Double {
     val normalized = replace(Regex("[^\\d,.-]"), "")

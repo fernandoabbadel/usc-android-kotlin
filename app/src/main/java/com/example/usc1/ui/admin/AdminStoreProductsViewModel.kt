@@ -150,6 +150,30 @@ class AdminStoreProductsViewModel(
         updateForm { it.copy(caracteristicasText = value.take(AdminStoreCatalog.ProductFeaturesTextMaxLength)) }
     }
 
+    fun updateUseVariants(value: Boolean) {
+        updateForm { it.copy(usarVariantes = value) }
+    }
+
+    fun updateVariantsText(value: String) {
+        updateForm { it.copy(variantesText = value.take(AdminStoreCatalog.ProductVariantsTextMaxLength)) }
+    }
+
+    fun updatePaymentPixKey(value: String) {
+        updateForm { it.copy(paymentPixKey = value.take(AdminStoreCatalog.PixKeyMaxLength)) }
+    }
+
+    fun updatePaymentBank(value: String) {
+        updateForm { it.copy(paymentBank = value.take(AdminStoreCatalog.PixBankMaxLength)) }
+    }
+
+    fun updatePaymentHolder(value: String) {
+        updateForm { it.copy(paymentHolder = value.take(AdminStoreCatalog.PixHolderMaxLength)) }
+    }
+
+    fun updatePaymentWhatsapp(value: String) {
+        updateForm { it.copy(paymentWhatsapp = AdminStoreCatalog.normalizePhoneInput(value)) }
+    }
+
     fun saveProduct(
         tenantName: String?,
         tenantLogoUrl: String?,

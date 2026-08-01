@@ -1,6 +1,7 @@
 package com.example.usc1.core.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,15 +38,20 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
@@ -55,6 +61,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.usc1.R
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.common.BitMatrix
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 
 val PremiumBlack = Color(0xFF050505)
 val PremiumBlueBlack = Color(0xFF02050D)
@@ -609,6 +620,24 @@ fun PremiumQrCode(
     cellSize: Dp = 8.dp,
     label: String? = null,
 ) {
+    val qrPayload = payload.ifBlank { "USC" }
+    val qrMatrix = remember(qrPayload) {
+        runCatching {
+            QRCodeWriter().encode(
+                qrPayload,
+                BarcodeFormat.QR_CODE,
+                0,
+                0,
+                mapOf(
+                    EncodeHintType.CHARACTER_SET to "UTF-8",
+                    EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
+                    EncodeHintType.MARGIN to 1,
+                ),
+            )
+        }.getOrNull()
+    }
+    val qrSide = (cellSize * cells) + (2.dp * (cells - 1).coerceAtLeast(0))
+
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
@@ -619,33 +648,49 @@ fun PremiumQrCode(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                repeat(cells) { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        repeat(cells) { column ->
-                            val filled = row in 0..2 && column in 0..2 ||
-                                row in 0..2 && column in (cells - 3) until cells ||
-                                row in (cells - 3) until cells && column in 0..2 ||
-                                (payload.length + row * 7 + column * 11) % 5 != 0
-                            Box(
-                                modifier = Modifier
-                                    .size(cellSize)
-                                    .background(
-                                        color = if (filled) Color.Black else Color.White,
-                                        shape = RoundedCornerShape(1.dp),
-                                    ),
-                            )
-                        }
-                    }
+            Canvas(
+                modifier = Modifier
+                    .size(qrSide)
+                    .semantics { contentDescription = "QR Code" },
+            ) {
+                drawRect(Color.White)
+                qrMatrix?.let { matrix ->
+                    drawPremiumQrMatrix(matrix, Color.Black)
                 }
             }
             if (label != null) {
                 Text(
-                    text = label.uppercase(),
+                    text = label.uppercase().replace("MOCKADO", "OFICIAL"),
                     color = Color.Black,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp,
+                )
+            }
+        }
+    }
+}
+
+private fun DrawScope.drawPremiumQrMatrix(
+    matrix: BitMatrix,
+    foreground: Color,
+) {
+    val moduleSize = minOf(size.width / matrix.width, size.height / matrix.height)
+    val qrSize = moduleSize * matrix.width
+    val origin = Offset(
+        x = (size.width - qrSize) / 2f,
+        y = (size.height - qrSize) / 2f,
+    )
+    for (row in 0 until matrix.height) {
+        for (column in 0 until matrix.width) {
+            if (matrix[column, row]) {
+                drawRect(
+                    color = foreground,
+                    topLeft = Offset(
+                        x = origin.x + column * moduleSize,
+                        y = origin.y + row * moduleSize,
+                    ),
+                    size = Size(moduleSize, moduleSize),
                 )
             }
         }

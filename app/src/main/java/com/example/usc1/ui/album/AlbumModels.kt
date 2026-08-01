@@ -24,7 +24,27 @@ data class AlbumPhoto(
     val turma: String = "",
     val subtitle: String = "",
     val collected: Boolean = false,
-)
+    val publicProfileUrl: String? = null,
+    val bio: String = "",
+    val origin: String = "",
+    val ageLabel: String = "",
+    val relationship: String = "",
+    val instagram: String = "",
+    /** Campos preenchidos no cadastro/edicao de perfil e exibidos pelo album do web. */
+    val pets: String = "",
+    val sports: List<String> = emptyList(),
+    val profileVisible: Boolean = true,
+) {
+    /** Rotulo do pet como no `/album/[turmaId]`: Dog / Cat / Zoo. */
+    val petLabel: String
+        get() = when (pets.trim().lowercase()) {
+            "cachorro" -> "Dog"
+            "gato" -> "Cat"
+            "ambos" -> "Zoo"
+            "", "nenhum" -> ""
+            else -> pets.trim()
+        }
+}
 
 data class AlbumRankingEntry(
     val id: String,
@@ -41,10 +61,13 @@ data class AlbumUiState(
     val subtitle: String = "Escolha a turma para abrir somente o que você precisa",
     val heroHeadline: String = "Escolha a turma e domine o álbum",
     val heroCoverUrl: String? = null,
-    val turmas: List<AlbumTurma> = AlbumMockData.turmas,
-    val photos: List<AlbumPhoto> = AlbumMockData.photos,
-    val ranking: List<AlbumRankingEntry> = AlbumMockData.ranking,
+    val turmas: List<AlbumTurma> = emptyList(),
+    val photos: List<AlbumPhoto> = emptyList(),
+    val ranking: List<AlbumRankingEntry> = emptyList(),
     val currentUserCollected: Int = 0,
+    val currentTurmaSlug: String = "t8",
+    val myQrPayload: String = "",
+    val canUseQr: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
 )
