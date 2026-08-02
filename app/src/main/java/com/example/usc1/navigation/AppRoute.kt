@@ -76,6 +76,18 @@ object AppRoute {
     const val CommissionMembers = "commission-members/{commissionId}"
     const val CommissionAgenda = "commission-agenda/{commissionId}"
     const val CommissionStore = "commission-store/{commissionId}"
+    /**
+     * Gestão dos coletivos (M7). Web: `/ligas/{leagueId}`,
+     * `/comissoes/configurar/{segmento}` e `/diretorio/configurar/{segmento}`, com as
+     * subrotas de informações, membros, loja e gestão.
+     * `{collectiveId}` aceita id, turma ou sigla, como o gate do web.
+     */
+    const val LeagueManagement = "league-manage"
+    const val LeagueManagementSection = "league-manage/{collectiveId}/{section}"
+    const val CommissionManagement = "commission-manage"
+    const val CommissionManagementSection = "commission-manage/{collectiveId}/{section}"
+    const val DirectoryManagement = "directory-manage"
+    const val DirectoryManagementSection = "directory-manage/{collectiveId}/{section}"
     const val Tenant = "tenant"
     const val MiniVendor = "mini-vendor"
     const val MiniVendorEdit = "mini-vendor-edit"
@@ -156,12 +168,28 @@ object AppRoute {
     const val AdminPlansLenda = "admin/planos/lista_lenda"
     const val AdminManagement = "admin/gestao"
     const val AdminManagementEvents = "admin/gestao/eventos"
+
+    /**
+     * M8.4: `app/admin/gestao/loja/page.tsx` e `app/admin/gestao/produtos/page.tsx` são as
+     * **duas** rotas que montam `<AdminBiDashboard mode="produtos" />` — o BI Loja do tenant.
+     * Mesmo componente, mesmo estado; o web mantém as duas e o app também.
+     */
     const val AdminManagementStore = "admin/gestao/loja"
+    const val AdminManagementProducts = "admin/gestao/produtos"
     const val AdminManagementTraining = "admin/gestao/treinos"
     const val AdminManagementFinance = "admin/gestao/financeiro"
+
+    /**
+     * `app/admin/bi/page.tsx`: hub do BI de Eventos no escopo do tenant, e as cinco visões
+     * analíticas em `app/admin/bi/{comercial,operacional,portaria,estrategico,vendas}/page.tsx`
+     * (M8.2). Todas renderizam `<AdminEventBiDashboard view="..." />`.
+     */
+    const val AdminBi = "admin/bi"
     const val AdminBiCommercial = "admin/bi/comercial"
     const val AdminBiOperational = "admin/bi/operacional"
     const val AdminBiGate = "admin/bi/portaria"
+    const val AdminBiStrategic = "admin/bi/estrategico"
+    const val AdminBiSales = "admin/bi/vendas"
     const val AdminAlbum = "admin/album"
     const val AdminAlbumCacaCalouro = "admin/album/caca_calouro"
     const val AdminAlbumPontuaCalouro = "admin/album/pontua_calouro"
@@ -206,6 +234,14 @@ object AppRoute {
     fun directoryMembers(directoryId: String) = "directory-members/$directoryId"
     fun directoryAgenda(directoryId: String) = "directory-agenda/$directoryId"
     fun directoryStore(directoryId: String) = "directory-store/$directoryId"
+    /**
+     * Seção do painel de gestão do coletivo. `section` reproduz a rota web:
+     * `inicio`, `informacoes`, `membros`, `loja`, `loja-produtos`, `loja-pendentes`,
+     * `loja-aprovados`, `gestao`, `gestao-produtos`, `gestao-frequencia` e `gestao-financeiro`.
+     */
+    fun collectiveManagementSection(prefix: String, collectiveId: String, section: String) =
+        "$prefix/${collectiveId.ifBlank { "-" }}/$section"
+
     fun commissionDetail(commissionId: String) = "commission-detail/$commissionId"
     fun commissionMembers(commissionId: String) = "commission-members/$commissionId"
     fun commissionAgenda(commissionId: String) = "commission-agenda/$commissionId"

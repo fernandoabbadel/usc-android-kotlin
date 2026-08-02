@@ -71,12 +71,19 @@ class AdminStoreOrdersViewModel(
         load(mode = state.mode, categoryLabel = state.categoryLabel, page = state.page + 1)
     }
 
+    /**
+     * A aprovação é a única mutação com resultado parcial: o web engole cada etapa secundária
+     * que falha com `console.warn` (`storeService.ts` 1191-1193, 1231-1233, 1248-1250, 1330-1332,
+     * 1340-1342). Aqui a falha vira mensagem para o admin.
+     */
     fun approve(order: AdminStoreOrder, approvedBy: String) {
-        mutateOrder(
-            order = order,
-            successMessage = "Pedido aprovado.",
-        ) {
-            repository.approveOrder(order.id, approvedBy)
+        mutateOrderWithOutcome(order = order) {
+            val outcome = repository.approveOrder(order.id, approvedBy)
+            when {
+                !outcome.approved -> "Pedido já estava aprovado; nada foi alterado."
+                outcome.hasPartialFailure -> outcome.partialFailureMessage()
+                else -> "Pedido aprovado."
+            }
         }
     }
 
@@ -122,6 +129,16 @@ class AdminStoreOrdersViewModel(
         successMessage: String,
         action: suspend () -> Unit,
     ) {
+        mutateOrderWithOutcome(order) {
+            action()
+            successMessage
+        }
+    }
+
+    private fun mutateOrderWithOutcome(
+        order: AdminStoreOrder,
+        action: suspend () -> String?,
+    ) {
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
@@ -131,13 +148,13 @@ class AdminStoreOrdersViewModel(
                 )
             }
             try {
-                action()
+                val message = action()
                 val state = _uiState.value
                 _uiState.update {
                     it.copy(
                         mutatingOrderId = null,
                         editingOrderId = "",
-                        actionMessage = successMessage,
+                        actionMessage = message,
                     )
                 }
                 load(mode = state.mode, categoryLabel = state.categoryLabel, page = state.page)

@@ -4,6 +4,9 @@ import com.example.usc1.domain.model.AdminStoreProduct
 import com.example.usc1.domain.model.AdminStoreProductForm
 import com.example.usc1.domain.model.AdminStoreProductStatus
 import com.example.usc1.domain.model.AdminStoreProductsPage
+import com.example.usc1.domain.model.StorePaymentRecipient
+import com.example.usc1.domain.model.StorePlanOption
+import com.example.usc1.domain.model.StoreProductPlanScope
 
 data class AdminStoreProductsUiState(
     val isLoading: Boolean = true,
@@ -18,6 +21,14 @@ data class AdminStoreProductsUiState(
     val isProductOpen: Boolean = false,
     val form: AdminStoreProductForm = AdminStoreProductForm(),
     val mutatingProductId: String = "",
+    /** `produtos/page.tsx` 310: catálogo de planos do tenant, para preço/visibilidade por plano. */
+    val planCatalog: List<StorePlanOption> = emptyList(),
+    val isPlanModalOpen: Boolean = false,
+    /** `produtos/page.tsx` 329-331: recebedores salvos, diretório e o gerenciador aberto. */
+    val paymentRecipients: List<StorePaymentRecipient> = emptyList(),
+    val recipientDirectory: List<StorePaymentRecipient> = emptyList(),
+    val showReceiversManager: Boolean = false,
+    val isUploadingProductImage: Boolean = false,
 ) {
     val title: String
         get() = if (inactiveOnly) "Produtos Desativados" else "Produtos"
@@ -43,6 +54,12 @@ data class AdminStoreProductsUiState(
 
     val canCreateProduct: Boolean
         get() = !inactiveOnly
+
+    /** Formulário vazio já com uma linha por plano (`produtos/page.tsx` 588). */
+    fun emptyForm(): AdminStoreProductForm = AdminStoreProductForm(
+        categoria = selectedCategoryLabel,
+        planScopeRows = StoreProductPlanScope.buildRows(planCatalog, emptyList(), emptyList()),
+    )
 }
 
 fun AdminStoreProductsPage.toUiState(
@@ -57,15 +74,20 @@ fun AdminStoreProductsPage.toUiState(
         categoryNames = categoryNames.ifEmpty { listOf("Geral") },
         selectedCategory = selected,
         inactiveOnly = inactiveOnly,
+        planCatalog = planCatalog,
         form = if (!current.isProductOpen) {
-            AdminStoreProductForm(categoria = selected)
+            // `produtos/page.tsx` 588: formulário novo já nasce com uma linha por plano.
+            AdminStoreProductForm(
+                categoria = selected,
+                planScopeRows = StoreProductPlanScope.buildRows(planCatalog, emptyList(), emptyList()),
+            )
         } else {
             current.form
         },
     )
 }
 
-fun AdminStoreProduct.toForm(): AdminStoreProductForm {
+fun AdminStoreProduct.toForm(planCatalog: List<StorePlanOption>): AdminStoreProductForm {
     return AdminStoreProductForm(
         productId = id,
         nome = nome,
@@ -99,6 +121,9 @@ fun AdminStoreProduct.toForm(): AdminStoreProductForm {
         sellerId = sellerId,
         sellerName = sellerName,
         sellerLogoUrl = sellerLogoUrl,
+        // `produtos/page.tsx` 650: ao editar, as linhas vêm do catálogo cruzado com o gravado.
+        planScopeRows = StoreProductPlanScope.buildRows(planCatalog, planPrices, planVisibility),
+        paymentRecipientUserIds = paymentRecipients.map { it.userId }.filter { it.isNotBlank() },
     )
 }
 

@@ -56,6 +56,7 @@ import com.example.usc1.core.ui.PremiumZinc900
 import com.example.usc1.domain.model.AdminStoreProduct
 import com.example.usc1.domain.model.AdminStoreProductStatus
 import com.example.usc1.domain.model.AdminStoreSellerType
+import com.example.usc1.domain.model.StorePaymentRecipient
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -94,6 +95,13 @@ fun AdminStoreProductsScreen(
     onPaymentBankChange: (String) -> Unit,
     onPaymentHolderChange: (String) -> Unit,
     onPaymentWhatsappChange: (String) -> Unit,
+    onPickProductImageClick: () -> Unit,
+    onTogglePlanModalClick: () -> Unit,
+    onPlanPriceChange: (String, String, String) -> Unit,
+    onPlanVisibilityChange: (String, String, Boolean) -> Unit,
+    onToggleReceiversManagerClick: () -> Unit,
+    onToggleRecipientClick: (String) -> Unit,
+    onSaveRecipientDirectoryClick: (List<StorePaymentRecipient>) -> Unit,
     onSaveProductClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onBackClick: () -> Unit,
@@ -273,6 +281,13 @@ fun AdminStoreProductsScreen(
                 onPaymentBankChange = onPaymentBankChange,
                 onPaymentHolderChange = onPaymentHolderChange,
                 onPaymentWhatsappChange = onPaymentWhatsappChange,
+                onPickProductImageClick = onPickProductImageClick,
+                onTogglePlanModalClick = onTogglePlanModalClick,
+                onPlanPriceChange = onPlanPriceChange,
+                onPlanVisibilityChange = onPlanVisibilityChange,
+                onToggleReceiversManagerClick = onToggleReceiversManagerClick,
+                onToggleRecipientClick = onToggleRecipientClick,
+                onSaveRecipientDirectoryClick = onSaveRecipientDirectoryClick,
                 onSaveProductClick = onSaveProductClick,
                 onCloseProductFormClick = onCloseProductFormClick,
             )
@@ -348,6 +363,13 @@ private fun AdminStoreProductFormCard(
     onPaymentBankChange: (String) -> Unit,
     onPaymentHolderChange: (String) -> Unit,
     onPaymentWhatsappChange: (String) -> Unit,
+    onPickProductImageClick: () -> Unit,
+    onTogglePlanModalClick: () -> Unit,
+    onPlanPriceChange: (String, String, String) -> Unit,
+    onPlanVisibilityChange: (String, String, Boolean) -> Unit,
+    onToggleReceiversManagerClick: () -> Unit,
+    onToggleRecipientClick: (String) -> Unit,
+    onSaveRecipientDirectoryClick: (List<StorePaymentRecipient>) -> Unit,
     onSaveProductClick: () -> Unit,
     onCloseProductFormClick: () -> Unit,
 ) {
@@ -385,8 +407,15 @@ private fun AdminStoreProductFormCard(
             label = "URL da imagem",
             leadingIcon = Icons.Outlined.Image,
         )
+        PremiumSecondaryButton(
+            text = if (state.isUploadingProductImage) "Enviando..." else "Upload",
+            onClick = onPickProductImageClick,
+            enabled = !state.isUploadingProductImage && !state.isSaving,
+            modifier = Modifier.fillMaxWidth(),
+        )
         ProductMessage(
-            message = "Use a URL pública da imagem do produto, igual ao campo img do web-reference. URLs do Storage/Supabase e imagens remotas são preservadas.",
+            message = "JPG, PNG ou WEBP de até 2MB e 2400x2400, comprimido para 1600x1600 e 200KB " +
+                "antes de subir. A URL pública também pode ser colada à mão, como no web.",
             color = PremiumZinc400,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -521,6 +550,21 @@ private fun AdminStoreProductFormCard(
             onValueChange = onPaymentWhatsappChange,
             label = "WhatsApp do recebedor",
         )
+
+        ProductRecipientsBlock(
+            state = state,
+            onToggleReceiversManagerClick = onToggleReceiversManagerClick,
+            onToggleRecipientClick = onToggleRecipientClick,
+            onSaveRecipientDirectoryClick = onSaveRecipientDirectoryClick,
+        )
+
+        ProductPlanScopeBlock(
+            state = state,
+            onTogglePlanModalClick = onTogglePlanModalClick,
+            onPlanPriceChange = onPlanPriceChange,
+            onPlanVisibilityChange = onPlanVisibilityChange,
+        )
+
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PremiumSecondaryButton(
                 text = "Cancelar",

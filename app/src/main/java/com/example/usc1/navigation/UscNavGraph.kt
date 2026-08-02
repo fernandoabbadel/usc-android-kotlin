@@ -43,9 +43,14 @@ import com.example.usc1.ui.admin.AdminDashboardScreen
 import com.example.usc1.ui.admin.AdminDashboardViewModel
 import com.example.usc1.ui.admin.AdminDatabaseScannerScreen
 import com.example.usc1.ui.admin.AdminDatabaseScannerViewModel
-import com.example.usc1.ui.admin.AdminEventSalesModeScreen
-import com.example.usc1.ui.admin.AdminEventSalesModeViewModel
 import com.example.usc1.domain.model.AdminStoreMenuKind
+import com.example.usc1.domain.model.EventBiView
+import com.example.usc1.domain.model.ProductBiScope
+import com.example.usc1.ui.bi.EventBiScreen
+import com.example.usc1.ui.bi.EventBiViewModel
+import com.example.usc1.ui.bi.store.ProductBiScreen
+import com.example.usc1.ui.bi.store.ProductBiViewModel
+import com.example.usc1.ui.bi.tenantEventBiContext
 import com.example.usc1.ui.admin.AdminGamesScreen
 import com.example.usc1.ui.admin.AdminGamesViewModel
 import com.example.usc1.ui.admin.AdminMiniVendorsHubScreen
@@ -73,6 +78,7 @@ import com.example.usc1.ui.admin.AdminStoreOrdersScreen
 import com.example.usc1.ui.admin.AdminStoreOrdersViewModel
 import com.example.usc1.ui.admin.AdminStoreProductsScreen
 import com.example.usc1.ui.admin.AdminStoreProductsViewModel
+import com.example.usc1.ui.admin.rememberStoreImagePicker
 import com.example.usc1.ui.admin.AdminStoreScreen
 import com.example.usc1.ui.admin.AdminStoreReviewsScreen
 import com.example.usc1.ui.admin.AdminStoreReviewsViewModel
@@ -853,6 +859,11 @@ fun UscNavGraph() {
                     )
                 }
 
+                val pickCategoryCover = rememberStoreImagePicker(
+                    onError = categoriesViewModel::showUploadError,
+                    onPicked = categoriesViewModel::uploadCategoryCover,
+                )
+
                 AdminStoreCategoriesScreen(
                     state = categoriesState,
                     onProductsClick = {
@@ -872,6 +883,7 @@ fun UscNavGraph() {
                     onSaveOrderClick = categoriesViewModel::saveOrder,
                     onNameChange = categoriesViewModel::updateName,
                     onCoverUrlChange = categoriesViewModel::updateCoverUrl,
+                    onPickCoverClick = pickCategoryCover,
                     onButtonColorChange = categoriesViewModel::updateButtonColor,
                     onStartNewCategoryClick = categoriesViewModel::startNewCategory,
                     onSaveCategoryClick = categoriesViewModel::saveCategory,
@@ -916,6 +928,11 @@ fun UscNavGraph() {
                     productsViewModel.load(inactiveOnly = false, forceRefresh = false)
                 }
 
+                val pickProductImage = rememberStoreImagePicker(
+                    onError = productsViewModel::showUploadError,
+                    onPicked = productsViewModel::uploadProductImage,
+                )
+
                 AdminStoreProductsScreen(
                     state = productsState,
                     onInactiveProductsClick = {
@@ -973,6 +990,13 @@ fun UscNavGraph() {
                     onPaymentBankChange = productsViewModel::updatePaymentBank,
                     onPaymentHolderChange = productsViewModel::updatePaymentHolder,
                     onPaymentWhatsappChange = productsViewModel::updatePaymentWhatsapp,
+                    onPickProductImageClick = pickProductImage,
+                    onTogglePlanModalClick = { productsViewModel.setPlanModalOpen(!productsState.isPlanModalOpen) },
+                    onPlanPriceChange = productsViewModel::updatePlanPrice,
+                    onPlanVisibilityChange = productsViewModel::updatePlanVisibility,
+                    onToggleReceiversManagerClick = { productsViewModel.setReceiversManagerOpen(!productsState.showReceiversManager) },
+                    onToggleRecipientClick = productsViewModel::togglePaymentRecipient,
+                    onSaveRecipientDirectoryClick = productsViewModel::saveRecipientDirectorySelection,
                     onSaveProductClick = {
                         productsViewModel.saveProduct(
                             tenantName = tenantName,
@@ -1009,6 +1033,11 @@ fun UscNavGraph() {
                     productsViewModel.openCreateProduct()
                 }
 
+                val pickProductImage = rememberStoreImagePicker(
+                    onError = productsViewModel::showUploadError,
+                    onPicked = productsViewModel::uploadProductImage,
+                )
+
                 AdminStoreProductsScreen(
                     state = productsState,
                     onInactiveProductsClick = {
@@ -1066,6 +1095,13 @@ fun UscNavGraph() {
                     onPaymentBankChange = productsViewModel::updatePaymentBank,
                     onPaymentHolderChange = productsViewModel::updatePaymentHolder,
                     onPaymentWhatsappChange = productsViewModel::updatePaymentWhatsapp,
+                    onPickProductImageClick = pickProductImage,
+                    onTogglePlanModalClick = { productsViewModel.setPlanModalOpen(!productsState.isPlanModalOpen) },
+                    onPlanPriceChange = productsViewModel::updatePlanPrice,
+                    onPlanVisibilityChange = productsViewModel::updatePlanVisibility,
+                    onToggleReceiversManagerClick = { productsViewModel.setReceiversManagerOpen(!productsState.showReceiversManager) },
+                    onToggleRecipientClick = productsViewModel::togglePaymentRecipient,
+                    onSaveRecipientDirectoryClick = productsViewModel::saveRecipientDirectorySelection,
                     onSaveProductClick = {
                         productsViewModel.saveProduct(
                             tenantName = tenantName,
@@ -1101,6 +1137,11 @@ fun UscNavGraph() {
                     productsViewModel.load(inactiveOnly = true, forceRefresh = false)
                 }
 
+                val pickProductImage = rememberStoreImagePicker(
+                    onError = productsViewModel::showUploadError,
+                    onPicked = productsViewModel::uploadProductImage,
+                )
+
                 AdminStoreProductsScreen(
                     state = productsState,
                     onInactiveProductsClick = {
@@ -1158,6 +1199,13 @@ fun UscNavGraph() {
                     onPaymentBankChange = productsViewModel::updatePaymentBank,
                     onPaymentHolderChange = productsViewModel::updatePaymentHolder,
                     onPaymentWhatsappChange = productsViewModel::updatePaymentWhatsapp,
+                    onPickProductImageClick = pickProductImage,
+                    onTogglePlanModalClick = { productsViewModel.setPlanModalOpen(!productsState.isPlanModalOpen) },
+                    onPlanPriceChange = productsViewModel::updatePlanPrice,
+                    onPlanVisibilityChange = productsViewModel::updatePlanVisibility,
+                    onToggleReceiversManagerClick = { productsViewModel.setReceiversManagerOpen(!productsState.showReceiversManager) },
+                    onToggleRecipientClick = productsViewModel::togglePaymentRecipient,
+                    onSaveRecipientDirectoryClick = productsViewModel::saveRecipientDirectorySelection,
                     onSaveProductClick = {
                         productsViewModel.saveProduct(
                             tenantName = tenantName,
@@ -1699,42 +1747,24 @@ fun UscNavGraph() {
             }
         }
 
-        composable(AppRoute.AdminManagementEvents) {
-            val user = authState.session.user
-            if (user?.role?.canManageTenant != true) {
-                PermissionDeniedScreen(title = "Eventos", subtitle = "Use uma conta com permissão administrativa neste tenant.")
-            } else {
-                val eventSalesViewModel: AdminEventSalesModeViewModel = viewModel()
-                val eventSalesState by eventSalesViewModel.uiState.collectAsState()
-                LaunchedEffect(authState.session.tenant?.id) {
-                    eventSalesViewModel.load(forceRefresh = true)
-                }
-                AdminEventSalesModeScreen(
-                    state = eventSalesState,
-                    onRefreshClick = { eventSalesViewModel.load(forceRefresh = true) },
-                    onOpenPublicSalesModeClick = { navController.navigate(AppRoute.SalesMode) { launchSingleTop = true } },
-                    onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
-                )
-            }
+        // `app/admin/bi/page.tsx` e `app/admin/gestao/eventos/page.tsx` são a mesma tela no web:
+        // `<AdminEventBiDashboard view="inicio" />` no escopo do tenant.
+        composable(AppRoute.AdminBi) {
+            TenantEventBiRoute(navController, authState)
         }
 
+        composable(AppRoute.AdminManagementEvents) {
+            TenantEventBiRoute(navController, authState)
+        }
+
+        // M8.4: `<AdminBiDashboard mode="produtos" />` — o BI Loja do tenant. O web serve o
+        // mesmo componente em `/admin/gestao/loja` e em `/admin/gestao/produtos`.
         composable(AppRoute.AdminManagementStore) {
-            val user = authState.session.user
-            if (user?.role?.canManageTenant != true) {
-                PermissionDeniedScreen(title = "BI Loja", subtitle = "Use uma conta com permissão administrativa neste tenant.")
-            } else {
-                val dashboardViewModel: AdminDashboardViewModel = viewModel()
-                val dashboardState by dashboardViewModel.uiState.collectAsState()
-                LaunchedEffect(authState.session.tenant?.id) {
-                    dashboardViewModel.load(authState.session, forceRefresh = true)
-                }
-                AdminBiSnapshotScreen(
-                    state = dashboardState,
-                    focus = AdminBiSnapshotFocus.Store,
-                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
-                    onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
-                )
-            }
+            TenantProductBiRoute(navController, authState)
+        }
+
+        composable(AppRoute.AdminManagementProducts) {
+            TenantProductBiRoute(navController, authState)
         }
 
         composable(AppRoute.AdminManagementTraining) {
@@ -1775,61 +1805,27 @@ fun UscNavGraph() {
             }
         }
 
+        // M8.2: as cinco visões analíticas do tenant. Até o M8.1 estas três rotas mostravam o
+        // `AdminBiSnapshotScreen`, um resumo herdado de módulo anterior; no web
+        // `app/admin/bi/{view}/page.tsx` é `<AdminEventBiDashboard view="..." />`.
         composable(AppRoute.AdminBiCommercial) {
-            val user = authState.session.user
-            if (user?.role?.canManageTenant != true) {
-                PermissionDeniedScreen(title = "BI Comercial", subtitle = "Use uma conta com permissão administrativa neste tenant.")
-            } else {
-                val dashboardViewModel: AdminDashboardViewModel = viewModel()
-                val dashboardState by dashboardViewModel.uiState.collectAsState()
-                LaunchedEffect(authState.session.tenant?.id) {
-                    dashboardViewModel.load(authState.session, forceRefresh = true)
-                }
-                AdminBiSnapshotScreen(
-                    state = dashboardState,
-                    focus = AdminBiSnapshotFocus.Commercial,
-                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
-                    onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
-                )
-            }
+            TenantEventBiRoute(navController, authState, EventBiView.Commercial)
         }
 
         composable(AppRoute.AdminBiOperational) {
-            val user = authState.session.user
-            if (user?.role?.canManageTenant != true) {
-                PermissionDeniedScreen(title = "BI Operacional", subtitle = "Use uma conta com permissão administrativa neste tenant.")
-            } else {
-                val dashboardViewModel: AdminDashboardViewModel = viewModel()
-                val dashboardState by dashboardViewModel.uiState.collectAsState()
-                LaunchedEffect(authState.session.tenant?.id) {
-                    dashboardViewModel.load(authState.session, forceRefresh = true)
-                }
-                AdminBiSnapshotScreen(
-                    state = dashboardState,
-                    focus = AdminBiSnapshotFocus.Operational,
-                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
-                    onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
-                )
-            }
+            TenantEventBiRoute(navController, authState, EventBiView.Operational)
         }
 
         composable(AppRoute.AdminBiGate) {
-            val user = authState.session.user
-            if (user?.role?.canManageTenant != true) {
-                PermissionDeniedScreen(title = "BI Portaria", subtitle = "Use uma conta com permissão administrativa neste tenant.")
-            } else {
-                val dashboardViewModel: AdminDashboardViewModel = viewModel()
-                val dashboardState by dashboardViewModel.uiState.collectAsState()
-                LaunchedEffect(authState.session.tenant?.id) {
-                    dashboardViewModel.load(authState.session, forceRefresh = true)
-                }
-                AdminBiSnapshotScreen(
-                    state = dashboardState,
-                    focus = AdminBiSnapshotFocus.Gate,
-                    onRefreshClick = { dashboardViewModel.load(authState.session, forceRefresh = true) },
-                    onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
-                )
-            }
+            TenantEventBiRoute(navController, authState, EventBiView.Gate)
+        }
+
+        composable(AppRoute.AdminBiStrategic) {
+            TenantEventBiRoute(navController, authState, EventBiView.Strategic)
+        }
+
+        composable(AppRoute.AdminBiSales) {
+            TenantEventBiRoute(navController, authState, EventBiView.Sales)
         }
 
         composable(AppRoute.AdminAlbum) {
@@ -2852,6 +2848,106 @@ private fun ProfileRoute(
             navController.navigate(AppRoute.Community) { launchSingleTop = true }
         },
     )
+}
+
+/**
+ * BI de Eventos no escopo do tenant (M8.1 no hub, M8.2 nas cinco visões).
+ *
+ * Web: `app/admin/bi/page.tsx` e `app/admin/gestao/eventos/page.tsx` com
+ * `<AdminEventBiDashboard view="inicio" />`, e `app/admin/bi/{view}/page.tsx` com a visão
+ * correspondente. Nenhum deles passa props de contexto — o `DashboardShell` cai no eyebrow
+ * "BI Administrativo" e no escopo travado "Atlética".
+ */
+@Composable
+private fun TenantEventBiRoute(
+    navController: androidx.navigation.NavHostController,
+    authState: com.example.usc1.ui.auth.AuthUiState,
+    view: EventBiView = EventBiView.Home,
+) {
+    val user = authState.session.user
+    if (user?.role?.canManageTenant != true) {
+        PermissionDeniedScreen(
+            title = "BI de Eventos",
+            subtitle = "Use uma conta com permissão administrativa neste tenant.",
+        )
+        return
+    }
+
+    val viewModel: EventBiViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(authState.session.tenant?.id, view) {
+        viewModel.load(
+            session = authState.session,
+            view = view,
+            context = tenantEventBiContext(),
+        )
+    }
+
+    EventBiScreen(
+        state = state,
+        onBackClick = {
+            // O `backHref` do web volta ao hub quando já se está numa visão.
+            if (view == EventBiView.Home) {
+                navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true }
+            } else {
+                navController.navigate(AppRoute.AdminBi) { launchSingleTop = true }
+            }
+        },
+        onEventSelected = viewModel::selectEvent,
+        onProductSelected = viewModel::selectProduct,
+        onStartDateChange = viewModel::updateStartDate,
+        onEndDateChange = viewModel::updateEndDate,
+        onAudienceBasisChange = viewModel::selectAudienceBasis,
+        onModuleClick = { module ->
+            navController.navigate(tenantEventBiRouteOf(module)) { launchSingleTop = true }
+        },
+    )
+}
+
+/**
+ * `<AdminBiDashboard mode="produtos" />` — o BI Loja do tenant (M8.4).
+ *
+ * Web: `ProductsBi` de `app/admin/gestao/_components/AdminBiDashboard.tsx` (1393-1424). O
+ * recorte "produtos oficiais da atlética, sem mini vendors nem ligas" está no repositório; a
+ * tela e o motor são os mesmos dos outros quatro players.
+ */
+@Composable
+private fun TenantProductBiRoute(
+    navController: androidx.navigation.NavHostController,
+    authState: com.example.usc1.ui.auth.AuthUiState,
+) {
+    val user = authState.session.user
+    if (user?.role?.canManageTenant != true) {
+        PermissionDeniedScreen(
+            title = "BI Loja",
+            subtitle = "Use uma conta com permissão administrativa neste tenant.",
+        )
+        return
+    }
+
+    val viewModel: ProductBiViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(authState.session.tenant?.id) {
+        viewModel.load(session = authState.session, scope = ProductBiScope.Tenant)
+    }
+
+    ProductBiScreen(
+        state = state,
+        onBackClick = { navController.navigate(AppRoute.AdminManagement) { launchSingleTop = true } },
+        onProductSelected = viewModel::selectProduct,
+    )
+}
+
+/** `MODULES[].href` do hub: `${basePath}/${view}` no escopo do tenant. */
+private fun tenantEventBiRouteOf(view: EventBiView): String = when (view) {
+    EventBiView.Home -> AppRoute.AdminBi
+    EventBiView.Commercial -> AppRoute.AdminBiCommercial
+    EventBiView.Operational -> AppRoute.AdminBiOperational
+    EventBiView.Gate -> AppRoute.AdminBiGate
+    EventBiView.Strategic -> AppRoute.AdminBiStrategic
+    EventBiView.Sales -> AppRoute.AdminBiSales
 }
 
 private fun TenantPalette?.toCategoryColor(): String {

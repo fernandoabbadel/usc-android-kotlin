@@ -67,6 +67,7 @@ fun AdminStoreCategoriesScreen(
     onSaveOrderClick: () -> Unit,
     onNameChange: (String) -> Unit,
     onCoverUrlChange: (String) -> Unit,
+    onPickCoverClick: () -> Unit,
     onButtonColorChange: (String) -> Unit,
     onStartNewCategoryClick: () -> Unit,
     onSaveCategoryClick: () -> Unit,
@@ -242,7 +243,17 @@ fun AdminStoreCategoriesScreen(
                 label = "URL da capa",
             )
 
-            CategoryInfoBox("Upload da capa: pendente no Android até configurar Supabase Storage com limite de tamanho, validação de tipo e compressão.")
+            PremiumSecondaryButton(
+                text = if (state.isUploadingCover) "Enviando..." else "Upload capa",
+                onClick = onPickCoverClick,
+                enabled = !state.isUploadingCover && !state.isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            CategoryInfoBox(
+                "JPG, PNG ou WEBP de até 2MB e 2400x2400. A imagem é comprimida para no máximo " +
+                    "1600x1600 e 200KB antes de subir, como no web.",
+            )
 
             PremiumTextField(
                 value = state.form.buttonColor,

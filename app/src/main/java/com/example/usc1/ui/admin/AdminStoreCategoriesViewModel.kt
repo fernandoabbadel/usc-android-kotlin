@@ -3,11 +3,15 @@ package com.example.usc1.ui.admin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.usc1.data.repository.SupabaseAdminStoreRepository
+import com.example.usc1.data.repository.SupabaseStoreImageUploadRepository
 import com.example.usc1.domain.model.AdminStoreCatalog
 import com.example.usc1.domain.model.AdminStoreCategory
 import com.example.usc1.domain.model.AdminStoreCategoryForm
 import com.example.usc1.domain.model.AdminStoreSellerType
+import com.example.usc1.domain.model.StoreUploadTargets
 import com.example.usc1.domain.repository.AdminStoreRepository
+import com.example.usc1.domain.repository.StoreImageSource
+import com.example.usc1.domain.repository.StoreImageUploadRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,9 +20,51 @@ import kotlinx.coroutines.launch
 
 class AdminStoreCategoriesViewModel(
     private val repository: AdminStoreRepository = SupabaseAdminStoreRepository(),
+    private val uploadRepository: StoreImageUploadRepository = SupabaseStoreImageUploadRepository(),
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AdminStoreCategoriesUiState())
     val uiState: StateFlow<AdminStoreCategoriesUiState> = _uiState.asStateFlow()
+
+    /** Recusa do seletor (tipo ou tamanho), antes de qualquer chamada ao Storage. */
+    fun showUploadError(message: String) {
+        _uiState.update { it.copy(errorMessage = message, actionMessage = null) }
+    }
+
+    /**
+     * `produtos/page.tsx` 727-762. O alvo é estável quando a categoria já tem nome: grava sempre
+     * em `store/{tenant}/categorias/{nome}/cover.webp` com `upsert` e versiona a URL. Sem nome,
+     * cai no rascunho com nome único.
+     */
+    fun uploadCategoryCover(source: StoreImageSource) {
+        val state = _uiState.value
+        if (state.isUploadingCover) return
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(isUploadingCover = true, errorMessage = null, actionMessage = null)
+            }
+            val target = StoreUploadTargets.categoryCover(
+                tenantId = state.tenantId,
+                categoryName = state.form.nome,
+                nowMs = System.currentTimeMillis(),
+            )
+            val result = uploadRepository.uploadImage(source, target.path, target.options)
+            _uiState.update { current ->
+                val url = result.url
+                if (url.isNullOrBlank()) {
+                    current.copy(
+                        isUploadingCover = false,
+                        errorMessage = result.error ?: "Erro ao subir capa da categoria.",
+                    )
+                } else {
+                    current.copy(
+                        isUploadingCover = false,
+                        form = current.form.copy(coverImg = url),
+                        actionMessage = "Capa da categoria enviada.",
+                    )
+                }
+            }
+        }
+    }
 
     fun load(
         tenantLogoUrl: String?,

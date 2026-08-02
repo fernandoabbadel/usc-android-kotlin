@@ -10,6 +10,7 @@ data class AdminStoreCategoriesUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
     val isSavingOrder: Boolean = false,
+    val isUploadingCover: Boolean = false,
     val errorMessage: String? = null,
     val actionMessage: String? = null,
     val tenantId: String = "",

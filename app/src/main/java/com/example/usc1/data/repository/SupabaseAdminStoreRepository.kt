@@ -20,6 +20,17 @@ import com.example.usc1.domain.model.AdminStoreProductsPage
 import com.example.usc1.domain.model.AdminStoreReview
 import com.example.usc1.domain.model.AdminStoreReviewStatus
 import com.example.usc1.domain.model.AdminStoreSellerType
+import com.example.usc1.domain.model.StoreApprovalOutcome
+import com.example.usc1.domain.model.StoreApprovalStep
+import com.example.usc1.domain.model.StoreOrderApproval
+import com.example.usc1.domain.model.StorePaymentRecipient
+import com.example.usc1.domain.model.StorePaymentRecipients
+import com.example.usc1.domain.model.StorePlanOption
+import com.example.usc1.domain.model.StorePlanPrice
+import com.example.usc1.domain.model.StorePlanVisibility
+import com.example.usc1.domain.model.StoreProductVariantStock
+import com.example.usc1.domain.model.StoreProductPlanScope
+import com.example.usc1.domain.model.StoreVoucherEntry
 import com.example.usc1.domain.repository.AdminStoreRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
@@ -87,6 +98,7 @@ class SupabaseAdminStoreRepository(
             categoryRows = categoryRows,
             products = products,
             miniVendors = miniVendors,
+            leagueLogoById = fetchLeagueLogos(client, tenantId),
         )
         AdminStoreCategoriesBundle(
             tenantId = tenantId,
@@ -284,8 +296,147 @@ class SupabaseAdminStoreRepository(
             categoryNames = categoryNames,
             selectedCategory = selectedCategory,
             inactiveOnly = inactiveOnly,
+            planCatalog = fetchPlanCatalog(client, tenantId),
         )
     }
+
+    /**
+     * `plansPublicService.ts::fetchPlanCatalog` (121-165), no recorte que a tela de produtos usa:
+     * `tenant_id`, teto de 40 e ordenação por `displayOrder` e `precoVal`.
+     */
+    private suspend fun fetchPlanCatalog(
+        client: SupabaseClient,
+        tenantId: String,
+    ): List<StorePlanOption> = runCatching {
+        client.from(PlansTable)
+            .select(columns = Columns.raw("id,nome,displayOrder,precoVal")) {
+                filter { eq("tenant_id", tenantId) }
+                order(column = "displayOrder", order = Order.ASCENDING)
+                order(column = "precoVal", order = Order.ASCENDING)
+                limit(count = StoreProductPlanScope.PlanCatalogMaxResults.toLong())
+            }
+            .decodeList<PlanCatalogRow>()
+            .mapNotNull { row ->
+                val id = row.id.trim()
+                val nome = row.nome?.trim().orEmpty()
+                if (id.isBlank() && nome.isBlank()) null else StorePlanOption(id = id, nome = nome)
+            }
+    }.getOrDefault(emptyList())
+
+    override suspend fun getProductPaymentRecipients(
+        forceRefresh: Boolean,
+    ): List<StorePaymentRecipient> = withContext(Dispatchers.IO) {
+        val client = clientProvider()
+        fetchSavedProductRecipients(client, SupabaseTenantResolver.resolveActiveTenantId(client))
+    }
+
+    override suspend fun getRecipientDirectory(): List<StorePaymentRecipient> = withContext(Dispatchers.IO) {
+        val client = clientProvider()
+        fetchRecipientDirectory(client, SupabaseTenantResolver.resolveActiveTenantId(client))
+    }
+
+    /** paymentRecipients.ts 115-139. */
+    private suspend fun fetchSavedProductRecipients(
+        client: SupabaseClient,
+        tenantId: String,
+    ): List<StorePaymentRecipient> = runCatching {
+        val row = client.from(AppConfigTable)
+            .select(columns = Columns.raw("id,data")) {
+                filter { eq("id", productRecipientsConfigId(tenantId)) }
+                limit(count = 1)
+            }
+            .decodeList<AppConfigDataRow>()
+            .firstOrNull()
+            ?: return@runCatching emptyList()
+        val recipients = row.data.asObject()?.get("recipients") as? JsonArray ?: return@runCatching emptyList()
+        recipients.mapNotNull { entry -> entry.asObject()?.toStorePaymentRecipient() }
+    }.getOrDefault(emptyList())
+
+    /**
+     * paymentRecipients.ts 141-210, no escopo do tenant: membros aprovados, teto de 400. O
+     * recorte por órgão (liga/comissão/diretório) não entra aqui porque a tela do admin sempre
+     * usa `ownerType = "tenant"`.
+     */
+    private suspend fun fetchRecipientDirectory(
+        client: SupabaseClient,
+        tenantId: String,
+    ): List<StorePaymentRecipient> = runCatching {
+        val memberships = client.from(TenantMembershipsTable)
+            .select(columns = Columns.raw("user_id,status")) {
+                filter {
+                    eq("tenant_id", tenantId)
+                    eq("status", "approved")
+                }
+                limit(count = StorePaymentRecipients.DirectoryLimit.toLong())
+            }
+            .decodeList<TenantMembershipUserRow>()
+            .mapNotNull { it.userId?.trim()?.takeIf(String::isNotBlank) }
+            .distinct()
+        if (memberships.isEmpty()) return@runCatching emptyList()
+
+        client.from(UsersTable)
+            .select(columns = Columns.raw("uid,nome,turma,telefone,foto")) {
+                filter {
+                    eq("tenant_id", tenantId)
+                    isIn("uid", memberships)
+                }
+                limit(count = StorePaymentRecipients.DirectoryLimit.toLong())
+            }
+            .decodeList<RecipientDirectoryRow>()
+            .mapNotNull { row ->
+                StorePaymentRecipients.normalize(
+                    userId = row.uid,
+                    name = row.nome,
+                    turma = row.turma,
+                    phone = row.telefone,
+                    avatarUrl = row.foto,
+                )
+            }
+    }.getOrDefault(emptyList())
+
+    override suspend fun saveProductPaymentRecipients(
+        recipients: List<StorePaymentRecipient>,
+    ): List<StorePaymentRecipient> = withContext(Dispatchers.IO) {
+        val client = clientProvider()
+        val tenantId = SupabaseTenantResolver.resolveActiveTenantId(client)
+        // paymentRecipients.ts 221-227
+        val normalized = StorePaymentRecipients.dedupe(
+            recipients.mapNotNull {
+                StorePaymentRecipients.normalize(it.userId, it.name, it.turma, it.phone, it.avatarUrl)
+            },
+        )
+        val now = OffsetDateTime.now().toString()
+
+        // paymentRecipients.ts 231-245
+        client.from(AppConfigTable).upsert(
+            PaymentRecipientsUpsertRow(
+                id = productRecipientsConfigId(tenantId),
+                tenantId = tenantId,
+                data = JsonObject(
+                    mapOf(
+                        "recipients" to JsonArray(normalized.map { it.toJsonObject() }),
+                        "scope" to JsonPrimitive("products"),
+                        "ownerType" to JsonPrimitive("tenant"),
+                        "ownerId" to JsonPrimitive(""),
+                        "updatedAt" to JsonPrimitive(now),
+                    ),
+                ),
+                updatedAt = now,
+            ),
+        ) {
+            onConflict = "id"
+        }
+        normalized
+    }
+
+    private fun productRecipientsConfigId(tenantId: String): String = buildTenantScopedRowId(
+        tenantId = tenantId,
+        baseId = StorePaymentRecipients.resolveDocId(
+            scopeDocId = StorePaymentRecipients.ProductsDocId,
+            ownerType = "tenant",
+            ownerId = "",
+        ),
+    )
 
     override suspend fun saveProduct(
         form: AdminStoreProductForm,
@@ -321,6 +472,12 @@ class SupabaseAdminStoreRepository(
             JsonArray(emptyList())
         }
         val variantStock = variantPayload.sumVariantStock()
+        // `produtos/page.tsx` 854-857: o snapshot gravado no produto sai do documento de
+        // recebedores do tenant, filtrado pelos ids escolhidos no formulário.
+        val selectedRecipients = StorePaymentRecipients.filterByIds(
+            recipients = fetchSavedProductRecipients(client, tenantId),
+            userIds = form.paymentRecipientUserIds,
+        )
         val payload = mutableMapOf<String, Any?>(
             "tenant_id" to tenantId,
             "nome" to cleanName,
@@ -334,7 +491,14 @@ class SupabaseAdminStoreRepository(
             "cores" to form.coresText.linesToCleanText(AdminStoreCatalog.ProductColorsTextMaxLength),
             "caracteristicas" to form.caracteristicasText.linesToJsonArray(AdminStoreCatalog.ProductFeaturesTextMaxLength),
             "variantes" to variantPayload,
-            "payment_config" to form.toProductPaymentConfigOrNull(sellerName),
+            // `produtos/page.tsx` 877-889: preço só entra com valor; visibilidade grava tudo.
+            "plan_prices" to JsonArray(
+                StoreProductPlanScope.toPlanPrices(form.planScopeRows).map { it.toJsonObject() },
+            ),
+            "plan_visibility" to JsonArray(
+                StoreProductPlanScope.toPlanVisibility(form.planScopeRows).map { it.toJsonObject() },
+            ),
+            "payment_config" to form.toProductPaymentConfigOrNull(sellerName, selectedRecipients),
             "seller_type" to sellerType.remoteValue,
             "seller_id" to sellerId,
             "seller_name" to sellerName,
@@ -369,8 +533,6 @@ class SupabaseAdminStoreRepository(
                         "vendidos" to 0,
                         "cliques" to 0,
                         "likes" to JsonArray(emptyList()),
-                        "plan_prices" to JsonArray(emptyList()),
-                        "plan_visibility" to JsonArray(emptyList()),
                         "active" to true,
                         "aprovado" to true,
                     ),
@@ -530,12 +692,13 @@ class SupabaseAdminStoreRepository(
             }
             .decodeList<OrderRow>()
 
+        // O web não filtra pedido de evento em `/admin/loja/pedidos-*`:
+        // `AdminStoreOrdersStatusPage.tsx` não menciona `eventParty`, e `fetchStoreOrdersPage`
+        // (`storeService.ts` 563-647) filtra só por status, `productId` e `tenant_id`. Esconder
+        // esses pedidos deixava o pedido de produto vendido dentro do evento sem tela de
+        // aprovação no app — é justamente ele que gera as fichas em `approveStoreOrder`.
         val orders = rows.mapNotNull { row ->
-            if (row.isEventLinked()) {
-                null
-            } else {
-                row.toDomain(productCategoryById[row.productId.trim()] ?: return@mapNotNull null)
-            }
+            row.toDomain(productCategoryById[row.productId.trim()] ?: return@mapNotNull null)
         }
         AdminStoreOrdersPage(
             rows = orders.take(safePageSize),
@@ -550,15 +713,26 @@ class SupabaseAdminStoreRepository(
     override suspend fun approveOrder(
         orderId: String,
         approvedBy: String,
-    ): Unit = withContext(Dispatchers.IO) {
+    ): StoreApprovalOutcome = withContext(Dispatchers.IO) {
         val cleanOrderId = orderId.trim()
-        if (cleanOrderId.isBlank()) return@withContext
+        if (cleanOrderId.isBlank()) {
+            return@withContext StoreApprovalOutcome(approved = false, failures = emptyList())
+        }
         val client = clientProvider()
         val tenantId = SupabaseTenantResolver.resolveActiveTenantId(client)
         val order = fetchOrderForMutation(client, tenantId, cleanOrderId)
+
+        // Guarda de duplicidade: não existe no web (ver StoreOrderApproval.shouldSkipApproval).
+        // Sem transação no cliente, reaprovar repetiria baixa de estoque, XP e selo.
+        if (StoreOrderApproval.shouldSkipApproval(order.status)) {
+            return@withContext StoreApprovalOutcome(approved = false, failures = emptyList())
+        }
+
         val now = OffsetDateTime.now().toString()
         val actor = approvedBy.trim().ifBlank { "admin" }
 
+        // storeService.ts 1135-1145: a atualização do pedido é a única etapa que **não** é
+        // tolerante a falha — se ela falhar, nada foi aprovado.
         client.from(OrdersTable)
             .update(
                 mapOf(
@@ -570,13 +744,182 @@ class SupabaseAdminStoreRepository(
                 filter {
                     eq("id", cleanOrderId)
                     eq("tenant_id", tenantId)
+                    // Idempotência também no banco: só sai de pendente quem ainda está pendente,
+                    // então duas telas aprovando ao mesmo tempo não somam estoque duas vezes.
+                    neq("status", AdminStoreOrderStatus.Approved.remoteValue)
                 }
             }
 
-        updateProductAfterApproval(client, tenantId, order)
-        updateUserAfterApproval(client, tenantId, order)
-        insertApprovalNotification(client, order, now)
+        val failures = mutableListOf<StoreApprovalStep>()
+        if (!updateProductAfterApproval(client, tenantId, order)) {
+            failures.add(StoreApprovalStep.ProductStock)
+        }
+        if (!updateUserAfterApproval(client, tenantId, order)) {
+            failures.add(StoreApprovalStep.UserRewards)
+        }
+        if (!insertApprovalNotification(client, order, now)) {
+            failures.add(StoreApprovalStep.Notification)
+        }
+        if (!syncEventVoucherAfterApproval(client, tenantId, order, actor, now)) {
+            failures.add(StoreApprovalStep.EventVoucher)
+        }
+        if (!syncApprovedOrderVariantStock(client, tenantId, order)) {
+            failures.add(StoreApprovalStep.VariantStock)
+        }
+
+        StoreOrderApproval.summarize(failures)
     }
+
+    /**
+     * storeService.ts 1257-1332. Roda **fora** da callable, sempre no cliente. Só faz algo quando
+     * o pedido carrega `data.eventParty.eventId`: é o pedido de produto vendido dentro do evento,
+     * que vira ficha/voucher.
+     */
+    private suspend fun syncEventVoucherAfterApproval(
+        client: SupabaseClient,
+        tenantId: String,
+        order: OrderRow,
+        actor: String,
+        now: String,
+    ): Boolean = runCatching {
+        val orderData = order.data as? JsonObject ?: JsonObject(emptyMap())
+        val eventParty = orderData["eventParty"] as? JsonObject ?: return@runCatching true
+        val eventId = eventParty.stringValue("eventId")
+        if (eventId.isBlank()) return@runCatching true
+
+        val quantity = StoreOrderApproval.quantity(
+            quantidade = order.quantidade?.toDouble(),
+            itens = order.itens?.toDouble(),
+        )
+        val existingEntries = (eventParty["voucherEntries"] as? JsonArray)
+            .orEmpty()
+            .mapNotNull { entry -> (entry as? JsonObject)?.toStoreVoucherEntry() }
+        val voucherEntries = StoreOrderApproval.buildVoucherEntries(existingEntries, quantity)
+
+        val nextEventParty = JsonObject(
+            eventParty.toMutableMap().apply {
+                put("approvedAt", JsonPrimitive(now))
+                put("approvalMethod", JsonPrimitive("manual"))
+                put("approvedByName", JsonPrimitive(actor))
+                put("voucherStatus", JsonPrimitive("ativo"))
+                put("voucherEntries", JsonArray(voucherEntries.map { it.toJsonObject() }))
+            },
+        )
+        val nextData = JsonObject(
+            orderData.toMutableMap().apply { put("eventParty", nextEventParty) },
+        )
+
+        client.from(OrdersTable)
+            .update(
+                mapOf(
+                    "eventId" to eventId,
+                    "eventItemType" to "produto",
+                    "eventItemName" to order.productName?.trim().orEmpty().ifBlank { "Produto" },
+                    "eventLoteNome" to "-",
+                    "eventItemCategory" to eventParty.stringValue("section").ifBlank { "Geral" },
+                    "eventApprovalAt" to now,
+                    "eventApprovalMethod" to "manual",
+                    "eventDiscountValue" to "R$ 0,00",
+                    "eventDiscountKind" to "",
+                    "eventDiscountSource" to "",
+                    "updatedAt" to now,
+                    "data" to nextData,
+                ),
+            ) {
+                filter {
+                    eq("id", order.id.trim())
+                    eq("tenant_id", tenantId)
+                }
+            }
+        true
+    }.getOrDefault(false)
+
+    /**
+     * storeService.ts 1017-1107. O próprio web é idempotente aqui: `data.variantStockAppliedAt`
+     * marca que a baixa já ocorreu (1032), e reaprovar não desconta de novo.
+     */
+    private suspend fun syncApprovedOrderVariantStock(
+        client: SupabaseClient,
+        tenantId: String,
+        order: OrderRow,
+    ): Boolean = runCatching {
+        val orderData = order.data as? JsonObject ?: JsonObject(emptyMap())
+        if (StoreOrderApproval.hasVariantStockApplied(orderData.stringValue("variantStockAppliedAt"))) {
+            return@runCatching true
+        }
+
+        val variantId = orderData.stringValue("varianteId")
+            .ifBlank { orderData.stringValue("variantId") }
+        if (variantId.isBlank()) return@runCatching true
+
+        val productId = order.productId.trim()
+        if (productId.isBlank()) return@runCatching true
+
+        val quantity = StoreOrderApproval.quantity(
+            quantidade = order.quantidade?.toDouble(),
+            itens = order.itens?.toDouble(),
+        )
+
+        val product = client.from(ProductsTable)
+            .select(columns = Columns.raw("id,variantes")) {
+                filter {
+                    eq("id", productId)
+                    eq("tenant_id", tenantId)
+                }
+                limit(count = 1)
+            }
+            .decodeList<ProductVariantsRow>()
+            .firstOrNull()
+            ?: return@runCatching true
+
+        val variants = (product.variantes as? JsonArray)
+            .orEmpty()
+            .mapNotNull { entry -> (entry as? JsonObject)?.toStoreProductVariantStock() }
+        if (variants.isEmpty()) return@runCatching true
+
+        val variantLabel = orderData.stringValue("varianteLabel")
+            .ifBlank { orderData.stringValue("variantLabel") }
+        val nextVariants = StoreOrderApproval.applyVariantStock(
+            variants = variants,
+            variantId = variantId,
+            variantLabel = variantLabel,
+            quantity = quantity,
+        ) ?: return@runCatching true
+
+        val appliedAt = OffsetDateTime.now().toString()
+        client.from(ProductsTable)
+            .update(
+                mapOf(
+                    "variantes" to JsonArray(nextVariants.map { it.toJsonObject() }),
+                    "estoque" to StoreOrderApproval.sumVariantStock(nextVariants),
+                    "updatedAt" to appliedAt,
+                ),
+            ) {
+                filter {
+                    eq("id", productId)
+                    eq("tenant_id", tenantId)
+                }
+            }
+
+        val nextData = JsonObject(
+            orderData.toMutableMap().apply {
+                put("variantStockAppliedAt", JsonPrimitive(appliedAt))
+            },
+        )
+        client.from(OrdersTable)
+            .update(
+                mapOf(
+                    "data" to nextData,
+                    "updatedAt" to appliedAt,
+                ),
+            ) {
+                filter {
+                    eq("id", order.id.trim())
+                    eq("tenant_id", tenantId)
+                }
+            }
+        true
+    }.getOrDefault(false)
 
     override suspend fun setOrderStatus(
         orderId: String,
@@ -651,7 +994,6 @@ class SupabaseAdminStoreRepository(
             .decodeList<ProductLookupRow>()
             .filter { row ->
                 row.id.isNotBlank() &&
-                    !row.data.isEventPartyOrder() &&
                     row.sellerId.trim().ifBlank { tenantId } == tenantId
             }
     }
@@ -726,6 +1068,30 @@ class SupabaseAdminStoreRepository(
             .decodeList<AdminStoreCategoryMiniVendorRow>()
     }
 
+    /**
+     * `categorias/page.tsx` 203-209: `fetchLeagueSummaries({ tenantId, maxResults: 80 })`.
+     *
+     * O único uso do resumo na tela é a logo oficial da liga (244-256), então a consulta traz só
+     * `id` e `logo_url` de `ligas_config`, com `tenant_id` e o mesmo teto de 80.
+     */
+    private suspend fun fetchLeagueLogos(
+        client: SupabaseClient,
+        tenantId: String,
+    ): Map<String, String> = runCatching {
+        client.from(LeaguesTable)
+            .select(columns = Columns.raw("id,logo_url")) {
+                filter { eq("tenant_id", tenantId) }
+                limit(count = MaxLeagues.toLong())
+            }
+            .decodeList<LeagueLogoRow>()
+            .mapNotNull { row ->
+                val id = row.id.trim()
+                val logo = row.logoUrl?.trim().orEmpty()
+                if (id.isBlank() || logo.isBlank()) null else id to logo
+            }
+            .toMap()
+    }.getOrDefault(emptyMap())
+
     private fun buildDisplayCategories(
         tenantId: String,
         tenantLogoUrl: String,
@@ -733,6 +1099,7 @@ class SupabaseAdminStoreRepository(
         categoryRows: List<AdminStoreCategoryRow>,
         products: List<AdminStoreCategoryProductRow>,
         miniVendors: List<AdminStoreCategoryMiniVendorRow>,
+        leagueLogoById: Map<String, String>,
     ): List<AdminStoreCategory> {
         val miniVendorVisibility = miniVendors.associate { it.id.trim() to (it.categoryVisible ?: true) }
         val miniVendorById = miniVendors.associateBy { it.id.trim() }
@@ -767,7 +1134,11 @@ class SupabaseAdminStoreRepository(
             val rowLogo = when (sellerType) {
                 AdminStoreSellerType.Tenant -> tenantLogoUrl.ifBlank { row.logoUrl.orEmpty().trim() }
                 AdminStoreSellerType.MiniVendor -> row.logoUrl.orEmpty().trim().ifBlank { miniVendor?.logoUrl.orEmpty() }
-                AdminStoreSellerType.League -> row.logoUrl.orEmpty().trim()
+                // `categorias/page.tsx` 253-268: a categoria de liga usa a logo oficial da própria
+                // liga (`resolveLeagueLogoSrc`), e só cai para a logo gravada na categoria quando
+                // a liga não tem uma.
+                AdminStoreSellerType.League ->
+                    leagueLogoById[sellerId].orEmpty().ifBlank { row.logoUrl.orEmpty().trim() }
             }
             val visible = if (sellerType == AdminStoreSellerType.MiniVendor) {
                 miniVendorVisibility[sellerId] ?: row.visible ?: true
@@ -949,10 +1320,10 @@ class SupabaseAdminStoreRepository(
         client: SupabaseClient,
         tenantId: String,
         order: OrderRow,
-    ) {
+    ): Boolean {
         val productId = order.productId.trim()
-        if (productId.isBlank()) return
-        runCatching {
+        if (productId.isBlank()) return true
+        return runCatching {
             val product = client.from(ProductsTable)
                 .select(columns = Columns.raw("id,estoque,vendidos")) {
                     filter {
@@ -963,7 +1334,7 @@ class SupabaseAdminStoreRepository(
                 }
                 .decodeList<ProductInventoryRow>()
                 .firstOrNull()
-                ?: return
+                ?: return true
             val quantity = order.quantityForStock()
             client.from(ProductsTable)
                 .update(
@@ -978,17 +1349,18 @@ class SupabaseAdminStoreRepository(
                         eq("tenant_id", tenantId)
                     }
                 }
-        }
+            true
+        }.getOrDefault(false)
     }
 
     private suspend fun updateUserAfterApproval(
         client: SupabaseClient,
         tenantId: String,
         order: OrderRow,
-    ) {
+    ): Boolean {
         val userId = order.userId.trim()
-        if (userId.isBlank()) return
-        runCatching {
+        if (userId.isBlank()) return true
+        return runCatching {
             val isTenantMember = client.from(TenantMembershipsTable)
                 .select(columns = Columns.raw("id")) {
                     filter {
@@ -999,7 +1371,7 @@ class SupabaseAdminStoreRepository(
                 }
                 .decodeList<TenantMembershipIdRow>()
                 .isNotEmpty()
-            if (!isTenantMember) return
+            if (!isTenantMember) return true
 
             val user = client.from(UsersTable)
                 .select(columns = Columns.raw("uid,xp,selos")) {
@@ -1010,8 +1382,8 @@ class SupabaseAdminStoreRepository(
                 }
                 .decodeList<UserRewardRow>()
                 .firstOrNull()
-                ?: return
-            val xpGain = kotlin.math.floor(maxOf(0.0, order.orderTotal()) * 10.0).toLong()
+                ?: return true
+            val xpGain = StoreOrderApproval.xpGain(order.approvalPrice())
             client.from(UsersTable)
                 .update(
                     mapOf(
@@ -1024,18 +1396,19 @@ class SupabaseAdminStoreRepository(
                         eq("uid", userId)
                     }
                 }
-        }
+            true
+        }.getOrDefault(false)
     }
 
     private suspend fun insertApprovalNotification(
         client: SupabaseClient,
         order: OrderRow,
         now: String,
-    ) {
+    ): Boolean {
         val userId = order.userId.trim()
-        if (userId.isBlank()) return
-        runCatching {
-            val xpGain = kotlin.math.floor(maxOf(0.0, order.orderTotal()) * 10.0).toLong()
+        if (userId.isBlank()) return true
+        return runCatching {
+            val xpGain = StoreOrderApproval.xpGain(order.approvalPrice())
             client.from(NotificationsTable).insert(
                 NotificationInsertRow(
                     userId = userId,
@@ -1046,7 +1419,8 @@ class SupabaseAdminStoreRepository(
                     createdAt = now,
                 ),
             )
-        }
+            true
+        }.getOrDefault(false)
     }
 
     private fun buildTenantScopedRowId(tenantId: String, baseId: String): String {
@@ -1058,11 +1432,13 @@ class SupabaseAdminStoreRepository(
 
     private companion object {
         const val AppConfigTable = "app_config"
+        const val PlansTable = "planos"
         const val ProductsTable = "produtos"
         const val CategoriesTable = "categorias"
         const val OrdersTable = "orders"
         const val ReviewsTable = "reviews"
         const val MiniVendorsTable = "mini_vendors"
+        const val LeaguesTable = "ligas_config"
         const val UsersTable = "users"
         const val NotificationsTable = "notifications"
         const val TenantMembershipsTable = "tenant_memberships"
@@ -1071,15 +1447,58 @@ class SupabaseAdminStoreRepository(
         const val MaxProductsPage = 120
         const val MaxCategories = 300
         const val MaxMiniVendors = 240
+        /** `categorias/page.tsx` 207: `maxResults: 80`. */
+        const val MaxLeagues = 80
         const val MaxReviews = 300
         const val CategoryColumns =
             "id,tenant_id,nome,cover_img,button_color,logo_url,seller_type,seller_id,display_order,visible,createdAt"
         const val ProductColumns =
-            "id,tenant_id,nome,descricao,preco,precoAntigo,img,categoria,estoque,lote,tagLabel,tagColor,tagEffect,active,aprovado,status,vendidos,cliques,cores,caracteristicas,variantes,payment_config,seller_type,seller_id,seller_name,seller_logo_url,data,createdAt,updatedAt"
+            "id,tenant_id,nome,descricao,preco,precoAntigo,img,categoria,estoque,lote,tagLabel,tagColor,tagEffect,active,aprovado,status,vendidos,cliques,cores,caracteristicas,variantes,payment_config,seller_type,seller_id,seller_name,seller_logo_url,plan_prices,plan_visibility,data,createdAt,updatedAt"
         const val OrderColumns =
             "id,tenant_id,userId,userName,productId,productName,price,total,quantidade,itens,data,status,approvedBy,payment_config,seller_type,seller_id,seller_name,seller_logo_url,eventId,eventoId,eventItemType,createdAt,updatedAt"
     }
 }
+
+@Serializable
+private data class LeagueLogoRow(
+    val id: String = "",
+    @SerialName("logo_url") val logoUrl: String? = null,
+)
+
+@Serializable
+private data class AppConfigDataRow(
+    val id: String = "",
+    val data: JsonElement? = null,
+)
+
+@Serializable
+private data class PlanCatalogRow(
+    val id: String = "",
+    val nome: String? = null,
+)
+
+@Serializable
+private data class TenantMembershipUserRow(
+    @SerialName("user_id") val userId: String? = null,
+    val status: String? = null,
+)
+
+@Serializable
+private data class RecipientDirectoryRow(
+    val uid: String = "",
+    val nome: String? = null,
+    val turma: String? = null,
+    val telefone: String? = null,
+    val foto: String? = null,
+)
+
+@Serializable
+private data class PaymentRecipientsUpsertRow(
+    val id: String,
+    @SerialName("tenant_id") val tenantId: String,
+    val data: JsonObject,
+    @SerialName("updatedAt") val updatedAt: String,
+)
 
 @Serializable
 private data class FinanceConfigRow(
@@ -1143,12 +1562,17 @@ private data class AdminStoreProductRow(
     @SerialName("seller_id") val sellerId: String? = null,
     @SerialName("seller_name") val sellerName: String? = null,
     @SerialName("seller_logo_url") val sellerLogoUrl: String? = null,
+    @SerialName("plan_prices") val planPrices: JsonElement? = null,
+    @SerialName("plan_visibility") val planVisibility: JsonElement? = null,
     val data: JsonElement? = null,
 ) {
     fun toDomain(activeTenantId: String): AdminStoreProduct? {
         val cleanId = id.trim()
         if (cleanId.isBlank()) return null
-        if (data.isEventPartyOrder()) return null
+        // O web não esconde produto de evento em `/admin/loja/produtos`: `fetchStoreProducts`
+        // (`storeService.ts` 715-758) filtra só por categoria, `active` e `seller_type`, e a
+        // página não filtra depois. O produto vendido dentro do evento aparece no catálogo do
+        // admin como qualquer outro.
         val seller = AdminStoreSellerType.fromRemote(sellerType)
         val payment = paymentConfig.toAdminPaymentParts(
             fallbackReceiverName = sellerName?.trim().orEmpty().ifBlank { "Loja" },
@@ -1187,6 +1611,9 @@ private data class AdminStoreProductRow(
             },
             sellerName = sellerName?.trim().orEmpty(),
             sellerLogoUrl = sellerLogoUrl?.trim().orEmpty(),
+            planPrices = planPrices.toStorePlanPrices(),
+            planVisibility = planVisibility.toStorePlanVisibility(),
+            paymentRecipients = paymentConfig.toStorePaymentRecipients(),
         )
     }
 }
@@ -1237,6 +1664,12 @@ private data class CategoryDisplayOrderRow(
 @Serializable
 private data class CategoryNameRow(
     val nome: String = "",
+)
+
+@Serializable
+private data class ProductVariantsRow(
+    val id: String = "",
+    val variantes: JsonElement? = null,
 )
 
 @Serializable
@@ -1366,12 +1799,9 @@ private data class OrderRow(
         return total ?: price ?: 0.0
     }
 
-    fun isEventLinked(): Boolean {
-        return eventId?.trim().orEmpty().isNotBlank() ||
-            eventoId?.trim().orEmpty().isNotBlank() ||
-            eventItemType?.trim().orEmpty().isNotBlank() ||
-            data.isEventPartyOrder()
-    }
+    /** `AdminStoreOrdersStatusPage.tsx` 376: `Number(row.total || row.price || 0)`. */
+    fun approvalPrice(): Double = StoreOrderApproval.approvalPrice(total, price)
+
 }
 
 private fun AdminStoreOrdersMode.remoteStatuses(): List<String> {
@@ -1445,6 +1875,122 @@ private fun JsonObject.intValue(key: String): Int {
         ?: 0
 }
 
+/** paymentRecipients.ts 75-93. */
+private fun JsonObject.toStorePaymentRecipient(): StorePaymentRecipient? =
+    StorePaymentRecipients.normalize(
+        userId = stringValue("userId"),
+        name = stringValue("name"),
+        turma = stringValue("turma"),
+        phone = stringValue("phone"),
+        avatarUrl = stringValue("avatarUrl"),
+    )
+
+/** `produtos/page.tsx` 249-255: o snapshot gravado dentro do `payment_config`. */
+private fun StorePaymentRecipient.toJsonObject(): JsonObject = JsonObject(
+    mapOf(
+        "userId" to JsonPrimitive(userId),
+        "name" to JsonPrimitive(name),
+        "turma" to JsonPrimitive(turma),
+        "avatarUrl" to JsonPrimitive(avatarUrl),
+        "phone" to JsonPrimitive(phone),
+    ),
+)
+
+/** `produtos/page.tsx` 877-889. */
+private fun StorePlanPrice.toJsonObject(): JsonObject = JsonObject(
+    mapOf(
+        "planId" to JsonPrimitive(planId),
+        "planName" to JsonPrimitive(planName),
+        "price" to JsonPrimitive(price ?: 0.0),
+    ),
+)
+
+private fun StorePlanVisibility.toJsonObject(): JsonObject = JsonObject(
+    mapOf(
+        "planId" to JsonPrimitive(planId),
+        "planName" to JsonPrimitive(planName),
+        "visible" to JsonPrimitive(visible),
+    ),
+)
+
+private fun JsonElement?.toStorePlanPrices(): List<StorePlanPrice> {
+    val array = this as? JsonArray ?: return emptyList()
+    return array.mapNotNull { element ->
+        val row = element.asObject() ?: return@mapNotNull null
+        StorePlanPrice(
+            planId = row.stringValue("planId"),
+            planName = row.stringValue("planName"),
+            price = row["price"]?.jsonPrimitive?.doubleOrNull,
+        )
+    }
+}
+
+private fun JsonElement?.toStorePlanVisibility(): List<StorePlanVisibility> {
+    val array = this as? JsonArray ?: return emptyList()
+    return array.mapNotNull { element ->
+        val row = element.asObject() ?: return@mapNotNull null
+        StorePlanVisibility(
+            planId = row.stringValue("planId"),
+            planName = row.stringValue("planName"),
+            // 273: só o `false` explícito esconde o produto do plano.
+            visible = row["visible"]?.jsonPrimitive?.content?.trim()?.lowercase() != "false",
+        )
+    }
+}
+
+/** `payment_config.recipients`, com queda para o `recipient` único (`produtos/page.tsx` 896-903). */
+private fun JsonElement?.toStorePaymentRecipients(): List<StorePaymentRecipient> {
+    val payment = asObject() ?: return emptyList()
+    val many = (payment["recipients"] as? JsonArray)
+        ?.mapNotNull { it.asObject()?.toStorePaymentRecipient() }
+        .orEmpty()
+    if (many.isNotEmpty()) return many
+    return listOfNotNull(payment["recipient"].asObject()?.toStorePaymentRecipient())
+}
+
+/** storeService.ts 1276-1284: normalização de cada ficha já gravada no pedido. */
+private fun JsonObject.toStoreVoucherEntry(): StoreVoucherEntry = StoreVoucherEntry(
+    id = stringValue("id"),
+    voucherId = stringValue("voucherId"),
+    label = stringValue("label"),
+    status = stringValue("status"),
+    usedAt = stringValue("usedAt"),
+    usedByUserId = stringValue("usedByUserId"),
+    usedByUserName = stringValue("usedByUserName"),
+    usedMethod = stringValue("usedMethod"),
+)
+
+private fun StoreVoucherEntry.toJsonObject(): JsonObject = JsonObject(
+    mapOf(
+        "id" to JsonPrimitive(id),
+        "label" to JsonPrimitive(label),
+        "status" to JsonPrimitive(status),
+        "usedAt" to JsonPrimitive(usedAt),
+        "usedByUserId" to JsonPrimitive(usedByUserId),
+        "usedByUserName" to JsonPrimitive(usedByUserName),
+        "usedMethod" to JsonPrimitive(usedMethod),
+    ),
+)
+
+/** storeService.ts 1053-1077: a variação lida do produto, com id/tamanho/cor e contadores. */
+private fun JsonObject.toStoreProductVariantStock(): StoreProductVariantStock = StoreProductVariantStock(
+    id = stringValue("id"),
+    tamanho = stringValue("tamanho").ifBlank { stringValue("size") },
+    cor = stringValue("cor").ifBlank { stringValue("color") },
+    estoque = intValue("estoque"),
+    vendidos = intValue("vendidos"),
+)
+
+private fun StoreProductVariantStock.toJsonObject(): JsonObject = JsonObject(
+    mapOf(
+        "id" to JsonPrimitive(id),
+        "tamanho" to JsonPrimitive(tamanho),
+        "cor" to JsonPrimitive(cor),
+        "estoque" to JsonPrimitive(estoque),
+        "vendidos" to JsonPrimitive(vendidos),
+    ),
+)
+
 private fun JsonElement?.toProductVariants(): List<AdminStoreProductVariant> {
     val array = this as? JsonArray ?: return emptyList()
     return array.mapIndexedNotNull { index, element ->
@@ -1495,23 +2041,29 @@ private fun JsonArray.sumVariantStock(): Int {
     return sumOf { element -> element.asObject()?.intValue("estoque") ?: 0 }
 }
 
-private fun AdminStoreProductForm.toProductPaymentConfigOrNull(receiverName: String): JsonObject? {
+/**
+ * `produtos/page.tsx` 854-905.
+ *
+ * O web só grava `payment_config` quando há pagamento próprio, recebedor escolhido **ou**
+ * WhatsApp; sem nada disso o campo vai a `null`. O primeiro recebedor selecionado também vira o
+ * `recipient` singular, que é o que as telas de pedido leem para mostrar "quem recebe".
+ */
+private fun AdminStoreProductForm.toProductPaymentConfigOrNull(
+    receiverName: String,
+    selectedRecipients: List<StorePaymentRecipient>,
+): JsonObject? {
     val pixKey = paymentPixKey.trim().take(AdminStoreCatalog.PixKeyMaxLength)
     val bank = paymentBank.trim().take(AdminStoreCatalog.PixBankMaxLength)
     val holder = paymentHolder.trim().take(AdminStoreCatalog.PixHolderMaxLength)
     val whatsapp = paymentWhatsapp.trim().take(AdminStoreCatalog.PhoneMaxLength)
-    if (pixKey.isBlank() && bank.isBlank() && holder.isBlank() && whatsapp.isBlank()) {
+    val paymentEnabled = pixKey.isNotBlank() || bank.isNotBlank() || holder.isNotBlank()
+
+    if (!StorePaymentRecipients.hasPaymentConfig(paymentEnabled, selectedRecipients, whatsapp)) {
         return null
     }
-    val recipient = mutableMapOf<String, JsonElement>()
-    val resolvedName = holder.ifBlank { receiverName.trim() }
-    if (resolvedName.isNotBlank()) recipient["name"] = JsonPrimitive(resolvedName)
-    if (whatsapp.isNotBlank()) {
-        recipient["phone"] = JsonPrimitive(whatsapp)
-        recipient["whatsapp"] = JsonPrimitive(whatsapp)
-    }
+
     val payload = mutableMapOf<String, JsonElement>(
-        "enabled" to JsonPrimitive(true),
+        "enabled" to JsonPrimitive(paymentEnabled),
     )
     if (pixKey.isNotBlank()) {
         payload["chave"] = JsonPrimitive(pixKey)
@@ -1520,7 +2072,22 @@ private fun AdminStoreProductForm.toProductPaymentConfigOrNull(receiverName: Str
     if (bank.isNotBlank()) payload["banco"] = JsonPrimitive(bank)
     if (holder.isNotBlank()) payload["titular"] = JsonPrimitive(holder)
     if (whatsapp.isNotBlank()) payload["whatsapp"] = JsonPrimitive(whatsapp)
-    if (recipient.isNotEmpty()) payload["recipient"] = JsonObject(recipient)
+
+    val primaryRecipient = selectedRecipients.firstOrNull()
+    if (primaryRecipient != null) {
+        // 896-900: o snapshot do recebedor escolhido tem precedência sobre o titular digitado.
+        payload["recipient"] = primaryRecipient.toJsonObject()
+        payload["recipients"] = JsonArray(selectedRecipients.map { it.toJsonObject() })
+    } else {
+        val recipient = mutableMapOf<String, JsonElement>()
+        val resolvedName = holder.ifBlank { receiverName.trim() }
+        if (resolvedName.isNotBlank()) recipient["name"] = JsonPrimitive(resolvedName)
+        if (whatsapp.isNotBlank()) {
+            recipient["phone"] = JsonPrimitive(whatsapp)
+            recipient["whatsapp"] = JsonPrimitive(whatsapp)
+        }
+        if (recipient.isNotEmpty()) payload["recipient"] = JsonObject(recipient)
+    }
     return JsonObject(payload)
 }
 
@@ -1532,17 +2099,6 @@ private fun JsonElement?.receiverLabel(): String {
         recipient.stringValue("turma"),
         recipient.stringValue("phone"),
     ).filter(String::isNotBlank).joinToString(" - ").ifBlank { "Não informado" }
-}
-
-private fun JsonElement?.isEventPartyOrder(): Boolean {
-    val data = asObject() ?: return false
-    val eventParty = data["eventParty"].asObject() ?: return false
-    return eventParty.stringValue("eventId").isNotBlank() ||
-        eventParty.stringValue("eventName").isNotBlank() ||
-        eventParty.stringValue("section").isNotBlank() ||
-        eventParty.stringValue("categoryName").isNotBlank() ||
-        eventParty.stringValue("productId").isNotBlank() ||
-        eventParty.stringValue("productName").isNotBlank()
 }
 
 private fun JsonElement?.toAdminPaymentParts(

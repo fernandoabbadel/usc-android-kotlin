@@ -825,7 +825,7 @@ Serviços auxiliares portados: `collectiveAreaUiService.ts`, `ligasUscUiService.
 - **Modal de consentimento de uso de dados.** `DataUseConsentModal` só existe no web como porta de
   entrada dessas duas escritas com service role (solicitação e abertura da gestão); sem a escrita, o
   modal não teria função no app.
-- **Gestão dos coletivos (`/ligas`, `/comissoes/configurar`, `/diretorio/configurar`).** É o M7.
+- **Gestão dos coletivos (`/ligas`, `/comissoes/configurar`, `/diretorio/configurar`).** Feita no M7.
 
 ### Removido
 
@@ -840,3 +840,791 @@ Serviços auxiliares portados: `collectiveAreaUiService.ts`, `ligasUscUiService.
 - `.\gradlew.bat :app:compileDebugKotlin --console=plain` — BUILD SUCCESSFUL
 - `.\gradlew.bat :app:testDebugUnitTest --console=plain` — BUILD SUCCESSFUL, 91 testes, 0 falhas
 - `.\gradlew.bat :app:assembleDebug --console=plain` — `app/build/outputs/apk/debug/app-debug.apk`
+
+## M7 - Gestão dos coletivos
+
+Fonte: `web-reference/src/app/ligas/LigasAdminPageContent.tsx`, `app/ligas/LeagueStoreAdminPage.tsx`,
+`app/ligas/_components/LeagueAdminQuickNav.tsx`, `_components/LeagueFinanceDashboard.tsx`,
+`_components/LeagueFrequencyPage.tsx`, `components/financeiro/FinancialStatementPage.tsx` e os
+wrappers `components/collectives/CommissionManagementPages.tsx`,
+`CommissionManagementGate.tsx`, `DirectoryManagementPages.tsx` e `DirectoryManagementGate.tsx`.
+
+Android: `SupabaseCollectiveManagementRepository`, `CollectiveManagementViewModel`,
+`CollectiveStoreAdminViewModel`, `CollectiveFinanceViewModel`, `CollectiveFrequencyViewModel`,
+`CollectiveStatementViewModel` e as telas em `ui/collectives/management/`.
+
+### Modelo real do web
+
+As três áreas usam os **mesmos componentes**. Liga abre em `/ligas/{leagueId}`; comissão e diretório
+abrem em `/{area}/configurar/{segmento}` e passam `leagueIdOverride` para os mesmos componentes da
+liga, mudando só `entityLabel`, `entityArticle`, `storageNamespace` e `showBoard`. O segmento da
+rota é `turmaId` na comissão (`/comissoes/configurar/T2`), a sigla no diretório
+(`/diretorio/configurar/DASZ`) e o id na liga. O Android reproduz isso com um único conjunto de
+telas parametrizado por `CollectiveKind` e as rotas `league-manage`, `commission-manage` e
+`directory-manage`, com `{collectiveId}/{section}`.
+
+### Gate de acesso
+
+- `fetchManagedLeagueSummaries` portado: master da plataforma vê todos os registros com o cargo
+  "Master da Plataforma"; os demais entram por cargo de gestão em `ligas_membros`, por cargo de
+  gestão no membro embutido em `ligas_config.membros` ou por `managerUserIds` ("Gestor da página").
+- Sem coletivo gerenciável a tela é a de "Acesso restrito" do web, com o mesmo texto sobre
+  Presidente, Vice-Presidente, Secretaria, Tesouraria e Diretoria.
+- Com mais de um registro aparece a lista de seleção; com um só, o painel abre direto — igual ao
+  `nextSelectedId` do gate.
+
+### Hub e navegação
+
+- `LeagueAdminQuickNav` portado com os sete itens (Início, Informações, Membros, Agenda, Loja,
+  Gestão, Board Round) e o filtro `showBoard`: comissão e diretório mostram seis.
+- Hub com os cards do web e os rótulos por área ("Editar dados da liga / da comissão / do
+  diretório", "Gerir diretoria", "Publicar e editar agenda", "Produtos e pedidos", "Vendas e BI").
+
+### Escritas novas
+
+- **Informações** (`handleSaveVisualSection`): grava nome, sigla, descrição, visão geral, links
+  públicos, `payment_config` e bizu em `ligas_config` com o mesmo merge de
+  `updateLeagueConfigRecordCompat` (colunas planas + espelho dentro de `data`), incluindo os limites
+  do web (10/42/180/500 caracteres e 12 links). O toggle "Enviar notificação?" insere a linha em
+  `notifications` com `userId = GLOBAL`, como no web.
+- **Membros** (`handleSaveMembersSection`): grava `membros`, `memberRequests`, `membersCount` e
+  `membrosIds` em `ligas_config` e sincroniza `ligas_membros` (insert dos novos, update de cargo
+  alterado, delete dos removidos) — é o caminho direto que `syncLeagueMembers` usa quando a rota
+  admin não responde. Aprovar/rejeitar solicitação altera só o rascunho, como no web: nada é
+  persistido antes do "Salvar membros".
+- **Loja**: `upsertStoreCategory` (nome, capa, cor, visibilidade e `renameStoreProductsCategory`
+  quando o nome muda), `upsertStoreProduct`, exibir/ocultar produto e exibir/ocultar todo o
+  catálogo. `seller_type` é gravado como `tenant` com `seller_id` do coletivo, que é o que
+  `normalizeStoreSellerTypeForWrite` faz no web mesmo recebendo `league`.
+- **Pedidos**: aprovar (com baixa de estoque, contador de vendidos e notificação), rejeitar,
+  reabrir e marcar como entregue, sempre depois de checar que o pedido é de um produto do coletivo.
+
+### Leituras
+
+- Loja, gestão e extrato filtram o vendedor **na consulta** (`seller_id` + checagem de
+  `seller_type` em league/tenant/vazio), em vez de baixar a tabela inteira e filtrar em memória como
+  o web faz. Mesmo resultado, muito menos linha trafegada.
+- Gestão financeira: receita, quantidade e catálogo de produtos e ingressos aprovados, com os
+  mesmos `statusIsApproved` e `sortMetrics(limit = 8)` do web.
+- BI de produtos (`gestao/produtos`): compradores únicos, ticket médio, estoque, recompra e curva
+  ABC, portados de `ProductManagementAnalytics`.
+- Frequência: matriz de presença por membro e evento a partir de `solicitacoes_ingressos` aprovados,
+  com "Presente" para QR lido e "Aprovado" para ingresso liberado, filtro por evento
+  público/interno e, na comissão, `memberScope = "turma"`.
+- Extrato: lançamentos de loja e ingressos do coletivo com os filtros de tipo, status e busca, e a
+  paginação de 20 do `FinancialStatementPage`.
+
+### Fora de escopo com motivo
+
+- **Ajuste manual de frequência.** O web grava por `PATCH /api/admin/ligas/frequency`, que roda com
+  `supabaseAdmin` (service role). O app **lê** os ajustes já gravados em
+  `ligas_config.data.frequencyManualEntries` e mostra a contagem, avisando que registrar novo ajuste
+  continua no painel web — mesma decisão do M6 para as solicitações de entrada.
+- **Upload de imagem** (logo do coletivo, capa da loja e imagem do produto). O web usa
+  `uploadLeagueImageToStorage`; no Android os campos aceitam URL. Storage ainda não foi ligado em
+  nenhum módulo.
+- **Aba Agenda e Board Round do painel.** A agenda do coletivo abre o mesmo workspace de evento do
+  admin (`EDIÇÃO | LISTA DE PRESENÇA | SCAN | INGRESSOS | EXTRATO | MODO VENDAS | ENQUETES |
+  RECEBEDORES | BI`), que é o M8/M10. O Board Round da liga é o módulo de jogos. Os dois itens
+  continuam no quick nav, como no web, mas voltam ao hub.
+- **BI de eventos do coletivo** (`gestao/eventos` com comercial, estratégico, operacional, portaria
+  e vendas) é o M8. O card "Eventos" da gestão aponta hoje para o BI de produtos já portado.
+- **Variações de produto** (tamanho/cor), cores e características em lista. O formulário do app
+  cobre os campos principais; `variantes`/`cores`/`caracteristicas` ficam preservados no registro
+  porque o update só toca os campos enviados.
+
+### Validação executada
+
+- `.\gradlew.bat :app:compileDebugKotlin --console=plain` — BUILD SUCCESSFUL
+- `.\gradlew.bat :app:testDebugUnitTest --console=plain` — BUILD SUCCESSFUL, 103 testes, 0 falhas
+  (91 do M6 + 12 novos em `CollectiveManagementM7RulesTest`)
+- `.\gradlew.bat :app:assembleDebug --console=plain` — `app/build/outputs/apk/debug/app-debug.apk`
+
+## M8.1 - Motor do BI de Eventos + hub, nos 4 escopos (camada de escopo/consulta e hub)
+
+> **Estado:** entregue a camada de escopo/consulta, o shell, o cabeçalho de contexto, os filtros
+> e o hub. O débito que esta seção declarava — `analytics`, acessores, formatadores, alertas,
+> ampliação do dataset e o banner de outro portal — foi fechado no **M8.1b**, na seção seguinte.
+> Continua fora o bloco de 26 componentes de gráfico (2139-3378); ver o débito do M8.1b.
+
+Fonte: `web-reference/src/app/admin/bi/_components/AdminEventBiDashboard.tsx`, linhas 1-6770
+(os blocos por visão, de 6771 em diante, são o M8.2). Wrappers de escopo:
+`app/admin/bi/page.tsx` e `app/admin/gestao/eventos/page.tsx` (tenant),
+`app/ligas/_components/LeagueEventBiDashboard.tsx` (liga),
+`CommissionManagementEventBiPage` de `components/collectives/CommissionManagementPages.tsx`
+e `DirectoryManagementEventBiPage` de `components/collectives/DirectoryManagementPages.tsx`.
+
+Android: `domain/model/EventBi.kt`, `domain/repository/CollectiveEventBiRepository.kt`,
+`data/repository/SupabaseEventBiRepository.kt`, `ui/bi/EventBiViewModel.kt` e
+`ui/bi/EventBiScreen.kt`.
+
+### Um motor, quatro players
+
+O web já é parametrizado: os quatro players chamam o **mesmo** `AdminEventBiDashboard` e mudam
+apenas `lockedScopeType`, `lockedScopeId`, `scopeLabel`, `contextTitle`, `contextLogo`,
+`contextEyebrow` e `basePath`. O Android faz igual: um `EventBiScope`
+(`Tenant`/`League`/`Commission`/`Directory`) + id em `EventBiScopeRef`, um repositório
+(`SupabaseEventBiRepository`), um ViewModel (`EventBiViewModel`) e uma tela (`EventBiScreen`).
+Nada é duplicado por área.
+
+### Escopo na consulta (diferença deliberada em relação ao web)
+
+`loadBiData` (linha ~539 do web) baixa sete tabelas **inteiras** do tenant — `eventos` 600,
+`solicitacoes_ingressos` 6000, `eventos_rsvps` 12000, `produtos` 3000, `orders` 8000, `users` 6000
+e `ligas_config` 1000 — e só depois filtra em memória por escopo, evento, produto e período.
+Inviável no celular e contra `PROJECT_CONSTRAINTS.md`. O app leva o escopo para a consulta:
+
+- **liga/comissão/diretório**: uma leitura de `ligas_config` pelo id do coletivo devolve as chaves
+  de evento (`eventos[].id`, `globalEventId`, `eventId`, `eventoId` e o id extraído de
+  `linkEvento`/`href`/`url`, como `linkedEventIdsFromEntityEvent`); `eventos`,
+  `solicitacoes_ingressos`, `eventos_rsvps` e `orders` são filtrados por essas chaves;
+- **tenant**: `ligas_config` é lido uma vez (200 em vez de 1000) só para montar o índice
+  evento → entidade e **excluir** os eventos que pertencem a um coletivo — é o que
+  `isTenantOwnedRow` faz em memória no web;
+- `tenant_id` está em todas as consultas; o filtro de evento e o de produto entram na própria
+  consulta quando estão preenchidos;
+- limites: eventos 120 (web 600), ingressos 800 (6000), RSVPs 1200 (12000), produtos 300 (3000),
+  pedidos 800 (8000);
+- `users` não é lida: no web ela só serve a `classifyTicketAudience`, que é da visão de portaria
+  (M8.2);
+- o hub carrega só o que os filtros precisam (`includeTransactions = false`): eventos e produtos
+  do escopo. As cinco visões do M8.2 pedem o dataset completo pelo mesmo método;
+- degradação de coluna: `queryRows` do web derruba coluna ausente e repete a consulta. O app faz o
+  equivalente com um conjunto de colunas de fallback em `eventos` e em `orders` (sem `eventId`, o
+  pedido só é alcançado pelo produto do evento).
+
+### Regras portadas
+
+- **Cabeçalho** (`DashboardShell`): `titleLabel = contextTitle || title`,
+  `subtitleLabel = contextTitle ? "{title}. {subtitle}" : subtitle`, eyebrow
+  `contextEyebrow || "BI Administrativo"`. No `inicio` o subtítulo é
+  "Escolha a visão analítica{scopeLabel}.".
+- **Hub** (`HubContent`): os cinco cards com título e subtítulo exatos do array `MODULES`.
+- **Status**: o BI usa a própria lista de aprovados (`isApprovedStatus`), maior que a
+  `statusIsApproved` do M7 — inclui `paid`, `pago`, `confirmado`, `confirmada` e `redeemed`. Por
+  isso `EventBiStatus` existe em vez de reaproveitar `ApprovedStatuses` do repositório do M7.
+- **Período** (`dateInPeriod`): registro sem data sempre passa; `startDate` corta em `T00:00:00` e
+  `endDate` em `T23:59:59`.
+- **Escopo de entidade** (`entityScopeType`, `declaredExternalScopeType`,
+  `canonicalEventOwnerScope`): categoria do `ligas_config`, `turmaId` marcando comissão e o escopo
+  declarado no próprio evento (`tipo`, `categoria`, `stats`, `data_extra.eventParty`).
+- **Seletor de escopo travado**: `scopeLocked={Boolean(lockedScopeType)}` com default `"tenant"` é
+  sempre verdadeiro no web — o `<select>` de escopo **nunca** aparece, nem no player tenant, que
+  mostra só o rótulo "Atlética". O app repete isso (`EventBiScopeRef.SelectorLocked`), e
+  `EventBiViewModel.selectScope` já está pronto caso o comportamento mude no web.
+  Como consequência, `buildScopeOptions` do web é código morto e não foi portado.
+
+### Rotas
+
+| Web | Android |
+|---|---|
+| `app/admin/bi/page.tsx` | `admin/bi` |
+| `app/admin/gestao/eventos/page.tsx` | `admin/gestao/eventos` |
+| `app/ligas/[leagueId]/gestao/eventos/page.tsx` | `league-manage/{id}/gestao-eventos` |
+| `app/comissoes/configurar/gestao/eventos/page.tsx` | `commission-manage/{id}/gestao-eventos` |
+| `app/diretorio/configurar/gestao/eventos/page.tsx` | `directory-manage/{id}/gestao-eventos` |
+
+Correção do M7: o card "Eventos" da gestão do coletivo (`onEventsBiClick`) apontava para
+`gestao-produtos` como placeholder; agora abre `gestao-eventos`.
+
+### Fora do escopo do M8.1, com motivo
+
+- **As cinco visões analíticas** (comercial, operacional, portaria, estratégico e modo vendas) são
+  o M8.2. Os cards do hub aparecem, mas ainda não navegam.
+- **`buildStatementHref` e `buildCheckinsHref`** levam ao workspace de evento
+  (`/admin/eventos/{id}/extrato` e `/checkins`, ou o equivalente do coletivo), que é o M10. Os
+  links ficaram inertes; nenhum indicador do M8.2 deve navegar até lá antes do M10.
+- **`AdminEventSalesModeScreen`** ficou sem rota. Ele ocupava `admin/gestao/eventos`, mas no web
+  essa rota é o hub do BI de Eventos (`<AdminEventBiDashboard view="inicio" />`). O conteúdo dele
+  pertence à visão "vendas", que o M8.2 porta.
+- **Seletor de data nativo**: o web usa `<input type="date">`. O app aceita o mesmo formato
+  (`AAAA-MM-DD`) em campo de texto; um date picker é ajuste de UI, não de regra.
+- **Filtros no hub**: no web o bloco `Filters` só aparece nas cinco visões — o `inicio` renderiza
+  apenas os cards. No app ele já aparece no hub, porque o estado de filtro é compartilhado com as
+  visões do M8.2 e é o que torna verificável o escopo da consulta.
+
+### Validação executada
+
+- `.\gradlew.bat :app:compileDebugKotlin --console=plain` — BUILD SUCCESSFUL
+- `.\gradlew.bat :app:testDebugUnitTest --console=plain` — BUILD SUCCESSFUL, 117 testes, 0 falhas
+  (103 do M7 + 14 novos em `EventBiM8RulesTest`)
+- `.\gradlew.bat :app:assembleDebug --console=plain` — `app/build/outputs/apk/debug/app-debug.apk`
+
+## M8.1b - Motor de métricas do BI de Eventos (fecha o débito do M8.1)
+
+Fonte: `web-reference/src/app/admin/bi/_components/AdminEventBiDashboard.tsx`, o `analytics`
+useMemo (3843-6619), os acessores (595-2137), os formatadores e a estatística (266-470),
+`OPERATIONAL_ALERT_DESCRIPTIONS` (201-217) e `eventOwnerRedirectHref` (6622-6634).
+
+Android: `domain/model/EventBiFormat.kt`, `EventBiMetrics.kt`, `EventBiAccessors.kt`,
+`EventBiAnalyticsModel.kt`, `EventBiAnalyticsEngine.kt`, `EventBiOwnerRedirect.kt`, mais o
+`SupabaseEventBiRepository` ampliado e o `EventBiViewModel`.
+
+### O `return` do analytics tem 238 chaves, não 211
+
+A auditoria anterior contou 211. O `return` real (6341-6618) tem **238 chaves de primeiro nível**
+e o port entrega as 238. Elas vêm agrupadas por visão (`EventBiTotals`, `EventBiCommercial`,
+`EventBiOperational`, `EventBiGate`, `EventBiStrategic`, `EventBiSales`) por uma restrição da
+JVM, não por escolha de arquitetura: um construtor aceita no máximo 255 slots e cada `Double`
+ocupa dois, então uma data class única com 238 campos falha em tempo de execução com
+`ClassFormatError`. O agrupamento é o mesmo recorte que as cinco telas do M8.2 consomem, e cada
+campo mantém o nome exato do web.
+
+### A linha crua viaja junto com o registro
+
+`EventBiEvent`, `EventBiTicket`, `EventBiOrder` e `EventBiProduct` ganharam `raw: JsonObject`. O
+web lê `Row = Record<string, unknown>` direto do Supabase, com cadeias longas de apelido
+(`row.valorTotal ?? row.total ?? row.valor ?? row.amount ?? row.preco`). Reescrever cada cadeia
+duas vezes — uma no mapeamento do repositório, outra no motor — era a receita para divergir. Com
+`raw`, os acessores de `EventBiAccessors.kt` são a **única** implementação de cada cadeia, e o
+motor chama exatamente o mesmo acessor que o web chama.
+
+### Escopo continua na consulta, agora com o que faltava
+
+- **`eventos.lotes`** e as colunas de custo entraram no `SELECT` (`eventCapacity`, `eventCost`,
+  `eventLotRows`, `expectedTicketTotal`).
+- **`users`**: o web baixa 6000 linhas. O app faz duas coisas mais baratas: um `isIn("uid", ...)`
+  só com os compradores citados pelo recorte (teto 300, colunas `turma`/`email`/`telefone`), e um
+  `count(Count.PLANNED)` de cabeçalho para o `tenantParticipationRate` — que não traz linha
+  nenhuma.
+- **Auditoria de check-in, vouchers e transferências** entraram como colunas de
+  `solicitacoes_ingressos` (`checkinAuditLog`, `transferHistory`, `transferAt`, `data`) e de
+  `orders` (`data` com `eventParty.voucherEntries`/`transferRequests`, `eventCheckin*`).
+- **`membros`/`membrosIds`** de `ligas_config` alimentam `buildEntityMemberIndex`, que
+  `classifyTicketOperationalCategory` usa para separar Diretoria/Membro.
+- **Ingressos e pedidos passam a ser consultados por todos os eventos do escopo**, sem o filtro de
+  evento nem o de período na query. O custo é o mesmo (um `SELECT`, mesmo teto de 800), e é o que
+  permite calcular a recorrência histórica: no web ela lê `data.tickets`/`data.orders`, o tenant
+  inteiro. Isso virou `EventBiDataset.scopeTickets`/`scopeOrders`; `tickets`/`orders` (o
+  `selectedData`) saem daí por filtro em memória.
+
+### Regras portadas que merecem nota
+
+- **`links` inertes**: `buildStatementHref` e `buildCheckinsHref` levam ao workspace de evento,
+  que é o M10. O motor recebe um `EventBiLinkBuilder`; o default é `Inert`, que devolve string
+  vazia. O indicador continua sendo calculado — só o link fica desligado.
+- **`nowMillis` por parâmetro** no lugar de `Date.now()`, para o envelhecimento de pendência e a
+  projeção de receita serem testáveis.
+- **`approvedNearEvent.includes(record)`** (4490) compara por identidade de objeto no JS. O port
+  usa a chave `tipo:id`, que dois registros distintos nunca compartilham.
+- **`isTicketEntryCheckedIn` (836) testa `status.includes("lido")`** — e "inva**lido**" contém
+  "lido". Uma entrada marcada como `invalido` em português conta como lida no web e o QR vira
+  "Usado". O port repete o comportamento; há teste fixando isso.
+- **`row.secondary ?? row.quantity`** em `priceStrategyRows` (5964): `addMetric` sempre soma
+  `secondary`, então o valor é `0` e o `??` do JS nunca dispara. O eixo Y sai zerado no web
+  também.
+- **`buildScopeOptions` (2092)** continua código morto: o seletor de escopo nunca renderiza.
+
+### Validação executada
+
+- `.\gradlew.bat :app:compileDebugKotlin --console=plain` — BUILD SUCCESSFUL
+- `.\gradlew.bat :app:testDebugUnitTest --console=plain` — BUILD SUCCESSFUL, 154 testes, 0 falhas
+  (117 do M8.1 + 37 novos em `EventBiM8bRulesTest`)
+- `.\gradlew.bat :app:assembleDebug --console=plain` — `app/build/outputs/apk/debug/app-debug.apk`
+
+### Débito do M8.1b
+
+| Faixa | Bloco | Tamanho | Estado |
+|---|---|---:|---|
+| 2139-3378 | 26 componentes de gráfico/tabela | 1.240 linhas | **Não portado** |
+| 1890-2044 | `emptyScopeIds`, `addScopedId`, `uniqueScopeIds`, `rowScopeIds`, `hasExternalEventScope`, `isTenantOwnedRow` | ~155 linhas | **Parcial** |
+
+- **26 componentes visuais (2139-3378)** — `KpiCard`, `KpiGrid`, `ChartPanel`, `EmptyChart`,
+  `FilterLinkChips`, `Bars`, `BarsDual`, `ColumnBars`, `LineMetric`, `PieMetric`,
+  `SimplePieMetric`, `SemiDonutMetric`, `ParetoMetric`, `RadarMetric`, `ScanModeByHourChart`,
+  `ScoreGauge`, `FunnelMetric`, `ComboBarsLines`, `StackedPercentChart`, `HeatmapMetric`,
+  `TreemapMetric`, `BubbleMetric`, `BubbleTooltip`, `WaterfallMetric`, `NetworkMetric`,
+  `DataTable`. **Decisão tomada e autorizada: `com.patrykandpatrick.vico` (Apache-2.0,
+  gratuita)**, resolução verificada na versão 2.1.3. A dependência **ainda não foi adicionada** ao
+  `build.gradle.kts` porque o M8.1b não desenha gráfico nenhum — entra no M8.2, junto do primeiro
+  gráfico. O Vico cobre barras, linha, combo, coluna e stacked; heatmap, treemap, waterfall, rede,
+  radar, bolha, funil, gauge e semi-donut continuam precisando de Canvas próprio.
+- **Escopo por linha (1890-2044)** — o app resolve escopo **na consulta** (ingressos e pedidos são
+  buscados pelos ids de evento do escopo) e aplica `isTenantOwnedRow` ao **evento**, em
+  `fetchScopedEvents`. O web também reavalia linha a linha, lendo `leagueId`/`ligaId`/
+  `directoryId`/`commissionId`/`seller_type`/`seller_id` do próprio ingresso/pedido. A divergência
+  só aparece num caso: ingresso ou pedido de um evento do tenant que carrega no próprio registro
+  um vínculo com outro coletivo — no web ele sai do recorte do tenant, no app ele fica. Não foi
+  portado porque exigiria trazer essas colunas de volta em todas as tabelas e refazer o filtro em
+  memória, que é justamente o que `PROJECT_CONSTRAINTS.md` manda evitar. Fica registrado para o
+  M8.2 decidir se vale o custo.
+
+## M8.2 - As cinco visões analíticas do BI de Eventos e as 20 rotas
+
+Fonte: `web-reference/src/app/admin/bi/_components/AdminEventBiDashboard.tsx`, os blocos por visão
+(6771-7653) e os 26 componentes de gráfico/tabela (2139-3378), mais os rótulos derivados do corpo
+do dashboard (6691-6746).
+
+Android: `ui/bi/charts/` (`EventBiChartKit`, `EventBiChartData`, `EventBiBarCharts`,
+`EventBiLineCharts`, `EventBiPieCharts`, `EventBiSpecialCharts`, `EventBiDataTable`),
+`ui/bi/views/` (as cinco visões e `EventBiViewIcons`), `domain/model/EventBiViewLabels.kt`, mais
+`EventBiScreen`, `EventBiViewModel`, `AppRoute`, `UscNavGraph` e `RemainingNativeRoutes`.
+
+### O Vico cobriria 6 dos 26 componentes, não 17 — a decisão mudou
+
+O M8.1b deixou registrado que os gráficos entrariam com
+`com.patrykandpatrick.vico:compose-m3:2.1.3`, deixando para o Canvas apenas heatmap, treemap,
+waterfall, rede, radar, bolha, funil, gauge e semi-donut. A auditoria da API do Vico 2.1.3 contra
+os 26 componentes mostrou que a divisão real seria outra: o Vico cobre **6** — `BarsDual`,
+`ColumnBars`, `LineMetric`, `ParetoMetric`, `ScanModeByHourChart` e `ComboBarsLines`. Ele não tem
+pizza/rosca (`PieMetric` e `SimplePieMetric` sozinhos aparecem em cerca de dez painéis), não tem
+barra horizontal (`Bars` e `StackedPercentChart`), não tem radar e não tem dispersão. Sobrariam 20
+para o Canvas.
+
+Com 20 de 26 já em Canvas, manter o Vico significaria dois renderizadores no mesmo scroll: painéis
+com tema Material3 ao lado de painéis com o zinc-950/emerald do web, tipografia diferente e eixos
+diferentes. A decisão foi refeita **com autorização**: os 26 componentes são Canvas do Compose,
+`build.gradle.kts` não ganhou dependência nenhuma e o APK não cresceu por gráfico. A resolução do
+Vico chegou a ser testada e funciona (`BUILD SUCCESSFUL` com a dependência declarada) — o motivo
+de não usá-lo é cobertura e consistência visual, não disponibilidade.
+
+### Três rotas do tenant mostravam a tela errada
+
+`admin/bi/comercial`, `admin/bi/operacional` e `admin/bi/portaria` já existiam no `UscNavGraph`,
+mas renderizavam `AdminBiSnapshotScreen` — um resumo herdado de módulo anterior, sem relação com
+`AdminEventBiDashboard`. No web essas três rotas são `<AdminEventBiDashboard view="..." />`. O M8.2
+substituiu as três e acrescentou `admin/bi/estrategico` e `admin/bi/vendas`, que não existiam.
+`AdminBiSnapshotScreen` continua servindo `admin/gestao/loja`, `.../treinos` e `.../financeiro`.
+
+### Regras portadas que merecem nota
+
+- **Pareto acumula sobre o total inteiro** (2639): `const total = data.reduce(...)` roda antes do
+  `.slice(0, 10)` (2643). Com 12 barras de valor igual, a décima fecha em 83,3%, não em 100%. Há
+  teste fixando isso.
+- **`PieMetric` e `SimplePieMetric` filtram diferente**: a rosca olha só a chave escolhida
+  (`row[dataKey] > 0`, 2511); a pizza simples e a meia-rosca aceitam `quantity > 0 || value > 0`
+  (2563/2602). Uma linha com quantidade zero e valor positivo aparece numa e some na outra.
+- **`hasSecondary`** (2865): a segunda linha do combo só existe se alguma linha tiver
+  `secondary > 0`. Sem essa checagem o gráfico desenharia uma linha constante em zero.
+- **`sortBy="none"`** (2861) ordena por `sortValue` crescente — é o que mantém a ordem cronológica
+  do forecast e das antecedências, e o que faz `ticketLeadRows`/`productLeadRows` não virarem
+  ranking.
+- **Waterfall trata zero como positivo** (`value >= 0`, 3209): uma etapa zerada que sobreviva ao
+  filtro sai verde, não rosa.
+- **Nós da rede saem das arestas já cortadas** (3219-3221): o corte de 12 arestas vem antes do de
+  10 nós, então uma aresta descartada não traz nó nenhum.
+- **`orderSourceQualityRows` perde o "cancelado"** (7449): o web remonta a linha com
+  `cancelado: 0` antes de entregar ao `StackedPercentChart`. O port faz o mesmo, explicitamente.
+- **`{false && ...}`** (7321-7354 e 7589-7650) não foi portado: são dois blocos desabilitados no
+  web, que nunca renderizam. Somam ~100 linhas da faixa-fonte e estão fora de propósito.
+
+### Adaptações de tela, declaradas
+
+- **Grade**: o web usa `xl:grid-cols-2`/`xl:grid-cols-3` nos painéis e
+  `md:grid-cols-2 xl:grid-cols-4` nos KPIs — no celular o próprio web cai para coluna única. O app
+  mantém painel em coluna única e KPI em duas colunas, que é o recorte `md`.
+- **Sem corte de série**: os gráficos desenham a série inteira, como o Recharts. Quando o eixo de
+  categoria não cabe, o rótulo é exibido 1 a cada N (equivalente ao `interval` do Recharts) em vez
+  de truncar dado. Os únicos cortes são os que o próprio web faz: Pareto 10, radar 6, treemap 12,
+  heatmap 10x8, rede 12 arestas/10 nós.
+- **Tooltip de hover**: os `<Tooltip>` do Recharts não têm equivalente no celular. O
+  `BubbleTooltip` (3049), que carrega dado que não está em nenhum outro lugar do painel (x, y,
+  tamanho da bolha, score e decisão), virou uma lista abaixo do gráfico. Nos demais gráficos o
+  valor já aparece como rótulo na barra ou na fatia.
+- **`info`**: o modal "Como funciona" do `ChartPanel` (2239) virou `AlertDialog`, com o mesmo
+  texto. Os `title`/`aria-label` dos `KpiCard` viraram o mesmo modal, acionado pelo ícone.
+
+### Validação executada
+
+- `.\gradlew.bat :app:compileDebugKotlin --console=plain` — BUILD SUCCESSFUL
+- `.\gradlew.bat :app:testDebugUnitTest --console=plain` — BUILD SUCCESSFUL, 178 testes, 0 falhas
+  (154 do M8.1b + 24 novos em `EventBiM82RulesTest`)
+- `.\gradlew.bat :app:assembleDebug --console=plain` — `app/build/outputs/apk/debug/app-debug.apk`
+
+### Débito do M8.2
+
+| Faixa | Bloco | Tamanho | Estado |
+|---|---|---:|---|
+| 2281-2287 | `openMetricHref` (clique na barra/fatia abre o extrato) | ~7 linhas | **Não portado — M10** |
+| 2179-2185 | `href` do `KpiCard` | ~7 linhas | **Não portado — M10** |
+| 3325-3334 | célula-link do `DataTable` | ~10 linhas | **Parcial — M10** |
+| 1890-2044 | escopo por linha (`rowScopeIds`, `hasExternalEventScope`, `isTenantOwnedRow`) | ~155 linhas | **Parcial — decisão tomada, não entra** |
+
+- **Links (M10)** — os três primeiros itens são a mesma dependência: `buildStatementHref` e
+  `buildCheckinsHref` levam ao workspace de evento, que é o M10. Com `EventBiLinkBuilder.Inert`
+  todo href chega vazio, então `FilterLinkChips` não renderiza, o `KpiCard` não vira botão e a
+  célula da tabela não ganha destaque de link. **O indicador continua sendo calculado** — o que
+  está desligado é só o destino. Quando o M10 existir, trocar o `EventBiLinkBuilder` liga os três
+  de uma vez; nenhuma outra mudança é necessária.
+- **Escopo por linha (1890-2044) — decisão do M8.2: não entra.** O M8.1b deixou a decisão para
+  este módulo. O app resolve escopo **na consulta** e aplica `isTenantOwnedRow` ao evento; o web
+  também reavalia linha a linha, lendo `leagueId`/`ligaId`/`directoryId`/`commissionId`/
+  `seller_type`/`seller_id` do próprio ingresso/pedido. Portar exigiria trazer essas seis colunas
+  de volta em `solicitacoes_ingressos` e `orders` e refazer o filtro em memória — mais bytes por
+  consulta e mais trabalho no cliente, contra `PROJECT_CONSTRAINTS.md`, para corrigir um caso
+  único: ingresso ou pedido de evento do tenant que carrega no próprio registro vínculo com outro
+  coletivo (no web sai do recorte, no app fica). O M8.2 é um módulo de apresentação e não abre
+  consulta nova; a divergência fica registrada aqui e no `PARITY_MATRIX.md`.
+- **`presenceByLotRows`** é calculado pelo motor e não é consumido por nenhuma visão — no web
+  também não: a única referência viva é `noShowRateByLotRows`. Não é débito do port.
+
+## M8.3 e M8.4 - BI Loja nos cinco players e fechamento do M8
+
+Fonte: `web-reference/src/components/ProductManagementAnalytics.tsx` (634 linhas) e
+`web-reference/src/app/admin/gestao/_components/AdminBiDashboard.tsx` (1738 linhas), o bloco
+`ProductsBi` (1393-1424).
+
+Android: `domain/model/ProductBi.kt`, `domain/model/ProductBiEngine.kt`,
+`domain/repository/ProductBiRepository.kt`, `data/repository/SupabaseProductBiRepository.kt`,
+`ui/bi/store/` (`ProductBiScreen`, `ProductBiView`, `ProductBiViewModel`),
+`ui/bi/charts/ProductBiGroupedBars.kt` e as rotas em `AppRoute`, `UscNavGraph` e
+`RemainingNativeRoutes`.
+
+### A descoberta que mudou o módulo: `EventManagementAnalytics` está morto
+
+O escopo declarado do M8.3 pedia **dois** motores. O segundo, `EventBiSummaryEngine`, seria o
+porte de `web-reference/src/components/EventManagementAnalytics.tsx` (1572 linhas), descrito como
+"o `view="eventos"` do `LeagueFinanceDashboard`, que o M7 NÃO portou", "um só, para os 4 players
+com eventos".
+
+A auditoria das rotas mostrou que o componente **não é alcançável por nenhuma rota do web**. São
+três referências, e as três estão desligadas:
+
+| Referência | Por que não renderiza |
+|---|---|
+| `LeagueFinanceDashboard.tsx:762` | Depende de `view === "eventos"`. Nenhuma página passa esse valor: `ligas/[leagueId]/gestao/page.tsx` passa `"hub"`, `.../gestao/produtos/page.tsx` passa `"produtos"`, e o catch-all `comissoes/configurar/[leagueId]/[[...section]]/page.tsx` (linhas 35-44) manda `gestao/eventos` para `CommissionManagementEventBiPage` — que é o `AdminEventBiDashboard`, portado no M8.1/M8.2 |
+| `LeagueFinanceDashboard.tsx:898` | Dentro do bloco `{false ? <> ... </> : null}`, linhas 774-1001 |
+| `AdminBiDashboard.tsx:757` (`EventsBi`) | Depende de `mode === "eventos"`. As únicas três páginas que montam `AdminBiDashboard` passam `mode="produtos"` (`admin/gestao/loja` e `admin/gestao/produtos`) e `mode="treinos"` (`admin/gestao/treinos`) |
+
+**Decisão: não portado.** É a terceira vez que o mesmo padrão aparece — `{false ? ... : null}` no
+`LeagueFinanceDashboard` durante o M7, `{false && view === ...}` no `AdminEventBiDashboard` durante
+o M8.2, e agora um componente inteiro cujo consumidor perdeu a rota. Portar colocaria no app um
+painel que o web não mostra. Os quatro players com eventos continuam servidos pelo
+`AdminEventBiDashboard`, que é o que `gestao/eventos` de fato abre nos quatro.
+
+### As duas tabelas de BI pré-agregado do tenant também não são lidas
+
+O escopo do M8.4 destacava que o tenant "lê DUAS tabelas de BI pré-agregado que nenhum outro
+player usa": `bi_produtos_vendas_dimensoes` e `bi_produtos_engajamento`. `loadDashboardData`
+(linhas 572-585) realmente consulta as duas. Mas quem as consome é `LegacyProductsBi` (1428-1580),
+marcado com `// eslint-disable-next-line @typescript-eslint/no-unused-vars` e **nunca renderizado**:
+`AdminBiDashboard` fecha em `return <ProductsBi data={data} />` (1737), e `ProductsBi` (1393-1424)
+não toca em nenhuma das duas — ele repassa `products`, `orders` e `users` crus para
+`ProductManagementAnalytics`.
+
+Consequência: o BI Loja do tenant **não é diferente** dos outros quatro em métrica nenhuma. O que
+muda é só o recorte dos dados. As duas tabelas não foram portadas — seriam duas consultas por
+abertura de tela, com teto de 5000 e 2000 linhas, para alimentar código morto. A tolerância a
+tabela ausente que o `queryRowsOptional` implementa deixa de ser necessária pelo mesmo motivo.
+
+### Um motor, um repositório, uma tela, cinco players
+
+`ProductBiEngine` é o porte integral do `useMemo` de `analytics` (371-543): 8 KPIs, 13 séries e
+2 tabelas. `SupabaseProductBiRepository` resolve o escopo na consulta e entrega
+`ProductBiDataset` já normalizado; `ProductBiScreen` + `ProductBiView` desenham. Nenhum player
+tem cálculo próprio.
+
+| Player | Recorte da consulta | `title` / `allLabel` |
+|---|---|---|
+| Tenant | `produtos`/`orders` do tenant, menos `mini_vendor`/`league`/`liga` | "Produtos oficiais da loja" / "Todos os produtos oficiais" |
+| Liga | `seller_id = {ligaId}` | "Produtos da liga" / "Todos os produtos da liga" |
+| Comissão | `seller_id = {comissaoId}` | "Produtos da comissão" / "Todos os produtos da comissão" |
+| Diretório | `seller_id = {diretorioId}` | "Produtos do diretório" / "Todos os produtos do diretório" |
+| Mini-vendor | `seller_id` = perfil em `mini_vendors` por `user_id` | nome da loja / "Todos os produtos da lojinha" |
+
+A lojinha é o único player que **não** recebe a prop `users` no web, então o mapa de turma fica
+vazio de propósito e a turma sai só do próprio pedido. O repositório reproduz isso pulando a
+consulta a `users` nesse escopo.
+
+### Regras portadas que merecem nota
+
+- **A exclusão do tenant não exclui comissão nem diretório** (1399/1409): a lista é
+  `["mini_vendor", "league", "liga"]` — tem `liga` **e** `league`, mas comissão e diretório
+  continuam entrando no BI Loja da atlética. Contraintuitivo diante do subtítulo "sem misturar
+  mini vendors, ligas ou outros players", e é o comportamento do web. Há teste fixando isso.
+- **Pedido de produto do recorte entra mesmo com vendedor divergente** (1408): a primeira linha do
+  filtro de pedidos aceita qualquer `order.productId` que esteja em `tenantProductIds`, antes de
+  olhar `seller_type`. Sem ela, um pedido com vendedor desatualizado sumiria da receita de um
+  produto que o painel mostra.
+- **A curva ABC acumula sobre a receita inteira** (499), não sobre a soma das 14 linhas de
+  `byProduct` (494). Com 15 produtos de receita igual, o 15º fica fora do corte e o acumulado das
+  14 primeiras para em 93,3%: nenhuma linha chega à faixa "C". Há teste.
+- **"Com desconto" carrega `qtd` 1 ou 0** (485), não a contagem de pedidos — é um sinalizador, e
+  "Sem desconto" desconta esse mesmo 1 do total de aprovados.
+- **`clickConversion` e `sellThrough` usam o acumulador por produto** (516-525), não
+  `approvedOrders.length`: um pedido de produto fora do catálogo não entra no numerador.
+- **Produto parado tem duas condições** (474): estoque positivo com venda zero, **ou** 5+ cliques
+  sem nenhum pedido. Um produto com 4 cliques e sem venda entra pela primeira.
+- **Pedido sem data some do gráfico de dias**: `weekdayLabel` (438) devolve "Sem data", e a saída
+  percorre só os sete dias (533). O eixo continua com os sete, mesmo zerados.
+- **`statusIsApproved` do BI Loja é menor que a do BI de Eventos** (117): não aceita `validado`
+  nem `redeemed`. Não dá para reaproveitar `EventBiStatus`.
+- **`medio` é recalculado a cada soma** (172), então é `valor acumulado / qtd acumulada` — não a
+  média das médias.
+- **O subtítulo do coletivo diz "apenas desta liga." nos três** (774): `title` e `allLabel`
+  interpolam a entidade, o subtítulo é literal. Mantido como está.
+
+### Um gráfico novo, e só um
+
+Os 26 componentes do M8.2 cobriram tudo menos um: o `BarsDual` do `ProductManagementAnalytics`
+(241-256) é um `BarChart` com **duas barras agrupadas** num único `<YAxis>` (248), enquanto o
+`BarsDual` do `AdminEventBiDashboard` — já portado — é barra + linha em dois eixos. Entrou
+`ProductBiGroupedBars`, que reusa toda a base de Canvas do kit. O eixo compartilhado foi mantido:
+com receita em reais e quantidade em unidades na mesma escala a barra de quantidade fica curta, o
+que é o comportamento do web. Nenhuma dependência de gráfico foi adicionada.
+
+### Divergência de consulta declarada
+
+A exclusão de vendedor do tenant é **o único filtro do M8 que ficou em memória**. Ela lê duas
+colunas e compara `seller_type` em minúsculas; o `not.in` do PostgREST compara texto exato, então
+um `Liga` gravado com maiúscula passaria pela consulta e teria de ser recusado no cliente de
+qualquer jeito. Como o teto já é `tenant_id` + 400 linhas, empurrar meio filtro para a query só
+criaria uma segunda fonte de verdade. Todo o resto do escopo (liga, comissão, diretório,
+mini-vendor) vai para a consulta, contra as ~11 mil linhas que o web baixa por abertura.
+
+### Decisão sobre `mode="treinos"` — fica fora do M8, e o motivo
+
+`AdminBiDashboard` também serve `mode="treinos"` em `/admin/gestao/treinos` (`TrainingsBiEnhanced`,
+~1078-1390). A decisão pedida foi tomada: **(b) deixar fora.**
+
+- O escopo declarado do M8 é BI de Eventos e BI Loja. Treinos é um **terceiro** BI, com dataset
+  próprio (`treinos`, `treinos_chamada`, `treinos_rsvps`, mais `bi_treinos_presencas_dimensoes` e
+  `bi_treinos_modalidades`) e nenhuma métrica em comum com os dois motores entregues — não há
+  reaproveitamento a ganhar por portar junto.
+- O componente ser o mesmo arquivo não implica lógica compartilhada: `AdminBiDashboard` é um
+  roteador de três painéis independentes. O que o M8.4 reaproveitou de lá foi só o recorte de
+  vendedor do `ProductsBi`.
+- **Consequência honesta, registrada:** `/admin/gestao/treinos` continua mostrando
+  `AdminBiSnapshotScreen` com `focus=Training`, que é um resumo herdado de módulo anterior e não
+  o painel do web. A rota permanece **fora do contador** e está marcada como divergência em
+  `PARITY_MATRIX.md`. É a mesma situação que o M8.2 encontrou em `admin/bi/comercial` e corrigiu;
+  aqui ela fica aberta de propósito, para o módulo que portar o BI de Treinos.
+
+### Varredura de duplicação
+
+Nenhuma lógica de BI ficou em paralelo. Removido neste módulo:
+
+| Removido | Onde estava | Por quê |
+|---|---|---|
+| `CollectiveProductsBi` + `MetricList` | `CollectiveManagementScreens.kt` (~125 linhas) | Versão reduzida do M7 (5 indicadores); substituída pelo motor completo |
+| `uniqueBuyers`, `averageTicket`, `stockTotal`, `repurchaseBuyers`, `abcCurve`, `productSalesByName`, `productSalesByLot`, `eventSalesByName` | `CollectiveFinanceUiState` | Só a versão reduzida usava; as três séries `*SalesBy*` só aparecem no web dentro do `{false ? ... : null}` |
+| `CollectiveMetricRow`, `addMetric`, `sortedMetrics`, `MetricsLimit`, `AbcCurveSize` | `CollectiveManagementModels.kt` e `SupabaseCollectiveManagementRepository.kt` | Agregadores da versão reduzida, sem uso restante |
+| `CollectiveFinanceView` | `CollectiveManagementModels.kt` | O enum só existia para separar `Hub` de `Products`; `Products` virou rota própria |
+| `MiniVendorManagementScreen` | `MiniVendorScreens.kt` (~60 linhas) | Resumo sem fonte no web; a rota agora abre o BI Loja |
+| `AdminBiSnapshotFocus.Store` | `AdminBiSnapshotScreen.kt` | Seria um segundo BI de loja em paralelo ao real |
+
+O mapa de alertas do BI de eventos (`OPERATIONAL_ALERT_DESCRIPTIONS`, web 201-220) **já havia
+entrado no M8.1b**, com as 15 chaves e a descrição padrão do `addOperationalAlert` (4456), em
+`EventBiAnalyticsModel.kt`. Não era débito.
+
+### Validação executada
+
+- `.\gradlew.bat :app:compileDebugKotlin --console=plain` — BUILD SUCCESSFUL
+- `.\gradlew.bat :app:testDebugUnitTest --console=plain` — BUILD SUCCESSFUL, 215 testes, 0 falhas
+  (178 do M8.2 + 37 novos: 22 em `ProductBiM83RulesTest` e 15 em `ProductBiM84RulesTest`)
+- `.\gradlew.bat :app:assembleDebug --console=plain` — `app/build/outputs/apk/debug/app-debug.apk`
+
+### Débito do M8.3/M8.4
+
+| Faixa | Bloco | Tamanho | Estado |
+|---|---|---:|---|
+| `EventManagementAnalytics.tsx` 1-1572 | componente inteiro | 1572 linhas | **Não portado — sem rota viva no web** (evidência acima) |
+| `AdminBiDashboard.tsx` 1428-1580 | `LegacyProductsBi` | ~153 linhas | **Não portado — código morto** (`no-unused-vars`, nunca renderizado) |
+| `AdminBiDashboard.tsx` 572-585 | consulta a `bi_produtos_vendas_dimensoes` e `bi_produtos_engajamento` | ~14 linhas | **Não portado** — alimenta só o `LegacyProductsBi` |
+| `AdminBiDashboard.tsx` 516-541, 1078-1390 | `mode="treinos"` (`TrainingsBiEnhanced` + carga) | ~340 linhas | **Fora do M8, por decisão registrada acima** |
+| `AdminBiDashboard.tsx` 745-763 | `EventsBi` | ~19 linhas | **Não portado** — `mode="eventos"` não é montado por nenhuma página |
+
+A faixa-fonte que o M8.3/M8.4 declarou como entregável — `ProductManagementAnalytics.tsx` inteiro
+(634 linhas) e o `ProductsBi` do tenant (1393-1424) — foi portada **integralmente**, sem exceção.
+Os itens acima são blocos que o escopo previa mas que a auditoria mostrou estarem desligados no
+web, mais a decisão explícita sobre treinos.
+
+## M8 - fechamento
+
+O M8 fecha com quatro sub-módulos: M8.1 (escopo/consulta e hub do BI de Eventos), M8.1b (motor de
+238 métricas), M8.2 (as cinco visões, 26 gráficos e 20 rotas) e M8.3/M8.4 (BI Loja nos cinco
+players). Dois motores de BI no app, um por BI, nenhum por área:
+
+| Motor | Arquivo | Players | Fonte web |
+|---|---|---|---|
+| BI de Eventos | `domain/model/EventBiAnalyticsEngine.kt` | tenant, liga, comissão, diretório | `AdminEventBiDashboard.tsx` |
+| BI Loja | `domain/model/ProductBiEngine.kt` | tenant, liga, comissão, diretório, mini-vendor | `ProductManagementAnalytics.tsx` |
+
+O que ficou fora do M8, com motivo, em um lugar só:
+
+1. **BI de Treinos do tenant** — terceiro BI, fora do escopo declarado; `/admin/gestao/treinos`
+   segue mostrando um resumo herdado. Decisão registrada acima.
+2. **`EventManagementAnalytics`** — sem rota viva no web.
+3. **`LegacyProductsBi` e as duas tabelas `bi_produtos_*`** — código morto no web.
+4. **Links de extrato/check-in do BI de Eventos** — dependem do workspace de evento (M10). Com
+   `EventBiLinkBuilder.Inert` o indicador é calculado e só o destino está desligado; trocar o
+   builder no M10 liga KPI, clique em barra/fatia e célula de tabela de uma vez.
+5. **Banner "Este evento pertence a outro portal"** — calcula `webPath` e não navega, pelo mesmo
+   motivo do item 4.
+6. **`AdminEventSalesModeScreen`** — segue sem rota desde o M8.1.
+7. **Escopo por linha do BI de Eventos** (web 1890-2044) — decisão do M8.2, não reabrir sem motivo
+   novo: exigiria trazer seis colunas a mais em `solicitacoes_ingressos` e `orders` e filtrar em
+   memória, contra `PROJECT_CONSTRAINTS.md`, para corrigir um caso único.
+
+## M9 - Admin: Loja (8 rotas novas no contador)
+
+Fonte: `web-reference/src/app/admin/loja/` — `page.tsx` (291 linhas), `categorias/page.tsx` (1265),
+`produtos/page.tsx` (1845), `_components/AdminStoreOrdersStatusPage.tsx` (796) e os quatro
+wrappers de pedidos/desativados — mais `lib/storeService.ts` (`approveStoreOrder` 1109-1345 e
+`syncApprovedOrderVariantStock` 1017-1107), `lib/upload.ts` (414), `lib/imageCompression.ts` e
+`lib/paymentRecipients.ts` (255).
+
+Android: `domain/model/StoreImageUpload.kt`, `domain/model/StoreOrderApproval.kt`,
+`domain/model/StoreProductPlanScope.kt`, `domain/repository/StoreImageUploadRepository.kt`,
+`data/repository/SupabaseStoreImageUploadRepository.kt`,
+`ui/admin/AdminStoreProductFormBlocks.kt`, `ui/admin/StoreImagePicker.kt`, mais
+`SupabaseAdminStoreRepository`, os três ViewModels de loja e as telas.
+
+### O bloqueio registrado do M9 não existia
+
+`ROUTE_TRANSLATION_PROGRESS.md` dizia que as quatro rotas de pedido estavam presas porque
+`approveStoreOrder` "atualiza vouchers/evento, operação sensível ainda pendente de autorização".
+A auditoria da fonte mostrou o contrário:
+
+| Bloco | Onde roda no web |
+|---|---|
+| `callWithFallback(CALLABLE_APPROVE_ORDER, ...)` (1128-1255) | Tenta a callable e cai num **fallback Supabase-direto completo**: `orders` → `produtos.estoque/vendidos` → `users.xp/selos` → `notifications` |
+| Sincronização de evento/voucher (1257-1332) | **Fora** da callable, sempre no cliente |
+| `syncApprovedOrderVariantStock` (1334-1342) | **Fora** da callable, sempre no cliente |
+
+Não é operação server-side: é escrita direta que o RLS do web já permite. Nenhuma Edge Function
+foi criada.
+
+### Auditoria de RLS pedida antes de codar
+
+Comparação do JWT e de `auth.uid()`: o Android usa a mesma anon key e a mesma sessão do Supabase
+Auth (`SupabaseClientProvider`, com `Auth` + `Postgrest` e `autoLoadFromStorage`), e
+`SupabasePublicConfig` (8-10) recusa em tempo de construção qualquer chave que contenha
+`service_role`. Todas as policies envolvidas são `to authenticated` e resolvem por `auth.uid()`,
+então as permissões efetivas do Kotlin são **idênticas** às do web.
+
+| Escrita | Policy | USING / WITH CHECK | Migração |
+|---|---|---|---|
+| `orders` UPDATE | `tenant_orders_update` | `mt_is_platform_master() or mt_can_manage_tenant(tenant_id) or (mini_vendor dono)` nos dois | `20260408000200` |
+| `produtos` UPDATE | `tenant_scope_update` | `mt_can_access_tenant_row(tenant_id)` nos dois | `20260306000400` |
+| `users` UPDATE | `users_update_self_or_manage` | USING aceita o próprio uid; WITH CHECK exige `mt_can_manage_tenant` | `20260310000400` |
+| `notifications` INSERT | `tenant_notification_insert` | WITH CHECK `mt_can_access_tenant_row(tenant_id)`, com `trg_notifications_tenant_fill` preenchendo | `20260310000400` |
+
+`mt_can_manage_tenant` (20260306000500, 133-150) exige membership `approved` com cargo em
+`master`, `admin_geral`, `admin_gestor`, `master_tenant` ou `admin_tenant`. **Nenhuma policy nova
+foi criada, e nenhuma existente foi alargada.**
+
+Duas correções ao enunciado da auditoria: **não existe tabela `vouchers`** — o voucher mora em
+`orders.data.eventParty.voucherEntries` mais as colunas `event*` da própria `orders`, portanto cai
+na policy de `orders`; e **`eventos` não é escrita** na aprovação, o web só lê `orders`.
+
+### O filtro que escondia pedidos que o web mostra
+
+`SupabaseAdminStoreRepository` descartava toda linha com `isEventLinked()` na lista de pedidos, e
+`isEventPartyOrder()` na de produtos. O web não filtra em lugar nenhum:
+`AdminStoreOrdersStatusPage.tsx` não menciona `eventParty`, e `fetchStoreOrdersPage`
+(`storeService.ts` 563-647) filtra só por `status`, `productId` e `tenant_id`.
+
+O efeito era pior que cosmético: o pedido de produto vendido dentro do evento é **justamente** o
+que dispara o bloco de fichas em `approveStoreOrder`. Escondê-lo deixava esse pedido sem tela de
+aprovação no app.
+
+Os três pontos foram removidos, e `isEventLinked()` e `isEventPartyOrder()` saíram do arquivo:
+
+| Ponto | O que escondia | Fonte web que não filtra |
+|---|---|---|
+| Lista de pedidos | pedido com `eventId`, `eventoId`, `eventItemType` ou `data.eventParty` | `fetchStoreOrdersPage` (563-647) e `AdminStoreOrdersStatusPage.tsx` |
+| `ProductLookupRow` (categorias e `allowedProductIds`) | produto com `data.eventParty` | `fetchStoreProducts` (715-758) |
+| `AdminStoreProductRow.toDomain` | idem, na lista de produtos | idem, e a página não filtra depois |
+
+### Idempotência e falha parcial, por decisão do usuário
+
+O web não protege contra aprovação duplicada: `approveStoreOrder` reescreve `status="approved"` e
+repete baixa de estoque, XP, selo e notificação a cada clique. Sem transação no cliente, isso
+corrompe estoque e XP em silêncio. Por decisão explícita do usuário, o Android acrescentou:
+
+- **Guarda de leitura** (`StoreOrderApproval.shouldSkipApproval`): pedido já `approved` não é
+  reaprovado, e a UI diz "Pedido já estava aprovado; nada foi alterado.".
+- **Guarda de escrita**: o `UPDATE` carrega `neq("status", "approved")`, então duas telas
+  aprovando ao mesmo tempo não somam estoque duas vezes.
+- **Falha parcial relatada**: o web faz `console.warn` e segue (1191-1193, 1231-1233, 1248-1250,
+  1330-1332, 1340-1342). O Android mantém o mesmo comportamento — o pedido **fica** aprovado — mas
+  devolve `StoreApprovalOutcome` com as etapas que falharam, e a tela mostra "Pedido aprovado, mas
+  falhou ao atualizar: …".
+
+A idempotência do estoque de variação **já era do web**: `data.variantStockAppliedAt` (1032) é o
+marcador que impede a segunda baixa, e foi portado como está.
+
+### Upload via Storage, com os controles do PROJECT_CONSTRAINTS
+
+`upload.ts` foi portado inteiro, na mesma ordem: valida arquivo → reserva a guarda de custo →
+valida resolução → comprime → revalida o comprimido → revalida a resolução → envia → registra o
+dedupe **só depois** de o Storage aceitar (395-399).
+
+| Controle | Valor do web | Onde |
+|---|---|---|
+| Tipo | `image/jpeg`, `image/png`, `image/webp` | `validateImageFile` |
+| Tamanho | 2MB na origem, 200KB depois de comprimir | idem |
+| Resolução | 2400x2400, e o produto das duas | `validateImageDimensions` |
+| Compressão | WEBP, 1600x1600, qualidade 0,82 a 0,50 | `StoreImageCompressionPlan` |
+| Caminho por tenant | `store/{tenant}/categorias\|produtos/{id}` | `StoreUploadTargets` |
+| Teto de custo | 1 por vez, 1,2s entre envios, 6/min, dedupe 45s | `StoreUploadGuard` |
+
+O `SAF` do Android substitui o `<input type="file">`, e `StoreImagePicker` recusa arquivo grande
+pelo tamanho do `OpenableColumns.SIZE` antes de ler os bytes.
+
+**Uma dependência foi adicionada**: `io.github.jan-tennert.supabase:storage-kt`, já versionada
+pelo BOM que o projeto usa. Não é serviço novo nem pago — é o cliente oficial do mesmo bucket que
+o web escreve, e o upload foi autorizado explicitamente. `SUPABASE_STORAGE_BUCKET` entrou no
+`BuildConfig` lendo a mesma variável do web (`NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET`, padrão
+`uploads`).
+
+### Regras portadas que merecem nota
+
+- **`total || price || 0`** (`AdminStoreOrdersStatusPage.tsx` 376): o `||` do JS trata `0` como
+  ausente, então pedido com `total` zerado usa `price`. O `?:` do Kotlin não faria isso sozinho —
+  `StoreOrderApproval.approvalPrice` reproduz o comportamento, e há teste.
+- **O corte de fichas é destrutivo** (1276): com 3 vouchers gravados e quantidade 1, o web fica
+  com 1. Portado como está.
+- **Só o literal "inativo" desativa a ficha** (1282); qualquer outro texto vira "ativo".
+- **`sanitizeStoragePathSegment` nunca devolve vazio** (upload.ts 92): o `|| "file"` vale para a
+  cadeia inteira, então o `filter(Boolean)` de 98 não corta nada e `a//b` vira `a/file/b`.
+- **A varredura de qualidade nunca chega ao mínimo**: de 0,82 descendo 0,08, o passo depois de
+  0,50 é 0,42, já abaixo de `minQuality` 0,45. O último WEBP tentado é 0,50.
+- **Preço e visibilidade por plano têm fallbacks diferentes** (`produtos/page.tsx` 262-275):
+  preço ausente vira campo vazio (o plano usa o preço geral), visibilidade ausente vira `true`, e
+  só o `false` explícito esconde.
+- **`plan_prices` só grava linha com preço; `plan_visibility` grava todas** (877-889).
+- **Seleção vazia de recebedor devolve lista vazia** (`paymentRecipients.ts` 111), não a lista
+  inteira.
+- **`fetchLeagueSummaries` serve só para uma coisa** (`categorias/page.tsx` 244-256): a logo
+  oficial da liga na categoria de liga. A consulta Android traz só `id` e `logo_url` de
+  `ligas_config`, com `tenant_id` e o mesmo teto de 80 — não o resumo inteiro.
+- **O diretório de recebedores é consulta preguiçosa** (`produtos/page.tsx` 1835): o web só chama
+  `fetchTenantPaymentReceiverDirectory` quando o `CommerceReceiversManager` abre; a tela em si só
+  carrega os recebedores já salvos (338-365). O app faz igual — são duas leituras de até 400
+  linhas que não devem rodar a cada abertura da tela de produtos.
+
+### Adaptações de tela, declaradas
+
+- **Variações**: o web tem linhas estruturadas com botões de adicionar/remover; o app mantém o
+  campo de texto (`tamanho | cor | estoque | vendidos`, uma por linha) que já existia. O payload
+  gravado em `variantes` é idêntico ao do web (810-820).
+- **Preço por plano**: no web é um modal (`isPlanModalOpen`); no celular virou bloco recolhível
+  dentro do próprio formulário, pela mesma razão do M8.2 — o formulário já é uma coluna longa e um
+  segundo modal empilhado não cabe.
+- **Sem alternador de "pagamento próprio"**: o web tem `form.payment.enabled` e valida "preencha
+  chave, banco e titular"; no app `enabled` é **derivado** dos campos preenchidos, então essa
+  validação não tem equivalente. O `payment_config` gravado segue a mesma regra de existência
+  (859-862).
+
+### Validação executada
+
+- `.\gradlew.bat :app:compileDebugKotlin --console=plain` — BUILD SUCCESSFUL
+- `.\gradlew.bat :app:testDebugUnitTest --console=plain` — BUILD SUCCESSFUL, 248 testes, 0 falhas
+  (215 do M8.4 + 33 novos em `AdminStoreM9RulesTest`)
+- `.\gradlew.bat :app:assembleDebug --console=plain` — `app/build/outputs/apk/debug/app-debug.apk`
+
+### Débito do M9
+
+| Faixa | Bloco | Tamanho | Estado |
+|---|---|---:|---|
+| `produtos/page.tsx` 1350-1420 | editor de variação em linhas estruturadas | ~70 linhas | **Adaptado** — campo de texto, mesmo payload |
+| `produtos/page.tsx` 825-837 | validação do alternador `payment.enabled` | ~13 linhas | **Sem equivalente** — `enabled` é derivado no app |
+| `upload.ts` 341-353 | `allowOriginalOnCompressionFail` | ~13 linhas | **Portado, sem uso** — nenhuma tela da loja liga a opção, como no web |
+| `storeService.ts` 1128-1131 | `callWithFallback` para a callable | ~4 linhas | **Não portado** — o app executa direto o fallback; a callable não existe no Android |
+| `storeService.ts` 1318-1328 | laço que remove coluna ausente e repete o `UPDATE` | ~11 linhas | **Não portado** — tolerância a schema legado; a migração `20260505040500` já cria as onze colunas `event*`, então o `UPDATE` único basta |
+
+A faixa-fonte declarada como entregável do M9 — as 9 rotas de `admin/loja`, `approveStoreOrder`
+inteiro, `upload.ts` inteiro e `paymentRecipients.ts` — foi portada. Os itens acima são adaptações
+de tela declaradas e um bloco que só existe por causa da callable do web.

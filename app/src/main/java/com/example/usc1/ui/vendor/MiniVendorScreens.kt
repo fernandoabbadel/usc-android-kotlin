@@ -691,67 +691,6 @@ fun MiniVendorEditScreen(state: MiniVendorUiState, onBackClick: () -> Unit, modi
 }
 
 @Composable
-fun MiniVendorManagementScreen(state: MiniVendorUiState, onBackClick: () -> Unit, modifier: Modifier = Modifier) {
-    if (state.isLoading) {
-        PremiumLoadingState(text = "Carregando gestão da lojinha", modifier = modifier)
-        return
-    }
-    PremiumScreen(modifier = modifier, bottomPadding = 116.dp) {
-        MiniVendorTopBar(
-            title = "Gestão da lojinha",
-            subtitle = "BI do Mini Vendor",
-            icon = Icons.Outlined.QueryStats,
-            onBackClick = onBackClick,
-        )
-        when {
-            state.errorMessage != null -> PremiumEmptyState("Gestão indisponível", state.errorMessage, Icons.Outlined.QueryStats)
-            !state.hasProfile -> MiniVendorEmptyProfile(state.statusLabel)
-            else -> {
-                val soldCount = state.products.sumOf(MiniVendorProduct::soldCount)
-                val clicksCount = state.products.sumOf(MiniVendorProduct::clicksCount)
-                val stockCount = state.products.sumOf(MiniVendorProduct::stockCount)
-                val inactiveProducts = state.products.count { it.status.equals("Inativo", ignoreCase = true) }
-                val stoppedProducts = state.products.filter { it.soldCount == 0 && it.stockCount > 0 }
-
-                MiniVendorStatsGrid(
-                    firstLabel = "Produtos",
-                    firstValue = state.products.size.toString(),
-                    firstIcon = Icons.Outlined.Inventory2,
-                    secondLabel = "Pedidos",
-                    secondValue = state.ordersCount.toString(),
-                    secondIcon = Icons.AutoMirrored.Outlined.ReceiptLong,
-                )
-                MiniVendorStatsGrid(
-                    firstLabel = "Vendidos",
-                    firstValue = soldCount.toString(),
-                    firstIcon = Icons.Outlined.Storefront,
-                    secondLabel = "Cliques",
-                    secondValue = clicksCount.toString(),
-                    secondIcon = Icons.Outlined.Visibility,
-                    secondAccent = PremiumAmber,
-                )
-                MiniVendorSectionTitle("Resumo comercial")
-                MiniVendorInfoPanel {
-                    MiniVendorInfoRow("Receita aprovada", state.totalRevenueLabel)
-                    MiniVendorInfoRow("Aguardando baixa", state.pendingAmountLabel)
-                    MiniVendorInfoRow("Estoque total", "$stockCount unidades")
-                    MiniVendorInfoRow("Produtos inativos", inactiveProducts.toString())
-                    MiniVendorInfoRow("Produtos parados", stoppedProducts.size.toString())
-                }
-                MiniVendorSectionTitle("Produtos parados")
-                if (stoppedProducts.isEmpty()) {
-                    PremiumEmptyState("Sem produto parado", "Todos os produtos com estoque já possuem venda registrada.", Icons.Outlined.QueryStats)
-                } else {
-                    stoppedProducts.take(5).forEach { product ->
-                        MiniVendorProductCard(product = product)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun MiniVendorEditableProfileScreen(
     state: MiniVendorUiState,
     onBackClick: () -> Unit,

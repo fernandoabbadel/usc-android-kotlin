@@ -58,6 +58,8 @@ data class AdminStoreProductsPage(
     val categoryNames: List<String>,
     val selectedCategory: String,
     val inactiveOnly: Boolean,
+    /** `produtos/page.tsx` 459-466: catálogo de planos com teto de 40, no escopo do tenant. */
+    val planCatalog: List<StorePlanOption> = emptyList(),
 )
 
 data class AdminStoreProduct(
@@ -90,6 +92,11 @@ data class AdminStoreProduct(
     val sellerId: String,
     val sellerName: String,
     val sellerLogoUrl: String,
+    /** `produtos/page.tsx` 877-889. */
+    val planPrices: List<StorePlanPrice> = emptyList(),
+    val planVisibility: List<StorePlanVisibility> = emptyList(),
+    /** `payment_config.recipients` (`produtos/page.tsx` 896-903). */
+    val paymentRecipients: List<StorePaymentRecipient> = emptyList(),
 )
 
 data class AdminStoreProductVariant(
@@ -126,6 +133,13 @@ data class AdminStoreProductForm(
     val sellerId: String = "",
     val sellerName: String = "",
     val sellerLogoUrl: String = "",
+    /**
+     * Uma linha por plano do catálogo. Preço em branco significa "usa o preço geral do produto"
+     * (`produtos/page.tsx` 1612), e a visibilidade grava sempre, com ou sem preço (885-889).
+     */
+    val planScopeRows: List<StorePlanScopeRow> = emptyList(),
+    /** Ids escolhidos no gerenciador de recebedores (`produtos/page.tsx` 854-857). */
+    val paymentRecipientUserIds: List<String> = emptyList(),
 )
 
 enum class AdminStoreProductStatus(val remoteValue: String, val label: String) {

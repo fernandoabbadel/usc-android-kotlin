@@ -10,6 +10,7 @@ import io.github.jan.supabase.auth.handleDeeplinks
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.PropertyConversionMethod
+import io.github.jan.supabase.storage.Storage
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -51,6 +52,8 @@ object SupabaseClientProvider {
             install(Postgrest) {
                 propertyConversionMethod = PropertyConversionMethod.SERIAL_NAME
             }
+            // Mesmo bucket público do web; a autorização continua vindo da sessão do Auth.
+            install(Storage)
         }
     }
 

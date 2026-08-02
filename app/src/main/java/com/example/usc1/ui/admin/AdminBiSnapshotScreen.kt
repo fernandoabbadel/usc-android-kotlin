@@ -40,7 +40,10 @@ enum class AdminBiSnapshotFocus(
     val icon: ImageVector,
 ) {
     Events("Eventos", "Criação, calendário e participação", Icons.Outlined.CalendarMonth),
-    Store("Loja", "Pedidos, produtos e venda do tenant", Icons.Outlined.ShoppingBag),
+
+    // `Store` saiu no M8.4: `admin/gestao/loja` e `admin/gestao/produtos` agora abrem o BI Loja
+    // de verdade (`ProductBiScreen`), e um foco de resumo em paralelo seria um segundo BI de
+    // loja sem fonte no web.
     Training("Treinos", "Operação esportiva e frequência", Icons.Outlined.Groups),
     Finance("Financeiro", "Receita, vendas e pendências", Icons.Outlined.PointOfSale),
     Commercial("BI Comercial", "Vendas, loja, planos e conversão", Icons.Outlined.TrendingUp),
@@ -202,7 +205,6 @@ private fun BiStatCard(
 private val AdminBiSnapshotFocus.accent: Color
     get() = when (this) {
         AdminBiSnapshotFocus.Events -> Color(0xFF3B82F6)
-        AdminBiSnapshotFocus.Store,
         AdminBiSnapshotFocus.Finance,
         AdminBiSnapshotFocus.Commercial -> PremiumPurple
         AdminBiSnapshotFocus.Training,
@@ -232,7 +234,6 @@ private fun AdminBiSnapshotFocus.executiveSummary(state: AdminDashboardUiState):
     val sales = state.stats.firstOrNull { it.kind == AdminStatKind.Sales }?.value ?: "--"
     return when (this) {
         AdminBiSnapshotFocus.Events -> "Eventos cadastrados: $events. Use esta visão para acompanhar volume de eventos, cadastros recentes e atividade operacional."
-        AdminBiSnapshotFocus.Store -> "Vendas da loja: $sales. Esta visão cruza loja, pedidos e atividade recente do tenant."
         AdminBiSnapshotFocus.Training -> "Base ativa: $users atletas. Use com os logs recentes para avaliar operação esportiva e engajamento."
         AdminBiSnapshotFocus.Finance -> "Receita consolidada retornada pelo Supabase: $sales. Pendências aparecem nos módulos de loja, planos e mini-vendor."
         AdminBiSnapshotFocus.Commercial -> "Comercial resume vendas, eventos e cadastros: $sales em loja, $events eventos e $users atletas."

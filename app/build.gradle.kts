@@ -57,6 +57,15 @@ android {
                     .ifBlank { "https://usc-atleticas.vercel.app" },
             ),
         )
+        // Mesmo bucket do web (`upload.ts` 368: NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || "uploads").
+        buildConfigField(
+            "String",
+            "SUPABASE_STORAGE_BUCKET",
+            quoted(
+                configValue("SUPABASE_STORAGE_BUCKET", "NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET")
+                    .ifBlank { "uploads" },
+            ),
+        )
     }
 
     buildTypes {
@@ -104,6 +113,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.supabase.auth)
     implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.storage)
     implementation(libs.zxing.core)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

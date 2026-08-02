@@ -17,8 +17,18 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import android.net.Uri
+import com.example.usc1.domain.model.EventBiContext
+import com.example.usc1.domain.model.EventBiScope
+import com.example.usc1.domain.model.EventBiScopeRef
+import com.example.usc1.domain.model.EventBiView
+import com.example.usc1.domain.model.ProductBiScope
 import com.example.usc1.domain.model.UserOrderStatus
 import com.example.usc1.domain.model.UserOrderTab
+import com.example.usc1.ui.bi.EventBiScreen
+import com.example.usc1.ui.bi.EventBiViewModel
+import com.example.usc1.ui.bi.store.ProductBiLabels
+import com.example.usc1.ui.bi.store.ProductBiScreen
+import com.example.usc1.ui.bi.store.ProductBiViewModel
 import com.example.usc1.core.permissions.Permission
 import com.example.usc1.core.permissions.PermissionBlockReason
 import com.example.usc1.core.permissions.PermissionPolicy
@@ -41,6 +51,21 @@ import com.example.usc1.ui.collectives.CollectiveDetailViewModel
 import com.example.usc1.ui.collectives.CollectiveKind
 import com.example.usc1.ui.collectives.CollectiveTab
 import com.example.usc1.ui.collectives.PrimaryDirectoryUnavailableScreen
+import com.example.usc1.ui.collectives.management.CollectiveFinanceScreen
+import com.example.usc1.ui.collectives.management.entityArticle
+import com.example.usc1.ui.collectives.management.entityLabel
+import com.example.usc1.ui.collectives.management.CollectiveFinanceViewModel
+import com.example.usc1.ui.collectives.management.CollectiveFrequencyScreen
+import com.example.usc1.ui.collectives.management.CollectiveFrequencyViewModel
+import com.example.usc1.ui.collectives.management.CollectiveManagementNav
+import com.example.usc1.ui.collectives.management.CollectiveManagementScreen
+import com.example.usc1.ui.collectives.management.CollectiveManagementViewModel
+import com.example.usc1.ui.collectives.management.CollectiveStatementScreen
+import com.example.usc1.ui.collectives.management.CollectiveStatementViewModel
+import com.example.usc1.ui.collectives.management.CollectiveStoreAdminScreen
+import com.example.usc1.ui.collectives.management.CollectiveStoreAdminViewModel
+import com.example.usc1.ui.collectives.management.CollectiveStoreMode
+import com.example.usc1.ui.collectives.management.ManagedCollective
 import com.example.usc1.domain.repository.CommunityReactionField
 import com.example.usc1.ui.community.CommunityPostDetailScreen
 import com.example.usc1.ui.community.CommunityPostUnavailableScreen
@@ -110,7 +135,7 @@ import com.example.usc1.ui.tenant.TenantViewModel
 import com.example.usc1.ui.vendor.MiniVendorApprovedOrdersScreen
 import com.example.usc1.ui.vendor.MiniVendorEditableProfileScreen
 import com.example.usc1.ui.vendor.MiniVendorFinanceScreen
-import com.example.usc1.ui.vendor.MiniVendorManagementScreen
+
 import com.example.usc1.ui.vendor.MiniVendorPendingOrdersScreen
 import com.example.usc1.ui.vendor.MiniVendorProductsScreen
 import com.example.usc1.ui.vendor.MiniVendorScreen
@@ -343,6 +368,524 @@ private fun NavGraphBuilder.collectiveRoutes(
     primaryDirectoryRoute(navController, authState, AppRoute.DirectoryRootMembers, CollectiveTab.Members)
     primaryDirectoryRoute(navController, authState, AppRoute.DirectoryRootAgenda, CollectiveTab.Agenda)
     primaryDirectoryRoute(navController, authState, AppRoute.DirectoryRootStore, CollectiveTab.Store)
+
+    collectiveManagementRoutes(navController, authState)
+}
+
+/**
+ * Painel de gestão dos coletivos (M7).
+ *
+ * Web: `/ligas/{leagueId}`, `/comissoes/configurar/{segmento}` e
+ * `/diretorio/configurar/{segmento}` com suas subrotas, todas servidas pelos mesmos componentes
+ * (`LigasAdminPageContent`, `LeagueStoreAdminPage`, `LeagueFinanceDashboard`,
+ * `LeagueFrequencyPage` e `FinancialStatementPage`).
+ */
+private fun NavGraphBuilder.collectiveManagementRoutes(
+    navController: NavHostController,
+    authState: AuthUiState,
+) {
+    managementRootRoute(navController, authState, AppRoute.LeagueManagement, CollectiveKind.League)
+    managementRootRoute(navController, authState, AppRoute.CommissionManagement, CollectiveKind.Commission)
+    managementRootRoute(navController, authState, AppRoute.DirectoryManagement, CollectiveKind.Directory)
+
+    managementSectionRoute(
+        navController,
+        authState,
+        AppRoute.LeagueManagementSection,
+        AppRoute.LeagueManagement,
+        CollectiveKind.League,
+    )
+    managementSectionRoute(
+        navController,
+        authState,
+        AppRoute.CommissionManagementSection,
+        AppRoute.CommissionManagement,
+        CollectiveKind.Commission,
+    )
+    managementSectionRoute(
+        navController,
+        authState,
+        AppRoute.DirectoryManagementSection,
+        AppRoute.DirectoryManagement,
+        CollectiveKind.Directory,
+    )
+}
+
+private fun NavGraphBuilder.managementRootRoute(
+    navController: NavHostController,
+    authState: AuthUiState,
+    route: String,
+    kind: CollectiveKind,
+) {
+    composable(route) {
+        CollectiveManagementRoute(
+            navController = navController,
+            authState = authState,
+            kind = kind,
+            routePrefix = route,
+            collectiveId = "",
+            section = CollectiveManagementSection.Home,
+        )
+    }
+}
+
+private fun NavGraphBuilder.managementSectionRoute(
+    navController: NavHostController,
+    authState: AuthUiState,
+    route: String,
+    routePrefix: String,
+    kind: CollectiveKind,
+) {
+    composable(
+        route,
+        listOf(
+            navArgument("collectiveId") { type = NavType.StringType },
+            navArgument("section") { type = NavType.StringType },
+        ),
+    ) { entry ->
+        val rawId = entry.arguments?.getString("collectiveId").orEmpty()
+        CollectiveManagementRoute(
+            navController = navController,
+            authState = authState,
+            kind = kind,
+            routePrefix = routePrefix,
+            collectiveId = if (rawId == "-") "" else rawId,
+            section = CollectiveManagementSection.fromRoute(entry.arguments?.getString("section")),
+        )
+    }
+}
+
+/** Seções do painel, espelhando as subrotas do web. */
+private enum class CollectiveManagementSection(val routeValue: String) {
+    Home("inicio"),
+    Info("informacoes"),
+    Members("membros"),
+    Store("loja"),
+    StoreProducts("loja-produtos"),
+    StorePending("loja-pendentes"),
+    StoreApproved("loja-aprovados"),
+    Finance("gestao"),
+    FinanceProducts("gestao-produtos"),
+
+    /** M8.1: `/{area}/gestao/eventos` — `AdminEventBiDashboard` no escopo do coletivo. */
+    EventsBi("gestao-eventos"),
+
+    /**
+     * M8.2: as cinco visões analíticas do coletivo,
+     * `/{area}/gestao/eventos/{comercial,operacional,portaria,estrategico,vendas}`.
+     */
+    EventsBiCommercial("gestao-eventos-comercial"),
+    EventsBiOperational("gestao-eventos-operacional"),
+    EventsBiGate("gestao-eventos-portaria"),
+    EventsBiStrategic("gestao-eventos-estrategico"),
+    EventsBiSales("gestao-eventos-vendas"),
+    Frequency("gestao-frequencia"),
+    Statement("gestao-financeiro");
+
+    /** A visão do `AdminEventBiDashboard` que a seção abre; `null` quando não é o BI. */
+    val eventBiView: EventBiView?
+        get() = when (this) {
+            EventsBi -> EventBiView.Home
+            EventsBiCommercial -> EventBiView.Commercial
+            EventsBiOperational -> EventBiView.Operational
+            EventsBiGate -> EventBiView.Gate
+            EventsBiStrategic -> EventBiView.Strategic
+            EventsBiSales -> EventBiView.Sales
+            else -> null
+        }
+
+    companion object {
+        fun fromRoute(value: String?): CollectiveManagementSection {
+            val normalized = value?.trim()?.lowercase().orEmpty()
+            return entries.firstOrNull { it.routeValue == normalized } ?: Home
+        }
+
+        /** Caminho inverso: a seção que abre cada visão do BI de Eventos. */
+        fun ofEventBiView(view: EventBiView): CollectiveManagementSection = when (view) {
+            EventBiView.Home -> EventsBi
+            EventBiView.Commercial -> EventsBiCommercial
+            EventBiView.Operational -> EventsBiOperational
+            EventBiView.Gate -> EventsBiGate
+            EventBiView.Strategic -> EventsBiStrategic
+            EventBiView.Sales -> EventsBiSales
+        }
+    }
+}
+
+@Composable
+private fun CollectiveManagementRoute(
+    navController: NavHostController,
+    authState: AuthUiState,
+    kind: CollectiveKind,
+    routePrefix: String,
+    collectiveId: String,
+    section: CollectiveManagementSection,
+) {
+    val gateViewModel: CollectiveManagementViewModel = viewModel()
+    val gateState by gateViewModel.uiState.collectAsState()
+
+    val nav = when (section) {
+        CollectiveManagementSection.Info -> CollectiveManagementNav.Info
+        CollectiveManagementSection.Members -> CollectiveManagementNav.Members
+        else -> CollectiveManagementNav.Home
+    }
+
+    LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id, collectiveId, section) {
+        gateViewModel.load(authState.session, kind, collectiveId, nav)
+    }
+
+    val selected = gateState.selected
+    val goToSection: (CollectiveManagementSection) -> Unit = { next ->
+        val id = selected?.routeSegment.orEmpty().ifBlank { collectiveId }
+        navController.navigate(
+            AppRoute.collectiveManagementSection(routePrefix, id, next.routeValue),
+        )
+    }
+    val onNavClick: (CollectiveManagementNav) -> Unit = { target ->
+        goToSection(
+            when (target) {
+                CollectiveManagementNav.Home -> CollectiveManagementSection.Home
+                CollectiveManagementNav.Info -> CollectiveManagementSection.Info
+                CollectiveManagementNav.Members -> CollectiveManagementSection.Members
+                CollectiveManagementNav.Store -> CollectiveManagementSection.Store
+                CollectiveManagementNav.Finance -> CollectiveManagementSection.Finance
+                // Agenda e Board Round vivem no workspace de evento e no BoardRound (M8/M10).
+                CollectiveManagementNav.Agenda -> CollectiveManagementSection.Home
+                CollectiveManagementNav.Board -> CollectiveManagementSection.Home
+            },
+        )
+    }
+
+    // Seções de hub, informações e membros usam o próprio estado do gate.
+    if (section == CollectiveManagementSection.Home ||
+        section == CollectiveManagementSection.Info ||
+        section == CollectiveManagementSection.Members
+    ) {
+        CollectiveManagementScreen(
+            state = gateState,
+            onBackClick = { navController.navigateUp() },
+            onSelectCollective = { gateViewModel.selectCollective(authState.session, it) },
+            onNavClick = onNavClick,
+            onInfoChange = gateViewModel::updateInfo,
+            onAddLink = gateViewModel::addLink,
+            onUpdateLink = gateViewModel::updateLink,
+            onRemoveLink = gateViewModel::removeLink,
+            onSaveInfo = { gateViewModel.saveInfo(authState.session) },
+            onOpenUserSearch = { gateViewModel.openUserSearch(authState.session) },
+            onCloseUserSearch = gateViewModel::closeUserSearch,
+            onSearchTermChange = gateViewModel::updateMemberSearch,
+            onAddMember = gateViewModel::addMember,
+            onMemberRoleChange = gateViewModel::updateMemberRole,
+            onRemoveMember = gateViewModel::removeMember,
+            onRequestRoleChange = gateViewModel::updateRequestRole,
+            onApproveRequest = gateViewModel::approveRequest,
+            onRejectRequest = gateViewModel::rejectRequest,
+            onSaveMembers = { gateViewModel.saveMembers(authState.session) },
+        )
+        return
+    }
+
+    if (selected == null) {
+        // Sem coletivo resolvido a tela cai no gate, como o web faz ao abrir sem seleção.
+        CollectiveManagementScreen(
+            state = gateState,
+            onBackClick = { navController.navigateUp() },
+            onSelectCollective = { gateViewModel.selectCollective(authState.session, it) },
+            onNavClick = onNavClick,
+        )
+        return
+    }
+
+    when (section) {
+        CollectiveManagementSection.Store,
+        CollectiveManagementSection.StoreProducts,
+        CollectiveManagementSection.StorePending,
+        CollectiveManagementSection.StoreApproved,
+        -> CollectiveStoreAdminRoute(
+            navController = navController,
+            authState = authState,
+            collective = selected,
+            section = section,
+            onNavClick = onNavClick,
+            onStoreSectionClick = goToSection,
+        )
+
+        CollectiveManagementSection.Finance -> CollectiveFinanceRoute(
+            navController = navController,
+            authState = authState,
+            collective = selected,
+            onNavClick = onNavClick,
+            onSectionClick = goToSection,
+        )
+
+        // M8.3: `LeagueFinanceDashboard` com `view="produtos"` é `ProductManagementAnalytics`.
+        // Deixou de ser tela própria do coletivo e passou a ser o motor único do BI Loja.
+        CollectiveManagementSection.FinanceProducts -> CollectiveProductBiRoute(
+            navController = navController,
+            authState = authState,
+            collective = selected,
+        )
+
+        CollectiveManagementSection.EventsBi,
+        CollectiveManagementSection.EventsBiCommercial,
+        CollectiveManagementSection.EventsBiOperational,
+        CollectiveManagementSection.EventsBiGate,
+        CollectiveManagementSection.EventsBiStrategic,
+        CollectiveManagementSection.EventsBiSales,
+        -> CollectiveEventBiRoute(
+            navController = navController,
+            authState = authState,
+            collective = selected,
+            view = section.eventBiView ?: EventBiView.Home,
+            onViewClick = { target ->
+                goToSection(CollectiveManagementSection.ofEventBiView(target))
+            },
+        )
+
+        CollectiveManagementSection.Frequency -> CollectiveFrequencyRoute(
+            navController = navController,
+            authState = authState,
+            collective = selected,
+            onNavClick = onNavClick,
+        )
+
+        CollectiveManagementSection.Statement -> CollectiveStatementRoute(
+            navController = navController,
+            authState = authState,
+            collective = selected,
+            onNavClick = onNavClick,
+        )
+
+        else -> Unit
+    }
+}
+
+@Composable
+private fun CollectiveStoreAdminRoute(
+    navController: NavHostController,
+    authState: AuthUiState,
+    collective: ManagedCollective,
+    section: CollectiveManagementSection,
+    onNavClick: (CollectiveManagementNav) -> Unit,
+    onStoreSectionClick: (CollectiveManagementSection) -> Unit,
+) {
+    val viewModel: CollectiveStoreAdminViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    val mode = when (section) {
+        CollectiveManagementSection.StoreProducts -> CollectiveStoreMode.Products
+        CollectiveManagementSection.StorePending -> CollectiveStoreMode.PendingOrders
+        CollectiveManagementSection.StoreApproved -> CollectiveStoreMode.ApprovedOrders
+        else -> CollectiveStoreMode.Overview
+    }
+
+    LaunchedEffect(authState.session.tenant?.id, collective.id, mode) {
+        viewModel.load(authState.session, collective, mode)
+    }
+
+    CollectiveStoreAdminScreen(
+        state = state,
+        onBackClick = { navController.navigateUp() },
+        onNavClick = onNavClick,
+        onStoreModeClick = { nextMode ->
+            onStoreSectionClick(
+                when (nextMode) {
+                    CollectiveStoreMode.Overview -> CollectiveManagementSection.Store
+                    CollectiveStoreMode.Products -> CollectiveManagementSection.StoreProducts
+                    CollectiveStoreMode.PendingOrders -> CollectiveManagementSection.StorePending
+                    CollectiveStoreMode.ApprovedOrders -> CollectiveManagementSection.StoreApproved
+                },
+            )
+        },
+        onCoverChange = viewModel::updateCover,
+        onSaveStore = { visible -> viewModel.saveStore(authState.session, visible) },
+        onToggleProducts = { visible -> viewModel.toggleAllProducts(authState.session, visible) },
+        onOpenProductForm = viewModel::openProductForm,
+        onCloseProductForm = viewModel::closeProductForm,
+        onProductFormChange = viewModel::updateProductForm,
+        onSaveProduct = { viewModel.saveProduct(authState.session) },
+        onToggleProduct = { product -> viewModel.setProductActive(authState.session, product) },
+        onApproveOrder = { order -> viewModel.approveOrder(authState.session, order) },
+        onOrderStatus = { order, status -> viewModel.setOrderStatus(authState.session, order, status) },
+    )
+}
+
+@Composable
+private fun CollectiveFinanceRoute(
+    navController: NavHostController,
+    authState: AuthUiState,
+    collective: ManagedCollective,
+    onNavClick: (CollectiveManagementNav) -> Unit,
+    onSectionClick: (CollectiveManagementSection) -> Unit,
+) {
+    val viewModel: CollectiveFinanceViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(authState.session.tenant?.id, collective.id) {
+        viewModel.load(authState.session, collective)
+    }
+
+    CollectiveFinanceScreen(
+        state = state,
+        onBackClick = { navController.navigateUp() },
+        onNavClick = onNavClick,
+        onFrequencyClick = { onSectionClick(CollectiveManagementSection.Frequency) },
+        // M8.1: `/{area}/gestao/eventos`, o BI de Eventos no escopo do coletivo.
+        onEventsBiClick = { onSectionClick(CollectiveManagementSection.EventsBi) },
+        onProductsBiClick = { onSectionClick(CollectiveManagementSection.FinanceProducts) },
+        onStatementClick = { onSectionClick(CollectiveManagementSection.Statement) },
+        onScannerClick = { navController.navigate(AppRoute.Scanner) },
+    )
+}
+
+/**
+ * BI Loja do coletivo (M8.3).
+ *
+ * Web: `LeagueFinanceDashboard` com `view="produtos"` (769-778), servido por
+ * `/ligas/{id}/gestao/produtos`, `/comissoes/configurar/gestao/produtos` e
+ * `/diretorio/configurar/gestao/produtos`. Os três passam o mesmo
+ * `ProductManagementAnalytics`, mudando só `entityArticle`/`entityLabel`.
+ */
+@Composable
+private fun CollectiveProductBiRoute(
+    navController: NavHostController,
+    authState: AuthUiState,
+    collective: ManagedCollective,
+) {
+    val viewModel: ProductBiViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+    val scope = collective.kind.productBiScope
+
+    LaunchedEffect(authState.session.tenant?.id, collective.id) {
+        viewModel.load(
+            session = authState.session,
+            scope = scope,
+            sellerId = collective.id,
+            labels = ProductBiLabels.ofCollective(
+                entityArticle = collective.kind.entityArticle,
+                entityLabel = collective.kind.entityLabel,
+            ),
+        )
+    }
+
+    ProductBiScreen(
+        state = state,
+        onBackClick = { navController.navigateUp() },
+        onProductSelected = viewModel::selectProduct,
+    )
+}
+
+/** `seller_type` que cada coletivo grava em `produtos`. */
+private val CollectiveKind.productBiScope: ProductBiScope
+    get() = when (this) {
+        CollectiveKind.League -> ProductBiScope.League
+        CollectiveKind.Commission -> ProductBiScope.Commission
+        CollectiveKind.Directory -> ProductBiScope.Directory
+    }
+
+/**
+ * BI de Eventos do coletivo (M8.1).
+ *
+ * Web: `LeagueEventBiDashboard` (`lockedScopeType="league"`, `scopeLabel="da liga"`),
+ * `CommissionManagementEventBiPage` (`commission`, "da comissão") e
+ * `DirectoryManagementEventBiPage` (`directory`, "do diretório") — todos chamam o mesmo
+ * `AdminEventBiDashboard`, mudando só as props de escopo e contexto.
+ */
+@Composable
+private fun CollectiveEventBiRoute(
+    navController: NavHostController,
+    authState: AuthUiState,
+    collective: ManagedCollective,
+    view: EventBiView,
+    onViewClick: (EventBiView) -> Unit,
+) {
+    val viewModel: EventBiViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    val scope = EventBiScope.fromCollectiveKind(collective.kind)
+    val context = remember(collective.id, scope) {
+        EventBiContext(
+            scope = EventBiScopeRef(type = scope, id = collective.id),
+            scopeLabel = scope.defaultScopeLabel,
+            contextTitle = collective.headerTitle,
+            contextLogo = collective.logoUrl.orEmpty(),
+            contextEyebrow = scope.defaultEyebrow,
+        )
+    }
+
+    LaunchedEffect(authState.session.tenant?.id, collective.id, view) {
+        viewModel.load(
+            session = authState.session,
+            view = view,
+            context = context,
+        )
+    }
+
+    EventBiScreen(
+        state = state,
+        // `backHref` dos wrappers: volta para a gestão do coletivo, ou para o hub do BI quando
+        // já se está numa das cinco visões (M8.2).
+        onBackClick = {
+            if (view == EventBiView.Home) {
+                navController.navigateUp()
+            } else {
+                onViewClick(EventBiView.Home)
+            }
+        },
+        onEventSelected = viewModel::selectEvent,
+        onProductSelected = viewModel::selectProduct,
+        onStartDateChange = viewModel::updateStartDate,
+        onEndDateChange = viewModel::updateEndDate,
+        onAudienceBasisChange = viewModel::selectAudienceBasis,
+        onModuleClick = onViewClick,
+    )
+}
+
+@Composable
+private fun CollectiveFrequencyRoute(
+    navController: NavHostController,
+    authState: AuthUiState,
+    collective: ManagedCollective,
+    onNavClick: (CollectiveManagementNav) -> Unit,
+) {
+    val viewModel: CollectiveFrequencyViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(authState.session.tenant?.id, collective.id) {
+        viewModel.load(authState.session, collective)
+    }
+
+    CollectiveFrequencyScreen(
+        state = state,
+        onBackClick = { navController.navigateUp() },
+        onNavClick = onNavClick,
+        onFilterChange = viewModel::setFilter,
+    )
+}
+
+@Composable
+private fun CollectiveStatementRoute(
+    navController: NavHostController,
+    authState: AuthUiState,
+    collective: ManagedCollective,
+    onNavClick: (CollectiveManagementNav) -> Unit,
+) {
+    val viewModel: CollectiveStatementViewModel = viewModel()
+    val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(authState.session.tenant?.id, collective.id) {
+        viewModel.load(authState.session, collective)
+    }
+
+    CollectiveStatementScreen(
+        state = state,
+        onBackClick = { navController.navigateUp() },
+        onNavClick = onNavClick,
+        onSearchChange = viewModel::updateSearch,
+        onTypeFilter = viewModel::setTypeFilter,
+        onStatusFilter = viewModel::setStatusFilter,
+        onLoadMore = viewModel::loadMore,
+    )
 }
 
 private fun NavGraphBuilder.catalogRoute(
@@ -363,6 +906,8 @@ private fun NavGraphBuilder.catalogRoute(
             onBackClick = { navController.navigateUp() },
             onLikeClick = { viewModel.toggleLike(authState.session, it) },
             onFollowClick = { viewModel.toggleFollow(authState.session, it) },
+            // `canManageCatalog` do web abre `/ligas`, `/comissoes/configurar` ou `/diretorio/configurar`.
+            onManageClick = { navController.navigate(collectiveManagementRoute(kind)) },
             onQuizToggleOption = viewModel::toggleQuizOption,
             onQuizAdvance = { viewModel.advanceQuiz(authState.session) },
             onQuizReset = viewModel::resetQuiz,
@@ -449,12 +994,30 @@ private fun CollectiveDetailRoute(
         onLikeClick = { viewModel.toggleLike(authState.session) },
         onFollowClick = { viewModel.toggleFollow(authState.session) },
         onRoleClick = viewModel::selectRequestRole,
+        // `canManagePage` do web leva ao painel de configuração do coletivo.
+        onManageClick = {
+            val id = state.group?.id.orEmpty().ifBlank { collectiveId }
+            navController.navigate(
+                AppRoute.collectiveManagementSection(
+                    prefix = collectiveManagementRoute(kind),
+                    collectiveId = id,
+                    section = "inicio",
+                ),
+            )
+        },
         onProductClick = { navController.navigate(AppRoute.productDetail(it.id)) },
         onEventClick = { event ->
             val eventId = event.resolvedEventId
             if (eventId.isNotBlank()) navController.navigate(AppRoute.eventDetail(eventId))
         },
     )
+}
+
+/** Raiz do painel de gestão de cada área (`/ligas`, `/comissoes/configurar`, `/diretorio/configurar`). */
+private fun collectiveManagementRoute(kind: CollectiveKind): String = when (kind) {
+    CollectiveKind.League -> AppRoute.LeagueManagement
+    CollectiveKind.Commission -> AppRoute.CommissionManagement
+    CollectiveKind.Directory -> AppRoute.DirectoryManagement
 }
 
 private fun collectiveDetailRoute(kind: CollectiveKind, collectiveId: String): String = when (kind) {
@@ -539,9 +1102,21 @@ private fun NavGraphBuilder.miniVendorRoutes(
             )
         }
     }
+    // M8.3: `app/configuracoes/mini-vendor/gestao/page.tsx` é `ProductManagementAnalytics` com
+    // `seller_type = mini_vendor` + `seller_id` do perfil. O resumo reduzido que ocupava esta
+    // rota foi substituído pelo motor único do BI Loja.
     composable(AppRoute.MiniVendorManagement) {
         PermissionGate(authState, Permission.ManageMiniVendor, "Gestão mini-vendor") {
-            miniVendorState(authState) { MiniVendorManagementScreen(it, { navController.navigateUp() }) }
+            val viewModel: ProductBiViewModel = viewModel()
+            val state by viewModel.uiState.collectAsState()
+            LaunchedEffect(authState.session.tenant?.id, authState.session.user?.id) {
+                viewModel.load(session = authState.session, scope = ProductBiScope.MiniVendor)
+            }
+            ProductBiScreen(
+                state = state,
+                onBackClick = { navController.navigateUp() },
+                onProductSelected = viewModel::selectProduct,
+            )
         }
     }
     composable(AppRoute.MiniVendorProducts) {
